@@ -34,6 +34,7 @@ class PlayerWindow(QWidget):
     playlist_files: List[pathlib.PosixPath]
     player: QMediaPlayer
     playlist: QMediaPlaylist
+    lyric_label: QLabel
 
     def __init__(self):
         super().__init__()
@@ -57,12 +58,19 @@ class PlayerWindow(QWidget):
         self.next_button.clicked.connect(lambda: self.playlist.next() or self.player.play())
         self.playlist_widget.doubleClicked.connect(lambda _: self.dbl_clicked(_))
         self.player.stateChanged.connect(lambda _: self.on_player_state_changed(_))
+        self.player.positionChanged.connect(lambda _: self.on_player_position_changed(_))
 
     def on_player_state_changed(self, state: QMediaPlayer.State):
         if state == QMediaPlayer.PlayingState:
             self.play_button.setIcon(QIcon.fromTheme('media-playback-pause'))
         else:
             self.play_button.setIcon(QIcon.fromTheme('media-playback-start'))
+
+    def on_player_position_changed(self, position: int):
+        current = position // 1000
+        total = self.player.duration() // 1000
+        self.progress_label.setText(
+            '{:02d}:{:02d}/{:02d}:{:02d}'.format(current // 60, current % 60, total // 60, total % 60))
 
     def toggle_play(self):
         if self.player.state() == QMediaPlayer.PlayingState:
@@ -105,10 +113,16 @@ class PlayerWindow(QWidget):
         self.playlist_widget.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.playlist_widget.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.lyric_wrapper = QScrollArea(self)
+        self.lyric_label = QLabel('<center>Lyrics...</center>')
+        font = self.lyric_label.font()
+        font.setPointSize(44)
+        self.lyric_label.setFont(font)
+        self.lyric_wrapper.setWidget(self.lyric_label)
+        self.lyric_wrapper.setWidgetResizable(True)
 
         content_layout = QHBoxLayout()
-        content_layout.addWidget(self.playlist_widget)
-        content_layout.addWidget(self.lyric_wrapper)
+        content_layout.addWidget(self.playlist_widget, 1)
+        content_layout.addWidget(self.lyric_wrapper, 1)
 
         controller_layout = QHBoxLayout()
         controller_layout.addWidget(self.play_button)
