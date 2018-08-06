@@ -40,11 +40,11 @@ class PlayerWindow(QWidget):
     dial: QDial
     playlist_widget: QTableWidget
     lyric_wrapper: QScrollArea
-    load_playlist_task: LoadPlaylistTask
-    playlist_files: List[pathlib.PosixPath]
     player: QMediaPlayer
     playlist: QMediaPlaylist
     lyric_label: QLabel
+    load_playlist_task: LoadPlaylistTask
+    playlist_files: List[pathlib.PosixPath]
 
     def __init__(self):
         super().__init__()
@@ -108,6 +108,14 @@ class PlayerWindow(QWidget):
 
     def on_playlist_current_index_changed(self, index):
         self.progress_slider.setValue(0)
+        music_file = self.playlist_files[index]
+        lyric_file: pathlib.PosixPath = music_file.parent / (music_file.stem + '.lrc')
+        if lyric_file.exists():
+            lyric_text = lyric_file.read_text(encoding='gbk')
+            print(lyric_text)
+            self.lyric_label.setText(lyric_text)
+        else:
+            print("Lyric file not found.")
 
     def toggle_play(self):
         if self.player.state() == QMediaPlayer.PlayingState:
@@ -153,7 +161,7 @@ class PlayerWindow(QWidget):
         self.lyric_wrapper = QScrollArea(self)
         self.lyric_label = QLabel('<center>Lyrics...</center>')
         font = self.lyric_label.font()
-        font.setPointSize(44)
+        font.setPointSize(14)
         self.lyric_label.setFont(font)
         self.lyric_wrapper.setWidget(self.lyric_label)
         self.lyric_wrapper.setWidgetResizable(True)
