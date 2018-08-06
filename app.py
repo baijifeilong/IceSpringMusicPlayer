@@ -162,6 +162,7 @@ class PlayerWindow(QWidget):
         self.playlist_widget.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.playlist_widget.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.playlist_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.playlist_widget.horizontalHeader().hide()
         self.lyric_wrapper = QScrollArea(self)
         self.lyric_label = QLabel('<center>Lyrics...</center>')
         font = self.lyric_label.font()
