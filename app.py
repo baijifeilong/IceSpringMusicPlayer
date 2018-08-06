@@ -4,6 +4,7 @@ import pathlib
 import sys
 from typing import List
 
+from PyQt5 import QtGui
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtMultimedia import *
@@ -20,12 +21,21 @@ class LoadPlaylistTask(QThread):
                 self.found_music_signal.emit(f)
 
 
+class MyQSlider(QSlider):
+
+    def mousePressEvent(self, ev: QtGui.QMouseEvent) -> None:
+        if ev.button() == Qt.LeftButton:
+            self.setValue(self.minimum() + (self.maximum() - self.minimum()) * ev.x() // self.width())
+            ev.accept()
+        super().mousePressEvent(ev)
+
+
 class PlayerWindow(QWidget):
     play_button: QToolButton
     prev_button: QToolButton
     next_button: QToolButton
     playback_mode_button: QToolButton
-    progress_slider: QSlider
+    progress_slider: MyQSlider
     progress_label: QLabel
     dial: QDial
     playlist_widget: QTableWidget
@@ -56,9 +66,17 @@ class PlayerWindow(QWidget):
         self.play_button.clicked.connect(lambda: self.toggle_play())
         self.prev_button.clicked.connect(lambda: self.playlist.previous() or self.player.play())
         self.next_button.clicked.connect(lambda: self.playlist.next() or self.player.play())
-        self.playlist_widget.doubleClicked.connect(lambda _: self.dbl_clicked(_))
+        self.progress_slider.valueChanged.connect(lambda _: self.on_progress_slider_value_changed(_))
         self.player.stateChanged.connect(lambda _: self.on_player_state_changed(_))
         self.player.positionChanged.connect(lambda _: self.on_player_position_changed(_))
+        self.player.durationChanged.connect(lambda _: self.on_player_duration_changed(_))
+        self.playlist_widget.doubleClicked.connect(lambda _: self.dbl_clicked(_))
+        self.playlist.currentIndexChanged.connect(lambda _: self.on_playlist_current_index_changed(_))
+
+    def on_progress_slider_value_changed(self, value):
+        self.player.blockSignals(True)
+        self.player.setPosition(value * 1000)
+        self.player.blockSignals(False)
 
     def on_player_state_changed(self, state: QMediaPlayer.State):
         if state == QMediaPlayer.PlayingState:
@@ -71,6 +89,16 @@ class PlayerWindow(QWidget):
         total = self.player.duration() // 1000
         self.progress_label.setText(
             '{:02d}:{:02d}/{:02d}:{:02d}'.format(current // 60, current % 60, total // 60, total % 60))
+        self.progress_slider.blockSignals(True)
+        self.progress_slider.setValue(current)
+        self.progress_slider.blockSignals(False)
+
+    def on_player_duration_changed(self, duration: int):
+        total = duration // 1000
+        self.progress_slider.setMaximum(total)
+
+    def on_playlist_current_index_changed(self, index):
+        self.progress_slider.setValue(0)
 
     def toggle_play(self):
         if self.player.state() == QMediaPlayer.PlayingState:
@@ -104,7 +132,7 @@ class PlayerWindow(QWidget):
         self.prev_button = self.generate_tool_button('media-skip-backward')
         self.next_button = self.generate_tool_button('media-skip-forward')
         self.playback_mode_button = self.generate_tool_button('media-playlist-shuffle')
-        self.progress_slider = QSlider(Qt.Horizontal, self)
+        self.progress_slider = MyQSlider(Qt.Horizontal, self)
         self.progress_label = QLabel('00:00/00:00', self)
         self.dial = QDial(self)
         self.dial.setFixedSize(50, 50)
