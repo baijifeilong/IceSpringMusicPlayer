@@ -66,12 +66,21 @@ class PlayerWindow(QWidget):
         self.play_button.clicked.connect(lambda: self.toggle_play())
         self.prev_button.clicked.connect(lambda: self.playlist.previous() or self.player.play())
         self.next_button.clicked.connect(lambda: self.playlist.next() or self.player.play())
+        self.playback_mode_button.clicked.connect(lambda: self.on_playback_mode_button_clicked())
         self.progress_slider.valueChanged.connect(lambda _: self.on_progress_slider_value_changed(_))
         self.player.stateChanged.connect(lambda _: self.on_player_state_changed(_))
         self.player.positionChanged.connect(lambda _: self.on_player_position_changed(_))
         self.player.durationChanged.connect(lambda _: self.on_player_duration_changed(_))
         self.playlist_widget.doubleClicked.connect(lambda _: self.dbl_clicked(_))
         self.playlist.currentIndexChanged.connect(lambda _: self.on_playlist_current_index_changed(_))
+
+    def on_playback_mode_button_clicked(self):
+        if self.playlist.playbackMode() == QMediaPlaylist.Random:
+            self.playlist.setPlaybackMode(QMediaPlaylist.Loop)
+            self.playback_mode_button.setIcon(QIcon.fromTheme('media-playlist-repeat'))
+        else:
+            self.playlist.setPlaybackMode(QMediaPlaylist.Random)
+            self.playback_mode_button.setIcon(QIcon.fromTheme('media-playlist-shuffle'))
 
     def on_progress_slider_value_changed(self, value):
         self.player.blockSignals(True)
@@ -108,8 +117,9 @@ class PlayerWindow(QWidget):
 
     def setup_player(self):
         self.playlist_files = list()
-        self.player = QMediaPlayer()
         self.playlist = QMediaPlaylist()
+        self.playlist.setPlaybackMode(QMediaPlaylist.Random)
+        self.player = QMediaPlayer()
         self.player.setPlaylist(self.playlist)
 
     def add_music(self, music_file: pathlib.PosixPath):
