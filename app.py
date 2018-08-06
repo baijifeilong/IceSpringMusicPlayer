@@ -37,7 +37,7 @@ class PlayerWindow(QWidget):
     playback_mode_button: QToolButton
     progress_slider: MyQSlider
     progress_label: QLabel
-    dial: QDial
+    volume_dial: QDial
     playlist_widget: QTableWidget
     lyric_wrapper: QScrollArea
     player: QMediaPlayer
@@ -52,6 +52,7 @@ class PlayerWindow(QWidget):
         self.setup_player()
         self.setup_events()
         self.load_playlist_task.start()
+        self.volume_dial.setValue(50)
 
     def generate_tool_button(self, icon_name: str) -> QToolButton:
         button = QToolButton(parent=self)
@@ -68,6 +69,7 @@ class PlayerWindow(QWidget):
         self.next_button.clicked.connect(lambda: self.playlist.next() or self.player.play())
         self.playback_mode_button.clicked.connect(lambda: self.on_playback_mode_button_clicked())
         self.progress_slider.valueChanged.connect(lambda _: self.on_progress_slider_value_changed(_))
+        self.volume_dial.valueChanged.connect(self.player.setVolume)
         self.player.stateChanged.connect(lambda _: self.on_player_state_changed(_))
         self.player.positionChanged.connect(lambda _: self.on_player_position_changed(_))
         self.player.durationChanged.connect(lambda _: self.on_player_duration_changed(_))
@@ -152,8 +154,8 @@ class PlayerWindow(QWidget):
         self.playback_mode_button = self.generate_tool_button('media-playlist-shuffle')
         self.progress_slider = MyQSlider(Qt.Horizontal, self)
         self.progress_label = QLabel('00:00/00:00', self)
-        self.dial = QDial(self)
-        self.dial.setFixedSize(50, 50)
+        self.volume_dial = QDial(self)
+        self.volume_dial.setFixedSize(50, 50)
         self.playlist_widget = QTableWidget(0, 2, self)
         self.playlist_widget.setHorizontalHeaderLabels(('Artist', 'Song'))
         self.playlist_widget.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -177,7 +179,7 @@ class PlayerWindow(QWidget):
         controller_layout.addWidget(self.progress_slider)
         controller_layout.addWidget(self.progress_label)
         controller_layout.addWidget(self.playback_mode_button)
-        controller_layout.addWidget(self.dial)
+        controller_layout.addWidget(self.volume_dial)
 
         root_layout = QVBoxLayout(self)
         root_layout.addLayout(content_layout)
