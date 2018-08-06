@@ -110,6 +110,7 @@ class PlayerWindow(QWidget):
 
     def on_playlist_current_index_changed(self, index):
         self.progress_slider.setValue(0)
+        self.playlist_widget.selectRow(index)
         music_file = self.playlist_files[index]
         lyric_file: pathlib.PosixPath = music_file.parent / (music_file.stem + '.lrc')
         if lyric_file.exists():
@@ -160,6 +161,7 @@ class PlayerWindow(QWidget):
         self.playlist_widget.setHorizontalHeaderLabels(('Artist', 'Song'))
         self.playlist_widget.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.playlist_widget.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.playlist_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.lyric_wrapper = QScrollArea(self)
         self.lyric_label = QLabel('<center>Lyrics...</center>')
         font = self.lyric_label.font()
