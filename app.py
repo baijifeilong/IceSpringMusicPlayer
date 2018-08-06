@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+
 import pathlib
 import sys
 from typing import List
@@ -37,8 +38,9 @@ class PlayerWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setup_layout()
-        self.setup_events()
         self.setup_player()
+        self.setup_events()
+        self.load_playlist_task.start()
 
     def generate_tool_button(self, icon_name: str) -> QToolButton:
         button = QToolButton(parent=self)
@@ -50,8 +52,23 @@ class PlayerWindow(QWidget):
     def setup_events(self):
         self.load_playlist_task = LoadPlaylistTask()
         self.load_playlist_task.found_music_signal.connect(lambda x: print('Found', x) or self.add_music(x))
-        self.play_button.clicked.connect(lambda: self.load_playlist_task.start())
+        self.play_button.clicked.connect(lambda: self.toggle_play())
+        self.prev_button.clicked.connect(lambda: self.playlist.previous() or self.player.play())
+        self.next_button.clicked.connect(lambda: self.playlist.next() or self.player.play())
         self.playlist_widget.doubleClicked.connect(lambda _: self.dbl_clicked(_))
+        self.player.stateChanged.connect(lambda _: self.on_player_state_changed(_))
+
+    def on_player_state_changed(self, state: QMediaPlayer.State):
+        if state == QMediaPlayer.PlayingState:
+            self.play_button.setIcon(QIcon.fromTheme('media-playback-pause'))
+        else:
+            self.play_button.setIcon(QIcon.fromTheme('media-playback-start'))
+
+    def toggle_play(self):
+        if self.player.state() == QMediaPlayer.PlayingState:
+            self.player.pause()
+        else:
+            self.player.play()
 
     def setup_player(self):
         self.playlist_files = list()
