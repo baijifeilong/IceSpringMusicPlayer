@@ -17,16 +17,16 @@ def parse_lyric(text: str):
     lyric: Dict[int, str] = dict()
     for line in text.splitlines():
         line = line.strip()
-        if line:
-            match = regex.match(line)
-            if match:
-                time_part = match.groups()[0]
-                lyric_part = match.groups()[2].strip()
-                for i in range(0, len(time_part), 10):
-                    this_time = time_part[i:i + 10]
-                    minutes, seconds = this_time[1:-1].split(':')
-                    milliseconds = int((int(minutes) * 60 + float(seconds)) * 1000)
-                    lyric[milliseconds] = lyric_part
+        if not line: continue
+        match = regex.match(line)
+        if not match: continue
+        time_part = match.groups()[0]
+        lyric_part = match.groups()[2].strip()
+        for i in range(0, len(time_part), 10):
+            this_time = time_part[i:i + 10]
+            minutes, seconds = this_time[1:-1].split(':')
+            milliseconds = int((int(minutes) * 60 + float(seconds)) * 1000)
+            lyric[milliseconds] = lyric_part
     return lyric
 
 
