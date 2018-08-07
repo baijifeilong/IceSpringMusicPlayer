@@ -1,14 +1,33 @@
 #! /usr/bin/env python3
 
 import pathlib
+import re
 import sys
-from typing import List
+from typing import List, Dict
 
 from PyQt5 import QtGui
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtMultimedia import *
 from PyQt5.QtWidgets import *
+
+
+def parse_lyric(text: str):
+    regex = re.compile('((\[\d{2}:\d{2}.\d{2}\])+)(.+)')
+    lyric: Dict[int, str] = dict()
+    for line in text.splitlines():
+        line = line.strip()
+        if line:
+            match = regex.match(line)
+            if match:
+                time_part = match.groups()[0]
+                lyric_part = match.groups()[2].strip()
+                for i in range(0, len(time_part), 10):
+                    this_time = time_part[i:i + 10]
+                    minutes, seconds = this_time[1:-1].split(':')
+                    milliseconds = round(int(minutes) * 60 + float(seconds))
+                    lyric[milliseconds] = lyric_part
+    return lyric
 
 
 class LoadPlaylistTask(QThread):
@@ -45,6 +64,7 @@ class PlayerWindow(QWidget):
     lyric_label: QLabel
     load_playlist_task: LoadPlaylistTask
     playlist_files: List[pathlib.PosixPath]
+    lyric: Dict[int, str]
 
     def __init__(self):
         super().__init__()
@@ -116,9 +136,17 @@ class PlayerWindow(QWidget):
         if lyric_file.exists():
             lyric_text = lyric_file.read_text(encoding='gbk')
             print(lyric_text)
-            self.lyric_label.setText(lyric_text)
+            self.lyric = parse_lyric(lyric_text)
+            self.refresh_lyric()
         else:
             print("Lyric file not found.")
+
+    def refresh_lyric(self):
+        if self.lyric is None: return
+        text = ''
+        for k, v in sorted(self.lyric.items()):
+            text += v + '\n'
+        self.lyric_label.setText(text)
 
     def toggle_play(self):
         if self.player.state() == QMediaPlayer.PlayingState:
