@@ -3,7 +3,7 @@
 import pathlib
 import re
 import sys
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 from PyQt5 import QtGui
 from PyQt5.QtCore import *
@@ -25,7 +25,7 @@ def parse_lyric(text: str):
                 for i in range(0, len(time_part), 10):
                     this_time = time_part[i:i + 10]
                     minutes, seconds = this_time[1:-1].split(':')
-                    milliseconds = round(int(minutes) * 60 + float(seconds))
+                    milliseconds = int((int(minutes) * 60 + float(seconds)) * 1000)
                     lyric[milliseconds] = lyric_part
     return lyric
 
@@ -65,6 +65,7 @@ class PlayerWindow(QWidget):
     load_playlist_task: LoadPlaylistTask
     playlist_files: List[pathlib.PosixPath]
     lyric: Dict[int, str]
+    prev_lyric_index = -1
 
     def __init__(self):
         super().__init__()
@@ -73,6 +74,7 @@ class PlayerWindow(QWidget):
         self.setup_events()
         self.load_playlist_task.start()
         self.volume_dial.setValue(50)
+        self.lyric = None
 
     def generate_tool_button(self, icon_name: str) -> QToolButton:
         button = QToolButton(parent=self)
@@ -123,6 +125,7 @@ class PlayerWindow(QWidget):
         self.progress_slider.blockSignals(True)
         self.progress_slider.setValue(current)
         self.progress_slider.blockSignals(False)
+        self.refresh_lyric()
 
     def on_player_duration_changed(self, duration: int):
         total = duration // 1000
@@ -131,6 +134,7 @@ class PlayerWindow(QWidget):
     def on_playlist_current_index_changed(self, index):
         self.progress_slider.setValue(0)
         self.playlist_widget.selectRow(index)
+        self.prev_lyric_index = -1
         music_file = self.playlist_files[index]
         lyric_file: pathlib.PosixPath = music_file.parent / (music_file.stem + '.lrc')
         if lyric_file.exists():
@@ -143,10 +147,34 @@ class PlayerWindow(QWidget):
 
     def refresh_lyric(self):
         if self.lyric is None: return
+        current_lyric_index = self.calc_current_lyric_index()
+        if current_lyric_index == self.prev_lyric_index:
+            return
+        self.prev_lyric_index = current_lyric_index
+        print("current index", current_lyric_index)
         text = ''
-        for k, v in sorted(self.lyric.items()):
-            text += v + '\n'
+        for i, (k, v) in enumerate(sorted(self.lyric.items())):
+            if i == current_lyric_index:
+                text += '<center><b>{}</b></center>'.format(v)
+            else:
+                text += '<center>{}</center>'.format(v)
         self.lyric_label.setText(text)
+        self.lyric_wrapper.verticalScrollBar().setValue(
+            self.lyric_label.height() * current_lyric_index // len(self.lyric)
+            - self.lyric_wrapper.height() // 2
+        )
+
+    def calc_current_lyric_index(self):
+        entries: List[Tuple[int, str]] = sorted(self.lyric.items())
+        current_position = self.player.position()
+        if current_position < entries[0][0]:
+            return 0
+        for i in range(len(self.lyric) - 1):
+            entry = entries[i]
+            next_entry = entries[i + 1]
+            if entry[0] <= current_position < next_entry[0]:
+                return i
+        return len(self.lyric) - 1
 
     def toggle_play(self):
         if self.player.state() == QMediaPlayer.PlayingState:
@@ -219,9 +247,17 @@ class PlayerWindow(QWidget):
         self.setLayout(root_layout)
         self.resize(888, 666)
 
+    def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
+        super().resizeEvent(a0)
+        if self.lyric:
+            self.prev_lyric_index = -1
+            self.refresh_lyric()
+
 
 def main():
     app = QApplication(sys.argv)
+    app.setApplicationName('Rawsteel Music Player')
+    app.setWindowIcon(QIcon.fromTheme('audio-headphones'))
     window = PlayerWindow()
     window.show()
     app.exec()
