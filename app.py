@@ -12,6 +12,16 @@ from PyQt5.QtMultimedia import *
 from PyQt5.QtWidgets import *
 
 
+class MusicEntry(object):
+
+    def __init__(self, path, artist, title, duration) -> None:
+        super().__init__()
+        self.path: pathlib.PosixPath = path
+        self.artist: str = artist
+        self.title: str = title
+        self.duration: int = duration
+
+
 def parse_lyric(text: str):
     regex = re.compile('((\[\d{2}:\d{2}.\d{2}\])+)(.+)')
     lyric: Dict[int, str] = dict()
@@ -31,13 +41,30 @@ def parse_lyric(text: str):
 
 
 class LoadPlaylistTask(QThread):
-    found_music_signal = pyqtSignal(pathlib.PosixPath)
+    music_found_signal = pyqtSignal(MusicEntry)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.player = QMediaPlayer()
 
     def run(self) -> None:
         print("Loading playlist...")
         for f in pathlib.Path('/mnt/d/music/test').iterdir():
             if f.suffix != '.lrc':
-                self.found_music_signal.emit(f)
+                print("Scanning for {}".format(f))
+                artist, title = 'Unknown', 'Unknown'
+                if '-' in f.stem: artist, title = f.stem.split('-')
+                self.player.setMedia(QMediaContent(QUrl.fromLocalFile(str(f))))
+                artist = self.player.metaData(QMediaMetaData.ContributingArtist) or artist
+                title = self.player.metaData(QMediaMetaData.Title) or title
+                if not title: print("Title is none {}:{}".format(f, title))
+                print("title: {}".format(title))
+                duration = self.player.duration()
+                music_entry = MusicEntry(path=f, artist=artist, title=title, duration=duration)
+                self.music_found_signal.emit(music_entry)
+
+    def on_player_state_changed(self, state: QMediaPlayer.State):
+        print("State {}:{}".format(self.player.currentMedia().canonicalUrl(), state))
 
 
 class MyQSlider(QSlider):
@@ -50,31 +77,31 @@ class MyQSlider(QSlider):
 
 
 class PlayerWindow(QWidget):
-    play_button: QToolButton
-    prev_button: QToolButton
-    next_button: QToolButton
-    playback_mode_button: QToolButton
-    progress_slider: MyQSlider
-    progress_label: QLabel
-    volume_dial: QDial
-    playlist_widget: QTableWidget
-    lyric_wrapper: QScrollArea
-    player: QMediaPlayer
-    playlist: QMediaPlaylist
-    lyric_label: QLabel
-    load_playlist_task: LoadPlaylistTask
-    playlist_files: List[pathlib.PosixPath]
-    lyric: Dict[int, str]
-    prev_lyric_index = -1
 
     def __init__(self):
         super().__init__()
+        self.play_button: QToolButton
+        self.prev_button: QToolButton
+        self.next_button: QToolButton
+        self.playback_mode_button: QToolButton
+        self.progress_slider: MyQSlider
+        self.progress_label: QLabel
+        self.volume_dial: QDial
+        self.playlist_widget: QTableWidget
+        self.lyric_wrapper: QScrollArea
+        self.player: QMediaPlayer
+        self.tmp_player: QMediaPlayer
+        self.playlist: QMediaPlaylist
+        self.lyric_label: QLabel
+        self.load_playlist_task = LoadPlaylistTask()
+        self.musics: List[MusicEntry] = list()
+        self.lyric: Dict[int, str] = None
+        self.prev_lyric_index = -1
         self.setup_layout()
         self.setup_player()
         self.setup_events()
         self.load_playlist_task.start()
         self.volume_dial.setValue(50)
-        self.lyric = None
 
     def generate_tool_button(self, icon_name: str) -> QToolButton:
         button = QToolButton(parent=self)
@@ -85,18 +112,18 @@ class PlayerWindow(QWidget):
 
     def setup_events(self):
         self.load_playlist_task = LoadPlaylistTask()
-        self.load_playlist_task.found_music_signal.connect(lambda x: print('Found', x) or self.add_music(x))
+        self.load_playlist_task.music_found_signal.connect(self.add_music)
         self.play_button.clicked.connect(lambda: self.toggle_play())
         self.prev_button.clicked.connect(lambda: self.playlist.previous() or self.player.play())
         self.next_button.clicked.connect(lambda: self.playlist.next() or self.player.play())
         self.playback_mode_button.clicked.connect(lambda: self.on_playback_mode_button_clicked())
-        self.progress_slider.valueChanged.connect(lambda _: self.on_progress_slider_value_changed(_))
+        self.progress_slider.valueChanged.connect(self.on_progress_slider_value_changed)
         self.volume_dial.valueChanged.connect(self.player.setVolume)
-        self.player.stateChanged.connect(lambda _: self.on_player_state_changed(_))
-        self.player.positionChanged.connect(lambda _: self.on_player_position_changed(_))
-        self.player.durationChanged.connect(lambda _: self.on_player_duration_changed(_))
-        self.playlist_widget.doubleClicked.connect(lambda _: self.dbl_clicked(_))
-        self.playlist.currentIndexChanged.connect(lambda _: self.on_playlist_current_index_changed(_))
+        self.player.stateChanged.connect(self.on_player_state_changed)
+        self.player.positionChanged.connect(self.on_player_position_changed)
+        self.player.durationChanged.connect(self.on_player_duration_changed)
+        self.playlist_widget.doubleClicked.connect(self.dbl_clicked)
+        self.playlist.currentIndexChanged.connect(self.on_playlist_current_index_changed)
 
     def on_playback_mode_button_clicked(self):
         if self.playlist.playbackMode() == QMediaPlaylist.Random:
@@ -135,7 +162,7 @@ class PlayerWindow(QWidget):
         self.progress_slider.setValue(0)
         self.playlist_widget.selectRow(index)
         self.prev_lyric_index = -1
-        music_file = self.playlist_files[index]
+        music_file = self.musics[index].path
         lyric_file: pathlib.PosixPath = music_file.parent / (music_file.stem + '.lrc')
         if lyric_file.exists():
             lyric_text = lyric_file.read_text(encoding='gbk')
@@ -183,21 +210,20 @@ class PlayerWindow(QWidget):
             self.player.play()
 
     def setup_player(self):
-        self.playlist_files = list()
         self.playlist = QMediaPlaylist()
         self.playlist.setPlaybackMode(QMediaPlaylist.Random)
         self.player = QMediaPlayer()
         self.player.setPlaylist(self.playlist)
+        self.tmp_player = QMediaPlayer()
 
-    def add_music(self, music_file: pathlib.PosixPath):
+    def add_music(self, music: MusicEntry):
+        self.musics.append(music)
         row = self.playlist_widget.rowCount()
-        stem = music_file.stem
-        artist, song = stem.split('-')
         self.playlist_widget.insertRow(row)
-        self.playlist_widget.setItem(row, 0, QTableWidgetItem(artist))
-        self.playlist_widget.setItem(row, 1, QTableWidgetItem(song))
-        self.playlist_files.append(music_file)
-        self.playlist.addMedia(QMediaContent(QUrl.fromLocalFile(str(music_file))))
+        self.playlist_widget.setItem(row, 0, QTableWidgetItem(music.artist))
+        self.playlist_widget.setItem(row, 1, QTableWidgetItem(music.title))
+        self.playlist_widget.setItem(row, 2, QTableWidgetItem(str(music.duration)))
+        self.playlist.addMedia(QMediaContent(QUrl.fromLocalFile(str(music.path))))
 
     def dbl_clicked(self, item: QModelIndex):
         self.playlist.setCurrentIndex(item.row())
@@ -213,7 +239,7 @@ class PlayerWindow(QWidget):
         self.progress_label = QLabel('00:00/00:00', self)
         self.volume_dial = QDial(self)
         self.volume_dial.setFixedSize(50, 50)
-        self.playlist_widget = QTableWidget(0, 2, self)
+        self.playlist_widget = QTableWidget(0, 3, self)
         self.playlist_widget.setHorizontalHeaderLabels(('Artist', 'Song'))
         self.playlist_widget.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.playlist_widget.setEditTriggers(QAbstractItemView.NoEditTriggers)
