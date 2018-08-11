@@ -6,6 +6,7 @@ import re
 import sys
 import taglib
 import time
+from enum import Enum
 from typing import List, Dict, Tuple
 
 from PyQt5 import QtGui
@@ -84,8 +85,9 @@ class MyPlaylist(QObject):
     position_changed = pyqtSignal(int)
     duration_changed = pyqtSignal(int)
 
-    LOOP = 1
-    RANDOM = 2
+    class PlaybackMode(Enum):
+        LOOP = 1
+        RANDOM = 2
 
     def __init__(self) -> None:
         super().__init__()
@@ -93,7 +95,7 @@ class MyPlaylist(QObject):
         self._playlist = QMediaPlaylist()
         self._musics: List[MusicEntry] = list()
         self._current_index = -1
-        self._playback_mode = MyPlaylist.LOOP
+        self._playback_mode = MyPlaylist.PlaybackMode.LOOP
         self._playing = False
         self._player.positionChanged.connect(self.position_changed.emit)
         self._player.durationChanged.connect(self.duration_changed.emit)
@@ -130,7 +132,7 @@ class MyPlaylist(QObject):
         self.playing_changed.emit(self._playing)
 
     def previous(self):
-        if self._playback_mode == self.LOOP:
+        if self._playback_mode == self.PlaybackMode.LOOP:
             self.set_current_index(self._current_index - 1 if self._current_index > 0 else self.music_count() - 1)
         else:
             self._history_index -= 1
@@ -139,7 +141,7 @@ class MyPlaylist(QObject):
             self.set_current_index(self._history[self._history_index])
 
     def next(self):
-        if self._playback_mode == self.LOOP:
+        if self._playback_mode == self.PlaybackMode.LOOP:
             self.set_current_index(self._current_index + 1 if self._current_index < self.music_count() - 1 else 0)
         else:
             self._history_index += 1
@@ -243,17 +245,15 @@ class PlayerWindow(QWidget):
         self.my_playlist.current_index_changed.connect(self.on_playlist_current_index_changed)
 
     def on_playback_mode_button_clicked(self):
-        if self.my_playlist.get_playback_mode() == MyPlaylist.RANDOM:
-            self.my_playlist.set_playback_mode(MyPlaylist.LOOP)
+        if self.my_playlist.get_playback_mode() == MyPlaylist.PlaybackMode.RANDOM:
+            self.my_playlist.set_playback_mode(MyPlaylist.PlaybackMode.LOOP)
             self.playback_mode_button.setIcon(QIcon.fromTheme('media-playlist-repeat'))
         else:
-            self.my_playlist.set_playback_mode(MyPlaylist.RANDOM)
+            self.my_playlist.set_playback_mode(MyPlaylist.PlaybackMode.RANDOM)
             self.playback_mode_button.setIcon(QIcon.fromTheme('media-playlist-shuffle'))
 
     def on_progress_slider_value_changed(self, value):
-        self.my_playlist.blockSignals(True)
         self.my_playlist.set_position(value * 1000)
-        self.my_playlist.blockSignals(False)
 
     def on_playing_changed(self, playing: bool):
         if playing:
@@ -325,7 +325,7 @@ class PlayerWindow(QWidget):
             self.my_playlist.play()
 
     def setup_player(self):
-        self.my_playlist.set_playback_mode(MyPlaylist.RANDOM)
+        self.my_playlist.set_playback_mode(MyPlaylist.PlaybackMode.RANDOM)
 
     def add_music(self, entry):
         music: MusicEntry = entry[0]
