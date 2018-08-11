@@ -99,6 +99,7 @@ def parse_lyric(text: str):
 
 class LoadPlaylistTask(QThread):
     music_found_signal = pyqtSignal(tuple)
+    musics_found_signal = pyqtSignal(list)
 
     def __init__(self) -> None:
         super().__init__()
@@ -107,17 +108,24 @@ class LoadPlaylistTask(QThread):
     def run(self) -> None:
         print("Loading playlist...")
         count = len(self.music_files)
+        musics = list()
         for index, f in enumerate(self.music_files):
-            # print("Scanning for {}".format(f))
+            print("Scanning for {}".format(f))
             artist, title = 'Unknown', 'Unknown'
-            if '-' in f.stem: artist, title = f.stem.split('-')
+            if '-' in f.stem: artist, title = f.stem.rsplit('-', maxsplit=1)
             file = taglib.File(str(f))
             artist = file.tags.get('ARTIST', [artist])[0]
             title = file.tags.get('TITLE', [title])[0]
             duration = file.length * 1000
             music_entry = MusicEntry(path=f, artist=artist, title=title, duration=duration)
-            self.music_found_signal.emit((music_entry, count, index + 1))
-            time.sleep(0.01)
+            # self.music_found_signal.emit((music_entry, count, index + 1))
+            time.sleep(0.0001)
+            musics.append((music_entry, count, index + 1))
+            if len(musics) == 10:
+                self.musics_found_signal.emit(musics)
+                musics = list()
+        if len(musics) > 0:
+            self.musics_found_signal.emit(musics)
 
 
 class MyQSlider(QSlider):
@@ -286,6 +294,7 @@ class PlayerWindow(QWidget):
         self.lyric: Dict[int, str] = None
         self.prev_lyric_index = -1
         self.config: Config = None
+        self.real_row = -1
         self.setup_layout()
         self.setup_events()
         self.setup_player()
@@ -299,6 +308,7 @@ class PlayerWindow(QWidget):
 
     def setup_events(self):
         self.load_playlist_task.music_found_signal.connect(self.add_music)
+        self.load_playlist_task.musics_found_signal.connect(self.add_musics)
         self.play_button.clicked.connect(self.toggle_play)
         self.prev_button.clicked.connect(self.on_play_previous)
         self.next_button.clicked.connect(self.on_play_next)
@@ -387,10 +397,13 @@ class PlayerWindow(QWidget):
             self.lyric = parse_lyric(lyric_text)
             self.refresh_lyric()
         else:
+            self.lyric = None
             print("Lyric file not found.")
 
     def refresh_lyric(self):
-        if self.lyric is None: return
+        if self.lyric is None:
+            self.lyric_label.setText("<center><em>Lyric not found</em></center>")
+            return
         current_lyric_index = self.calc_current_lyric_index()
         if current_lyric_index == self.prev_lyric_index:
             return
@@ -437,6 +450,10 @@ class PlayerWindow(QWidget):
         if len(self.config.playlist) > 0 and self.config.currentIndex >= 0:
             self.my_playlist.set_current_index(self.config.currentIndex)
 
+    def add_musics(self, musics):
+        for music in musics:
+            self.add_music(music)
+
     def add_music(self, entry):
         music: MusicEntry = entry[0]
         total: int = entry[1]
@@ -448,7 +465,10 @@ class PlayerWindow(QWidget):
         self.progress_dialog.setLabelText(music.path.stem + music.path.suffix)
         if any([x.path == music.path for x in self.my_playlist.musics()]):
             return
-        row = self.playlist_widget.rowCount()
+        if self.real_row == -1:
+            self.real_row = self.playlist_widget.rowCount() - 1
+        self.real_row += 1
+        row = self.real_row
         self.playlist_widget.setSortingEnabled(False)
         self.playlist_widget.insertRow(row)
         self.playlist_widget.setItem(row, 0, QTableWidgetItem(music.artist))
