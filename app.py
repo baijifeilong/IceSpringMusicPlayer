@@ -110,7 +110,7 @@ class LoadPlaylistTask(QThread):
         count = len(self.music_files)
         musics = list()
         for index, f in enumerate(self.music_files):
-            print("Scanning for {}".format(f))
+            # print("Scanning for {}".format(f))
             artist, title = 'Unknown', 'Unknown'
             if '-' in f.stem: artist, title = f.stem.rsplit('-', maxsplit=1)
             file = taglib.File(str(f))
@@ -446,7 +446,7 @@ class PlayerWindow(QWidget):
         sort_order = Qt.AscendingOrder if self.config.sortOrder == 'ASCENDING' else Qt.DescendingOrder
         self.playlist_widget.horizontalHeader().setSortIndicator(sort_by, sort_order)
         for index, music in enumerate(self.config.playlist):
-            self.add_music((music, len(self.config.playlist), index + 1))
+            self.add_music((music, len(self.config.playlist), index + 1), with_progress=False)
         if len(self.config.playlist) > 0 and self.config.currentIndex >= 0:
             self.my_playlist.set_current_index(self.config.currentIndex)
 
@@ -454,17 +454,18 @@ class PlayerWindow(QWidget):
         for music in musics:
             self.add_music(music)
 
-    def add_music(self, entry):
+    def add_music(self, entry, with_progress=True):
         music: MusicEntry = entry[0]
         total: int = entry[1]
         current: int = entry[2]
-        print("Add : {}".format(music.path))
+        # print("Add : {}".format(music.path))
         self.progress_dialog.show()
-        self.progress_dialog.setMaximum(total)
-        self.progress_dialog.setValue(current)
-        self.progress_dialog.setLabelText(music.path.stem + music.path.suffix)
-        if any([x.path == music.path for x in self.my_playlist.musics()]):
-            return
+        if total < 300 or current % 3 == 0:
+            self.progress_dialog.setMaximum(total)
+            self.progress_dialog.setValue(current)
+            self.progress_dialog.setLabelText(music.path.stem + music.path.suffix)
+        # if any([x.path == music.path for x in self.my_playlist.musics()]):
+        #     return
         if self.real_row == -1:
             self.real_row = self.playlist_widget.rowCount() - 1
         self.real_row += 1
@@ -478,8 +479,9 @@ class PlayerWindow(QWidget):
         self.playlist_widget.item(row, 0).setData(Qt.UserRole, music)
         # print("current: {}, last: {}".format(music.title, last_music.title))
         self.my_playlist.add_music(music)
-        self.playlist_widget.scrollToBottom()
         if current == total:
+            self.progress_dialog.setValue(total)
+            self.playlist_widget.scrollToBottom()
             self.playlist_widget.setSortingEnabled(True)
             last_music: MusicEntry = self.playlist_widget.item(current - 1, 0).data(Qt.UserRole)
             print("current: {}, last: {}".format(music.title, last_music.title))
