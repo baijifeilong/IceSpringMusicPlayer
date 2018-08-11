@@ -158,6 +158,11 @@ class MyPlaylist(QObject):
     def add_music(self, music: MusicEntry):
         self._musics.append(music)
 
+    def remove_music(self, index):
+        if index <= self._current_index:
+            self._current_index -= 1
+        del self._musics[index]
+
     def clear(self):
         self._musics.clear()
 
@@ -188,7 +193,7 @@ class MyPlaylist(QObject):
             self.set_current_index(self._current_index - 1 if self._current_index > 0 else self.music_count() - 1)
         else:
             self._history_index -= 1
-            if self._history_index not in self._history:
+            if (self._history_index not in self._history) or self._history[self._history_index] >= self.music_count():
                 self._history[self._history_index] = self._next_random_index()
             self.set_current_index(self._history[self._history_index])
 
@@ -199,15 +204,15 @@ class MyPlaylist(QObject):
             self.set_current_index(self._current_index + 1 if self._current_index < self.music_count() - 1 else 0)
         else:
             self._history_index += 1
-            if self._history_index not in self._history:
+            if (self._history_index not in self._history) or self._history[self._history_index] >= self.music_count():
                 self._history[self._history_index] = self._next_random_index()
             self.set_current_index(self._history[self._history_index])
 
     def _next_random_index(self):
         current_index = self._current_index
-        next_index = random.randint(0, self.music_count())
+        next_index = random.randint(0, self.music_count() - 1)
         while self.music_count() > 1 and next_index == current_index:
-            next_index = random.randint(0, self.music_count())
+            next_index = random.randint(0, self.music_count() - 1)
         return next_index
 
     def music_count(self):
@@ -220,6 +225,9 @@ class MyPlaylist(QObject):
         self._player.setMedia(QMediaContent(QUrl.fromLocalFile(str(music.path))))
         self._player.blockSignals(False)
         self.current_index_changed.emit(index)
+
+    def current_index(self):
+        return self._current_index
 
     def get_playback_mode(self):
         return self._playback_mode
@@ -463,6 +471,8 @@ class PlayerWindow(QWidget):
         self.playlist_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.playlist_widget.horizontalHeader().setSortIndicator(0, Qt.AscendingOrder)
         self.playlist_widget.horizontalHeader().sectionClicked.connect(self.on_sort_ended)
+        self.playlist_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.playlist_widget.customContextMenuRequested.connect(self.on_request_context_menu)
         self.lyric_wrapper = QScrollArea(self)
         self.lyric_label = QLabel('<center>Hello, World!</center>')
         font = self.lyric_label.font()
@@ -492,6 +502,27 @@ class PlayerWindow(QWidget):
         self.setLayout(root_layout)
         self.resize(888, 666)
         self.setAcceptDrops(True)
+
+    def on_request_context_menu(self):
+        print("Requesting...")
+        menu = QMenu()
+        menu.addAction("Delete")
+        menu.triggered.connect(self.remove_music)
+        menu.exec(QCursor.pos())
+        menu.clear()
+
+    def remove_music(self):
+        index = self.playlist_widget.selectedIndexes()[0].row()
+        current_index = self.my_playlist.current_index()
+        playing = self.my_playlist.is_playing()
+        self.my_playlist.remove_music(index)
+        self.playlist_widget.removeRow(index)
+        self.config.persist()
+        print("index={}, currentIndex={}".format(index, current_index))
+        if current_index == index:
+            self.my_playlist.next()
+            if playing:
+                self.my_playlist.play()
 
     def init_progress_dialog(self):
         self.progress_dialog = QProgressDialog(self)
