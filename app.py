@@ -56,7 +56,7 @@ class LoadPlaylistTask(QThread):
         count = len(files)
         for index, f in enumerate(files):
             if f.suffix != '.lrc':
-                print("Scanning for {}".format(f))
+                # print("Scanning for {}".format(f))
                 artist, title = 'Unknown', 'Unknown'
                 if '-' in f.stem: artist, title = f.stem.split('-')
                 file = taglib.File(str(f))
@@ -97,13 +97,19 @@ class MyPlaylist(QObject):
         self._playing = False
         self._player.positionChanged.connect(self.position_changed.emit)
         self._player.durationChanged.connect(self.duration_changed.emit)
+        self._player.stateChanged.connect(self._on_player_state_changed)
         self._history: Dict[int, int] = dict()
         self._history_index = -1
 
+    def _on_player_state_changed(self, state):
+        print("STATE CHANGED")
+        if state == QMediaPlayer.StoppedState:
+            print("STOPPED")
+            self.next()
+            self.play()
+
     def add_music(self, music: MusicEntry):
         self._musics.append(music)
-        if len(self._musics) == 1 and self._current_index == -1:
-            self.set_current_index(0)
 
     def clear(self):
         self._musics.clear()
@@ -112,6 +118,8 @@ class MyPlaylist(QObject):
         return self._musics[index]
 
     def play(self):
+        if self._current_index == -1:
+            self.set_current_index(0)
         self._player.play()
         self._playing = True
         self.playing_changed.emit(self._playing)
@@ -152,7 +160,9 @@ class MyPlaylist(QObject):
     def set_current_index(self, index):
         self._current_index = index
         music = self._musics[index]
+        self._player.blockSignals(True)
         self._player.setMedia(QMediaContent(QUrl.fromLocalFile(str(music.path))))
+        self._player.blockSignals(False)
         self.current_index_changed.emit(index)
 
     def get_playback_mode(self):
