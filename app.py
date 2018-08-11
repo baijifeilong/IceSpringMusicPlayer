@@ -102,8 +102,14 @@ class MyPlaylist(QObject):
 
     def add_music(self, music: MusicEntry):
         self._musics.append(music)
-        if len(self._musics) == 1:
+        if len(self._musics) == 1 and self._current_index == -1:
             self.set_current_index(0)
+
+    def clear(self):
+        self._musics.clear()
+
+    def music(self, index):
+        return self._musics[index]
 
     def play(self):
         self._player.play()
@@ -173,6 +179,9 @@ class MyPlaylist(QObject):
 
     def is_playing(self):
         return self._playing
+
+    def index_of(self, music: MusicEntry):
+        return self._musics.index(music)
 
 
 class PlayerWindow(QWidget):
@@ -260,11 +269,10 @@ class PlayerWindow(QWidget):
         self.progress_slider.setValue(0)
         self.playlist_widget.selectRow(index)
         self.prev_lyric_index = -1
-        music_file = self.musics[index].path
+        music_file = self.my_playlist.music(index).path
         lyric_file: pathlib.PosixPath = music_file.parent / (music_file.stem + '.lrc')
         if lyric_file.exists():
             lyric_text = lyric_file.read_text(encoding='gbk')
-            print(lyric_text)
             self.lyric = parse_lyric(lyric_text)
             self.refresh_lyric()
         else:
@@ -276,7 +284,6 @@ class PlayerWindow(QWidget):
         if current_lyric_index == self.prev_lyric_index:
             return
         self.prev_lyric_index = current_lyric_index
-        print("current index", current_lyric_index)
         text = ''
         for i, (k, v) in enumerate(sorted(self.lyric.items())):
             if i == current_lyric_index:
@@ -314,13 +321,15 @@ class PlayerWindow(QWidget):
         music: MusicEntry = entry[0]
         total: int = entry[1]
         current: int = entry[2]
-        self.musics.append(music)
         row = self.playlist_widget.rowCount()
+        self.playlist_widget.setSortingEnabled(False)
         self.playlist_widget.insertRow(row)
         self.playlist_widget.setItem(row, 0, QTableWidgetItem(music.artist))
         self.playlist_widget.setItem(row, 1, QTableWidgetItem(music.title))
         self.playlist_widget.setItem(row, 2, QTableWidgetItem(
             '{:02d}:{:02d}'.format(music.duration // 60000, music.duration // 1000 % 60)))
+        self.playlist_widget.item(row, 0).setData(Qt.UserRole, music)
+        # print("current: {}, last: {}".format(music.title, last_music.title))
         self.my_playlist.add_music(music)
         self.progress_dialog.setMaximum(total)
         self.progress_dialog.setValue(current)
@@ -328,11 +337,15 @@ class PlayerWindow(QWidget):
         self.progress_dialog.setCancelButton(None)
         self.progress_dialog.setLabelText(music.path.stem + music.path.suffix)
         self.playlist_widget.scrollToBottom()
+        if current == total:
+            self.playlist_widget.setSortingEnabled(True)
+            last_music: MusicEntry = self.playlist_widget.item(current - 1, 0).data(Qt.UserRole)
+            print("current: {}, last: {}".format(music.title, last_music.title))
+            self.on_sort_ended()
 
     def dbl_clicked(self, item: QModelIndex):
         self.my_playlist.set_current_index(item.row())
         self.my_playlist.play()
-        pass
 
     def setup_layout(self):
         self.play_button = self.generate_tool_button('media-playback-start')
@@ -348,6 +361,8 @@ class PlayerWindow(QWidget):
         self.playlist_widget.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.playlist_widget.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.playlist_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.playlist_widget.horizontalHeader().setSortIndicator(0, Qt.AscendingOrder)
+        self.playlist_widget.horizontalHeader().sectionClicked.connect(self.on_sort_ended)
         self.lyric_wrapper = QScrollArea(self)
         self.lyric_label = QLabel('<center>Hello, World!</center>')
         font = self.lyric_label.font()
@@ -380,6 +395,12 @@ class PlayerWindow(QWidget):
 
         self.setLayout(root_layout)
         self.resize(888, 666)
+
+    def on_sort_ended(self):
+        self.my_playlist.clear()
+        for row in range(self.playlist_widget.rowCount()):
+            music: MusicEntry = self.playlist_widget.item(row, 0).data(Qt.UserRole)
+            self.my_playlist.add_music(music)
 
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
         super().resizeEvent(a0)
