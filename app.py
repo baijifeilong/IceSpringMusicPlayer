@@ -4,6 +4,7 @@ import pathlib
 import re
 import sys
 import taglib
+import time
 from typing import List, Dict, Tuple
 
 from PyQt5 import QtGui
@@ -28,7 +29,8 @@ def parse_lyric(text: str):
     lyric: Dict[int, str] = dict()
     for line in text.splitlines():
         line = line.strip()
-        if not line: continue
+        if not line:
+            continue
         match = regex.match(line)
         if not match: continue
         time_part = match.groups()[0]
@@ -42,14 +44,16 @@ def parse_lyric(text: str):
 
 
 class LoadPlaylistTask(QThread):
-    music_found_signal = pyqtSignal(MusicEntry)
+    music_found_signal = pyqtSignal(tuple)
 
     def __init__(self) -> None:
         super().__init__()
 
     def run(self) -> None:
         print("Loading playlist...")
-        for f in pathlib.Path('/mnt/d/music/test').iterdir():
+        files = [f for f in pathlib.Path('/mnt/d/music/test').iterdir() if f.suffix != '.lrc']
+        count = len(files)
+        for index, f in enumerate(files):
             if f.suffix != '.lrc':
                 print("Scanning for {}".format(f))
                 artist, title = 'Unknown', 'Unknown'
@@ -59,7 +63,8 @@ class LoadPlaylistTask(QThread):
                 title = file.tags.get('TITLE', [title])[0]
                 duration = file.length * 1000
                 music_entry = MusicEntry(path=f, artist=artist, title=title, duration=duration)
-                self.music_found_signal.emit(music_entry)
+                self.music_found_signal.emit((music_entry, count, index + 1))
+                time.sleep(0.01)
 
 
 class MyQSlider(QSlider):
@@ -85,6 +90,7 @@ class PlayerWindow(QWidget):
         self.playlist_widget: QTableWidget = None
         self.lyric_wrapper: QScrollArea = None
         self.lyric_label: QLabel = None
+        self.progress_dialog: QProgressDialog = None
         self.player: QMediaPlayer = QMediaPlayer()
         self.playlist: QMediaPlaylist = QMediaPlaylist()
         self.load_playlist_task = LoadPlaylistTask()
@@ -94,8 +100,9 @@ class PlayerWindow(QWidget):
         self.setup_layout()
         self.setup_player()
         self.setup_events()
-        self.load_playlist_task.start()
         self.volume_dial.setValue(50)
+        self.load_playlist_task.start()
+        self.progress_dialog.show()
 
     def generate_tool_button(self, icon_name: str) -> QToolButton:
         button = QToolButton(parent=self)
@@ -105,7 +112,6 @@ class PlayerWindow(QWidget):
         return button
 
     def setup_events(self):
-        self.load_playlist_task = LoadPlaylistTask()
         self.load_playlist_task.music_found_signal.connect(self.add_music)
         self.play_button.clicked.connect(lambda: self.toggle_play())
         self.prev_button.clicked.connect(lambda: self.playlist.previous() or self.player.play())
@@ -207,7 +213,10 @@ class PlayerWindow(QWidget):
         self.playlist.setPlaybackMode(QMediaPlaylist.Random)
         self.player.setPlaylist(self.playlist)
 
-    def add_music(self, music: MusicEntry):
+    def add_music(self, entry):
+        music: MusicEntry = entry[0]
+        total: int = entry[1]
+        current: int = entry[2]
         self.musics.append(music)
         row = self.playlist_widget.rowCount()
         self.playlist_widget.insertRow(row)
@@ -216,6 +225,12 @@ class PlayerWindow(QWidget):
         self.playlist_widget.setItem(row, 2, QTableWidgetItem(
             '{:02d}:{:02d}'.format(music.duration // 60000, music.duration // 1000 % 60)))
         self.playlist.addMedia(QMediaContent(QUrl.fromLocalFile(str(music.path))))
+        self.progress_dialog.setMaximum(total)
+        self.progress_dialog.setValue(current)
+        # noinspection PyTypeChecker
+        self.progress_dialog.setCancelButton(None)
+        self.progress_dialog.setLabelText(music.path.stem + music.path.suffix)
+        self.playlist_widget.scrollToBottom()
 
     def dbl_clicked(self, item: QModelIndex):
         self.playlist.setCurrentIndex(item.row())
@@ -232,7 +247,7 @@ class PlayerWindow(QWidget):
         self.volume_dial = QDial(self)
         self.volume_dial.setFixedSize(50, 50)
         self.playlist_widget = QTableWidget(0, 3, self)
-        self.playlist_widget.setHorizontalHeaderLabels(('Artist', 'Song'))
+        self.playlist_widget.setHorizontalHeaderLabels(('Artist', 'Title', 'Duration'))
         self.playlist_widget.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.playlist_widget.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.playlist_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -245,6 +260,10 @@ class PlayerWindow(QWidget):
         self.lyric_wrapper.setWidget(self.lyric_label)
         self.lyric_wrapper.setWidgetResizable(True)
         self.lyric_wrapper.verticalScrollBar().hide()
+        self.progress_dialog = QProgressDialog()
+        self.progress_dialog.setModal(True)
+        self.progress_dialog.setWindowTitle("Loading music")
+        self.progress_dialog.setFixedSize(444, 150)
 
         content_layout = QHBoxLayout()
         content_layout.addWidget(self.playlist_widget, 1)
