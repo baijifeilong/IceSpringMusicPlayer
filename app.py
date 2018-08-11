@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 
+import json
 import pathlib
 import random
 import re
@@ -14,6 +15,51 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtMultimedia import *
 from PyQt5.QtWidgets import *
+
+
+class Config(object):
+    config_path = pathlib.Path('~/.config/rawsteel-music-player').expanduser()
+    config_path.parent.mkdir(parents=True) if not config_path.parent.exists() else None
+
+    def __init__(self):
+        super().__init__()
+        self.playbackMode = MyPlaylist.PlaybackMode.LOOP
+        self.playlist: List[MusicEntry] = list()
+        self.volume = 50
+        self.currentIndex = -1
+
+    @staticmethod
+    def load():
+        print("Prepare to load config ...")
+        config = Config()
+        if Config.config_path.exists():
+            print("Loading config ...")
+            jd = json.loads(Config.config_path.read_text())
+            config.playbackMode = MyPlaylist.PlaybackMode(jd['playbackMode'])
+            for item in jd['playlist']:
+                config.playlist.append(MusicEntry(
+                    pathlib.Path(item['path']),
+                    item['artist'],
+                    item['title'],
+                    item['duration']
+                ))
+            config.volume = jd['volume']
+            config.currentIndex = jd['currentIndex']
+        else:
+            print("Config not exist")
+        return config
+
+    def persist(self):
+        print("Persisting config ...")
+        jd = dict(
+            playbackMode=self.playbackMode.value,
+            playlist=[dict(path=str(x.path), artist=x.artist, title=x.title, duration=x.duration)
+                      for x in self.playlist],
+            volume=self.volume,
+            currentIndex=self.currentIndex
+        )
+        jt = json.dumps(jd, indent=4, ensure_ascii=False)
+        self.config_path.write_text(jt)
 
 
 class MusicEntry(object):
@@ -119,6 +165,9 @@ class MyPlaylist(QObject):
     def music(self, index):
         return self._musics[index]
 
+    def musics(self):
+        return self._musics
+
     def play(self):
         if self._current_index == -1:
             self.set_current_index(0)
@@ -216,12 +265,12 @@ class PlayerWindow(QWidget):
         self.musics: List[MusicEntry] = list()
         self.lyric: Dict[int, str] = None
         self.prev_lyric_index = -1
+        self.config: Config = None
         self.setup_layout()
-        self.setup_player()
         self.setup_events()
-        self.volume_dial.setValue(50)
-        self.load_playlist_task.start()
-        self.progress_dialog.show()
+        self.setup_player()
+        # self.load_playlist_task.start()
+        # self.progress_dialog.show()
 
     def generate_tool_button(self, icon_name: str) -> QToolButton:
         button = QToolButton(parent=self)
@@ -237,15 +286,34 @@ class PlayerWindow(QWidget):
         self.next_button.clicked.connect(lambda: self.my_playlist.next() or self.my_playlist.play())
         self.playback_mode_button.clicked.connect(lambda: self.on_playback_mode_button_clicked())
         self.progress_slider.valueChanged.connect(self.on_progress_slider_value_changed)
-        self.volume_dial.valueChanged.connect(self.my_playlist.set_volume)
+        self.volume_dial.valueChanged.connect(self.on_volume_dial_value_changed)
         self.my_playlist.playing_changed.connect(self.on_playing_changed)
         self.my_playlist.position_changed.connect(self.on_player_position_changed)
         self.my_playlist.duration_changed.connect(self.on_player_duration_changed)
-        self.playlist_widget.doubleClicked.connect(self.dbl_clicked)
         self.my_playlist.current_index_changed.connect(self.on_playlist_current_index_changed)
+        self.playlist_widget.doubleClicked.connect(self.dbl_clicked)
+
+    def on_volume_dial_value_changed(self, value):
+        self.set_volume(value)
+        self.config.volume = value
+        self.config.persist()
+
+    def set_volume(self, volume):
+        self.volume_dial.blockSignals(True)
+        self.my_playlist.set_volume(volume)
+        self.volume_dial.setValue(volume)
+        self.volume_dial.blockSignals(False)
 
     def on_playback_mode_button_clicked(self):
         if self.my_playlist.get_playback_mode() == MyPlaylist.PlaybackMode.RANDOM:
+            self.set_playback_mode(MyPlaylist.PlaybackMode.LOOP)
+        else:
+            self.set_playback_mode(MyPlaylist.PlaybackMode.RANDOM)
+        self.config.persist()
+
+    def set_playback_mode(self, playback_mode: MyPlaylist.PlaybackMode):
+        self.config.playbackMode = playback_mode
+        if playback_mode == MyPlaylist.PlaybackMode.LOOP:
             self.my_playlist.set_playback_mode(MyPlaylist.PlaybackMode.LOOP)
             self.playback_mode_button.setIcon(QIcon.fromTheme('media-playlist-repeat'))
         else:
@@ -276,6 +344,9 @@ class PlayerWindow(QWidget):
         self.progress_slider.setMaximum(total)
 
     def on_playlist_current_index_changed(self, index):
+        print("Playlist index changed: {}".format(index))
+        self.config.currentIndex = index
+        self.config.persist()
         self.progress_slider.setValue(0)
         self.playlist_widget.selectRow(index)
         self.prev_lyric_index = -1
@@ -325,7 +396,13 @@ class PlayerWindow(QWidget):
             self.my_playlist.play()
 
     def setup_player(self):
-        self.my_playlist.set_playback_mode(MyPlaylist.PlaybackMode.RANDOM)
+        self.config = Config.load()
+        self.set_playback_mode(self.config.playbackMode)
+        self.set_volume(self.config.volume)
+        for index, music in enumerate(self.config.playlist):
+            self.add_music((music, len(self.config.playlist), index + 1))
+        if len(self.config.playlist) > 0 and self.config.currentIndex >= 0:
+            self.my_playlist.set_current_index(self.config.currentIndex)
 
     def add_music(self, entry):
         music: MusicEntry = entry[0]
@@ -411,6 +488,8 @@ class PlayerWindow(QWidget):
         for row in range(self.playlist_widget.rowCount()):
             music: MusicEntry = self.playlist_widget.item(row, 0).data(Qt.UserRole)
             self.my_playlist.add_music(music)
+        self.config.playlist = self.my_playlist.musics()
+        self.config.persist()
 
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
         super().resizeEvent(a0)
