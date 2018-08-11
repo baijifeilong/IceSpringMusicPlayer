@@ -96,23 +96,22 @@ class LoadPlaylistTask(QThread):
 
     def __init__(self) -> None:
         super().__init__()
+        self.music_files: List[pathlib.Path] = list()
 
     def run(self) -> None:
         print("Loading playlist...")
-        files = [f for f in pathlib.Path('/mnt/d/music/test').iterdir() if f.suffix != '.lrc']
-        count = len(files)
-        for index, f in enumerate(files):
-            if f.suffix != '.lrc':
-                # print("Scanning for {}".format(f))
-                artist, title = 'Unknown', 'Unknown'
-                if '-' in f.stem: artist, title = f.stem.split('-')
-                file = taglib.File(str(f))
-                artist = file.tags.get('ARTIST', [artist])[0]
-                title = file.tags.get('TITLE', [title])[0]
-                duration = file.length * 1000
-                music_entry = MusicEntry(path=f, artist=artist, title=title, duration=duration)
-                self.music_found_signal.emit((music_entry, count, index + 1))
-                time.sleep(0.01)
+        count = len(self.music_files)
+        for index, f in enumerate(self.music_files):
+            # print("Scanning for {}".format(f))
+            artist, title = 'Unknown', 'Unknown'
+            if '-' in f.stem: artist, title = f.stem.split('-')
+            file = taglib.File(str(f))
+            artist = file.tags.get('ARTIST', [artist])[0]
+            title = file.tags.get('TITLE', [title])[0]
+            duration = file.length * 1000
+            music_entry = MusicEntry(path=f, artist=artist, title=title, duration=duration)
+            self.music_found_signal.emit((music_entry, count, index + 1))
+            time.sleep(0.01)
 
 
 class MyQSlider(QSlider):
@@ -169,6 +168,8 @@ class MyPlaylist(QObject):
         return self._musics
 
     def play(self):
+        if self.music_count() == 0:
+            return
         if self._current_index == -1:
             self.set_current_index(0)
         self._player.play()
@@ -181,6 +182,8 @@ class MyPlaylist(QObject):
         self.playing_changed.emit(self._playing)
 
     def previous(self):
+        if self.music_count() == 0:
+            return
         if self._playback_mode == self.PlaybackMode.LOOP:
             self.set_current_index(self._current_index - 1 if self._current_index > 0 else self.music_count() - 1)
         else:
@@ -190,6 +193,8 @@ class MyPlaylist(QObject):
             self.set_current_index(self._history[self._history_index])
 
     def next(self):
+        if self.music_count() == 0:
+            return
         if self._playback_mode == self.PlaybackMode.LOOP:
             self.set_current_index(self._current_index + 1 if self._current_index < self.music_count() - 1 else 0)
         else:
@@ -269,8 +274,6 @@ class PlayerWindow(QWidget):
         self.setup_layout()
         self.setup_events()
         self.setup_player()
-        # self.load_playlist_task.start()
-        # self.progress_dialog.show()
 
     def generate_tool_button(self, icon_name: str) -> QToolButton:
         button = QToolButton(parent=self)
@@ -281,9 +284,9 @@ class PlayerWindow(QWidget):
 
     def setup_events(self):
         self.load_playlist_task.music_found_signal.connect(self.add_music)
-        self.play_button.clicked.connect(lambda: self.toggle_play())
-        self.prev_button.clicked.connect(lambda: self.my_playlist.previous() or self.my_playlist.play())
-        self.next_button.clicked.connect(lambda: self.my_playlist.next() or self.my_playlist.play())
+        self.play_button.clicked.connect(self.toggle_play)
+        self.prev_button.clicked.connect(self.on_play_previous)
+        self.next_button.clicked.connect(self.on_play_next)
         self.playback_mode_button.clicked.connect(lambda: self.on_playback_mode_button_clicked())
         self.progress_slider.valueChanged.connect(self.on_progress_slider_value_changed)
         self.volume_dial.valueChanged.connect(self.on_volume_dial_value_changed)
@@ -292,6 +295,14 @@ class PlayerWindow(QWidget):
         self.my_playlist.duration_changed.connect(self.on_player_duration_changed)
         self.my_playlist.current_index_changed.connect(self.on_playlist_current_index_changed)
         self.playlist_widget.doubleClicked.connect(self.dbl_clicked)
+
+    def on_play_next(self):
+        self.my_playlist.next()
+        self.my_playlist.play()
+
+    def on_play_previous(self):
+        self.my_playlist.previous()
+        self.my_playlist.play()
 
     def on_volume_dial_value_changed(self, value):
         self.set_volume(value)
@@ -408,6 +419,13 @@ class PlayerWindow(QWidget):
         music: MusicEntry = entry[0]
         total: int = entry[1]
         current: int = entry[2]
+        print("Add : {}".format(music.path))
+        self.progress_dialog.show()
+        self.progress_dialog.setMaximum(total)
+        self.progress_dialog.setValue(current)
+        self.progress_dialog.setLabelText(music.path.stem + music.path.suffix)
+        if any([x.path == music.path for x in self.my_playlist.musics()]):
+            return
         row = self.playlist_widget.rowCount()
         self.playlist_widget.setSortingEnabled(False)
         self.playlist_widget.insertRow(row)
@@ -418,11 +436,6 @@ class PlayerWindow(QWidget):
         self.playlist_widget.item(row, 0).setData(Qt.UserRole, music)
         # print("current: {}, last: {}".format(music.title, last_music.title))
         self.my_playlist.add_music(music)
-        self.progress_dialog.setMaximum(total)
-        self.progress_dialog.setValue(current)
-        # noinspection PyTypeChecker
-        self.progress_dialog.setCancelButton(None)
-        self.progress_dialog.setLabelText(music.path.stem + music.path.suffix)
         self.playlist_widget.scrollToBottom()
         if current == total:
             self.playlist_widget.setSortingEnabled(True)
@@ -458,10 +471,7 @@ class PlayerWindow(QWidget):
         self.lyric_wrapper.setWidget(self.lyric_label)
         self.lyric_wrapper.setWidgetResizable(True)
         self.lyric_wrapper.verticalScrollBar().hide()
-        self.progress_dialog = QProgressDialog()
-        self.progress_dialog.setModal(True)
-        self.progress_dialog.setWindowTitle("Loading music")
-        self.progress_dialog.setFixedSize(444, 150)
+        self.init_progress_dialog()
 
         content_layout = QHBoxLayout()
         content_layout.addWidget(self.playlist_widget, 1)
@@ -479,9 +489,18 @@ class PlayerWindow(QWidget):
         root_layout = QVBoxLayout(self)
         root_layout.addLayout(content_layout)
         root_layout.addLayout(controller_layout)
-
         self.setLayout(root_layout)
         self.resize(888, 666)
+        self.setAcceptDrops(True)
+
+    def init_progress_dialog(self):
+        self.progress_dialog = QProgressDialog(self)
+        # noinspection PyTypeChecker
+        self.progress_dialog.setCancelButton(None)
+        self.progress_dialog.setWindowTitle("Loading music")
+        self.progress_dialog.setFixedSize(444, 150)
+        self.progress_dialog.setModal(True)
+        self.progress_dialog.setValue(100)
 
     def on_sort_ended(self):
         self.my_playlist.clear()
@@ -496,6 +515,18 @@ class PlayerWindow(QWidget):
         if self.lyric:
             self.prev_lyric_index = -1
             self.refresh_lyric()
+
+    def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
+        if event.mimeData().hasUrls():
+            event.accept()
+
+    def dropEvent(self, event: QtGui.QDropEvent) -> None:
+        urls: List[QUrl] = event.mimeData().urls()
+        paths = [pathlib.Path(x.path()) for x in urls]
+        paths = [x for x in paths if x.suffix != '.lrc']
+        self.load_playlist_task.music_files = paths
+        self.load_playlist_task.start()
+        self.init_progress_dialog()
 
 
 def main():
