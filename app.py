@@ -27,6 +27,8 @@ class Config(object):
         self.playlist: List[MusicEntry] = list()
         self.volume = 50
         self.currentIndex = -1
+        self.sortBy = 'ARTIST'
+        self.sortOrder = 'ASCENDING'
 
     @staticmethod
     def load():
@@ -45,6 +47,8 @@ class Config(object):
                 ))
             config.volume = jd['volume']
             config.currentIndex = jd['currentIndex']
+            config.sortBy = jd['sortBy']
+            config.sortOrder = jd['sortOrder']
         else:
             print("Config not exist")
         return config
@@ -56,7 +60,9 @@ class Config(object):
             playlist=[dict(path=str(x.path), artist=x.artist, title=x.title, duration=x.duration)
                       for x in self.playlist],
             volume=self.volume,
-            currentIndex=self.currentIndex
+            currentIndex=self.currentIndex,
+            sortBy=self.sortBy,
+            sortOrder=self.sortOrder
         )
         jt = json.dumps(jd, indent=4, ensure_ascii=False)
         self.config_path.write_text(jt)
@@ -159,8 +165,6 @@ class MyPlaylist(QObject):
         self._musics.append(music)
 
     def remove_music(self, index):
-        if index <= self._current_index:
-            self._current_index -= 1
         del self._musics[index]
 
     def clear(self):
@@ -220,10 +224,13 @@ class MyPlaylist(QObject):
 
     def set_current_index(self, index):
         self._current_index = index
-        music = self._musics[index]
-        self._player.blockSignals(True)
-        self._player.setMedia(QMediaContent(QUrl.fromLocalFile(str(music.path))))
-        self._player.blockSignals(False)
+        if index > 0:
+            music = self._musics[index]
+            self._player.blockSignals(True)
+            self._player.setMedia(QMediaContent(QUrl.fromLocalFile(str(music.path))))
+            self._player.blockSignals(False)
+        else:
+            self._player.stop()
         self.current_index_changed.emit(index)
 
     def current_index(self):
@@ -364,6 +371,10 @@ class PlayerWindow(QWidget):
 
     def on_playlist_current_index_changed(self, index):
         print("Playlist index changed: {}".format(index))
+        if index == -1:
+            self.lyric = None
+            self.lyric_label.setText("<center><em>No music</em></center>")
+            return
         self.config.currentIndex = index
         self.config.persist()
         self.progress_slider.setValue(0)
@@ -418,6 +429,9 @@ class PlayerWindow(QWidget):
         self.config = Config.load()
         self.set_playback_mode(self.config.playbackMode)
         self.set_volume(self.config.volume)
+        sort_by = dict(ARTIST=0, TITLE=1, DURATION=2)[self.config.sortBy]
+        sort_order = Qt.AscendingOrder if self.config.sortOrder == 'ASCENDING' else Qt.DescendingOrder
+        self.playlist_widget.horizontalHeader().setSortIndicator(sort_by, sort_order)
         for index, music in enumerate(self.config.playlist):
             self.add_music((music, len(self.config.playlist), index + 1))
         if len(self.config.playlist) > 0 and self.config.currentIndex >= 0:
@@ -512,17 +526,22 @@ class PlayerWindow(QWidget):
         menu.clear()
 
     def remove_music(self):
-        index = self.playlist_widget.selectedIndexes()[0].row()
         current_index = self.my_playlist.current_index()
         playing = self.my_playlist.is_playing()
-        self.my_playlist.remove_music(index)
-        self.playlist_widget.removeRow(index)
-        self.config.persist()
-        print("index={}, currentIndex={}".format(index, current_index))
-        if current_index == index:
-            self.my_playlist.next()
+        indices = sorted(list(set([x.row() for x in self.playlist_widget.selectedIndexes()])), reverse=True)
+        for index in indices:
+            self.my_playlist.remove_music(index)
+            self.playlist_widget.removeRow(index)
+            print("Removing index={}, currentIndex={}".format(index, current_index))
+        if current_index in indices:
+            if self.my_playlist.music_count() > 0:
+                self.my_playlist.next()
+            else:
+                self.my_playlist.set_current_index(-1)
             if playing:
                 self.my_playlist.play()
+
+        self.config.persist()
 
     def init_progress_dialog(self):
         self.progress_dialog = QProgressDialog(self)
@@ -539,6 +558,10 @@ class PlayerWindow(QWidget):
             music: MusicEntry = self.playlist_widget.item(row, 0).data(Qt.UserRole)
             self.my_playlist.add_music(music)
         self.config.playlist = self.my_playlist.musics()
+        self.config.sortBy = {0: 'ARTIST', 1: 'TITLE', 2: 'DURATION'}[
+            self.playlist_widget.horizontalHeader().sortIndicatorSection()]
+        self.config.sortOrder = 'ASCENDING' if \
+            self.playlist_widget.horizontalHeader().sortIndicatorOrder() == Qt.AscendingOrder else 'DESCENDING'
         self.config.persist()
 
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
