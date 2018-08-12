@@ -140,10 +140,55 @@ class MyQSlider(QSlider):
 
 
 class MyQLabel(QLabel):
-    clicked = pyqtSignal()
+    clicked = pyqtSignal(QMouseEvent)
 
     def mouseReleaseEvent(self, ev: QtGui.QMouseEvent) -> None:
-        self.clicked.emit()
+        self.clicked.emit(ev)
+
+
+class MyAboutDialog(QDialog):
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.resize(400, 300)
+        self.setMaximumWidth(30)
+        root = QVBoxLayout(self)
+        github = 'https://github.com/baijifeilong/rawsteelp'
+        pypi = 'https://pypi.org/project/rawsteel-music-player'
+        aur = 'https://aur.archlinux.org/packages/rawsteel-music-player'
+        label = QLabel('''
+        <b>Application</b>: Rawsteel Music Player
+        <br>
+        <b>Description</b>: A minimal music player with lyric show
+        <br>
+        <b>Author</b>: BaiJiFeiLong@gmail.com 
+        <br>
+        <b>Github source</b>: <a href="{0}">{0}</a>
+        <br>
+        <b>Python PyPI</b>: <a href="{1}">{1}</a>
+        <br>
+        <b>ArchLinux AUR</b>: <a href="{2}">{2}</a>
+        <br>
+        <b>License</b>: GPL3
+        <br>
+        <b>Powered by</b>: <em>Python</em> and <em>Qt</em>
+        '''.strip().format(github, pypi, aur), self)
+        font = label.font()
+        font.setPointSize(14)
+        label.setFont(font)
+        label.setOpenExternalLinks(True)
+        button = QPushButton('OK', self)
+        about_qt = QPushButton("About Qt", self)
+        button.clicked.connect(self.close)
+        about_qt.clicked.connect(lambda: QMessageBox.aboutQt(self))
+        bottom = QHBoxLayout(self)
+        bottom.addStretch(1)
+        bottom.addWidget(about_qt)
+        bottom.addWidget(button)
+        root.addWidget(label)
+        root.addLayout(bottom)
+        self.setWindowTitle("About")
+        self.setLayout(root)
 
 
 class MyPlaylist(QObject):
@@ -336,14 +381,21 @@ class PlayerWindow(QWidget):
         self.playlist_widget.doubleClicked.connect(self.dbl_clicked)
         self.lyric_label.clicked.connect(self.on_lyric_clicked)
 
-    def on_lyric_clicked(self):
-        if self.lyric is None:
-            return
-        loc = self.lyric_label.mapFromGlobal(self.lyric_label.cursor().pos())
-        line = len(self.lyric) * loc.y() // self.lyric_label.height()
-        print("clicked", line)
-        time = sorted(self.lyric.items())[line][0]
-        self.my_playlist.set_position(time)
+    def on_lyric_clicked(self, event: QMouseEvent):
+        if event.button() == Qt.LeftButton:
+            if self.lyric is None:
+                return
+            loc = self.lyric_label.mapFromGlobal(self.lyric_label.cursor().pos())
+            line = len(self.lyric) * loc.y() // self.lyric_label.height()
+            print("clicked", line)
+            time = sorted(self.lyric.items())[line][0]
+            self.my_playlist.set_position(time)
+        elif event.button() == Qt.RightButton:
+            menu = QMenu()
+            menu.addAction("About")
+            menu.triggered.connect(lambda: MyAboutDialog(self).exec())
+            menu.exec(QCursor.pos())
+            menu.clear()
 
     def on_play_next(self):
         self.my_playlist.next()
