@@ -304,6 +304,7 @@ class PlayerWindow(QWidget):
         self.prev_lyric_index = -1
         self.config: Config = None
         self.real_row = -1
+        self.mime_db = QMimeDatabase()
         self.setup_layout()
         self.setup_events()
         self.setup_player()
@@ -405,11 +406,14 @@ class PlayerWindow(QWidget):
         if index == -1:
             self.lyric = None
             self.lyric_label.setText("<center><em>No music</em></center>")
+            self.setWindowTitle('')
             return
         self.progress_slider.setValue(0)
         self.playlist_widget.selectRow(index)
         self.prev_lyric_index = -1
-        music_file = self.my_playlist.music(index).path
+        music = self.my_playlist.music(index)
+        self.setWindowTitle('{} - {}'.format(music.artist, music.title))
+        music_file = music.path
         lyric_file: pathlib.PosixPath = music_file.parent / (music_file.stem + '.lrc')
         if lyric_file.exists():
             lyric_text = lyric_file.read_text(encoding='gbk')
@@ -617,8 +621,7 @@ class PlayerWindow(QWidget):
 
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
         urls: List[QUrl] = event.mimeData().urls()
-        paths = [pathlib.Path(x.path()) for x in urls]
-        paths = [x for x in paths if x.suffix != '.lrc']
+        paths = [pathlib.Path(x.path()) for x in urls if self.mime_db.mimeTypeForUrl(x).name().startswith('audio/')]
         self.load_playlist_task.music_files = paths
         self.load_playlist_task.start()
         self.init_progress_dialog()
@@ -627,6 +630,7 @@ class PlayerWindow(QWidget):
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName('Rawsteel Music Player')
+    app.setApplicationDisplayName('Rawsteel Music Player')
     app.setWindowIcon(QIcon.fromTheme('audio-headphones'))
     window = PlayerWindow()
     window.show()
