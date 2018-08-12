@@ -1,1 +1,5 @@
 /.idea/
+/tmp/
+/build/
+/dist/
+/*.egg-info/
