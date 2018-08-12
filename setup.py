@@ -8,7 +8,7 @@ setup(
     license='GPL3',
     author='BaiJiFeiLong',
     author_email='baijifeilong@gmail.com',
-    version='1.0.4',
+    version='1.0.5',
     description='A minimal music player with lyric show',
     packages=find_packages(),
     long_description=open('README.md').read(),
