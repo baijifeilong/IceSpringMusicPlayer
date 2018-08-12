@@ -86,7 +86,7 @@ def parse_lyric(text: str):
         line = line.strip()
         if not line:
             continue
-        line = re.sub('\d\]', ']', line)
+        line = re.sub('(\d{2})\d\]', '\\1]', line)
         match = regex.match(line)
         if not match: continue
         time_part = match.groups()[0]
