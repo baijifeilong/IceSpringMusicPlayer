@@ -86,6 +86,7 @@ def parse_lyric(text: str):
         line = line.strip()
         if not line:
             continue
+        line = re.sub('\d\]', ']', line)
         match = regex.match(line)
         if not match: continue
         time_part = match.groups()[0]
@@ -426,7 +427,10 @@ class PlayerWindow(QWidget):
             except UnicodeDecodeError:
                 lyric_text = str(bys, encoding=encoding)
             self.lyric = parse_lyric(lyric_text)
-            self.refresh_lyric()
+            if len(self.lyric) > 0:
+                self.refresh_lyric()
+            else:
+                self.lyric = None
         else:
             self.lyric = None
             print("Lyric file not found.")
@@ -436,7 +440,7 @@ class PlayerWindow(QWidget):
         hbar.hide()
         self.lyric_wrapper.horizontalScrollBar().setValue((hbar.maximum() + hbar.minimum()) // 2)
         if self.lyric is None:
-            self.lyric_label.setText("<center><em>Lyric not found</em></center>")
+            self.lyric_label.setText("<center><em>Lyric not found or not supported</em></center>")
             return
         current_lyric_index = self.calc_current_lyric_index()
         if current_lyric_index == self.prev_lyric_index:
