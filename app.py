@@ -200,8 +200,8 @@ class MyPlaylist(QObject):
 
     def previous(self):
         if self.music_count() == 0:
-            return
-        if self._playback_mode == self.PlaybackMode.LOOP:
+            self.set_current_index(-1)
+        elif self._playback_mode == self.PlaybackMode.LOOP:
             self.set_current_index(self._current_index - 1 if self._current_index > 0 else self.music_count() - 1)
         else:
             self._history_index -= 1
@@ -211,8 +211,8 @@ class MyPlaylist(QObject):
 
     def next(self):
         if self.music_count() == 0:
-            return
-        if self._playback_mode == self.PlaybackMode.LOOP:
+            self.set_current_index(-1)
+        elif self._playback_mode == self.PlaybackMode.LOOP:
             self.set_current_index(self._current_index + 1 if self._current_index < self.music_count() - 1 else 0)
         else:
             self._history_index += 1
@@ -232,13 +232,15 @@ class MyPlaylist(QObject):
 
     def set_current_index(self, index):
         self._current_index = index
-        if index > 0:
+        if index > -1:
             music = self._musics[index]
             self._player.blockSignals(True)
             self._player.setMedia(QMediaContent(QUrl.fromLocalFile(str(music.path))))
             self._player.blockSignals(False)
         else:
+            self._player.blockSignals(True)
             self._player.stop()
+            self._player.blockSignals(False)
         self.current_index_changed.emit(index)
 
     def current_index(self):
@@ -381,12 +383,12 @@ class PlayerWindow(QWidget):
 
     def on_playlist_current_index_changed(self, index):
         print("Playlist index changed: {}".format(index))
+        self.config.currentIndex = index
+        self.config.persist()
         if index == -1:
             self.lyric = None
             self.lyric_label.setText("<center><em>No music</em></center>")
             return
-        self.config.currentIndex = index
-        self.config.persist()
         self.progress_slider.setValue(0)
         self.playlist_widget.selectRow(index)
         self.prev_lyric_index = -1
@@ -401,6 +403,9 @@ class PlayerWindow(QWidget):
             print("Lyric file not found.")
 
     def refresh_lyric(self):
+        hbar = self.lyric_wrapper.horizontalScrollBar()
+        hbar.hide()
+        self.lyric_wrapper.horizontalScrollBar().setValue((hbar.maximum() + hbar.minimum()) // 2)
         if self.lyric is None:
             self.lyric_label.setText("<center><em>Lyric not found</em></center>")
             return
@@ -419,6 +424,7 @@ class PlayerWindow(QWidget):
             self.lyric_label.height() * current_lyric_index // len(self.lyric)
             - self.lyric_wrapper.height() // 2
         )
+        self.lyric_wrapper.horizontalScrollBar().setValue((hbar.maximum() + hbar.minimum()) // 2)
 
     def calc_current_lyric_index(self):
         entries: List[Tuple[int, str]] = sorted(self.lyric.items())
@@ -466,10 +472,7 @@ class PlayerWindow(QWidget):
             self.progress_dialog.setLabelText(music.path.stem + music.path.suffix)
         # if any([x.path == music.path for x in self.my_playlist.musics()]):
         #     return
-        if self.real_row == -1:
-            self.real_row = self.playlist_widget.rowCount() - 1
-        self.real_row += 1
-        row = self.real_row
+        row = self.playlist_widget.rowCount()
         self.playlist_widget.setSortingEnabled(False)
         self.playlist_widget.insertRow(row)
         self.playlist_widget.setItem(row, 0, QTableWidgetItem(music.artist))
@@ -555,6 +558,7 @@ class PlayerWindow(QWidget):
             self.my_playlist.remove_music(index)
             self.playlist_widget.removeRow(index)
             print("Removing index={}, currentIndex={}".format(index, current_index))
+        self.config.persist()
         if current_index in indices:
             if self.my_playlist.music_count() > 0:
                 self.my_playlist.next()
@@ -562,8 +566,6 @@ class PlayerWindow(QWidget):
                 self.my_playlist.set_current_index(-1)
             if playing:
                 self.my_playlist.play()
-
-        self.config.persist()
 
     def init_progress_dialog(self):
         self.progress_dialog = QProgressDialog(self)
@@ -611,7 +613,10 @@ def main():
     app.setWindowIcon(QIcon.fromTheme('audio-headphones'))
     window = PlayerWindow()
     window.show()
-    app.exec()
+    try:
+        app.exec()
+    except Exception as e:
+        print("Exception", e)
 
 
 if __name__ == '__main__':
