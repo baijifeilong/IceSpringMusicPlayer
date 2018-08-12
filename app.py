@@ -10,6 +10,7 @@ import time
 from enum import Enum
 from typing import List, Dict, Tuple
 
+import chardet
 from PyQt5 import QtGui
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -416,7 +417,11 @@ class PlayerWindow(QWidget):
         music_file = music.path
         lyric_file: pathlib.PosixPath = music_file.parent / (music_file.stem + '.lrc')
         if lyric_file.exists():
-            lyric_text = lyric_file.read_text(encoding='gbk')
+            bys = lyric_file.read_bytes()
+            encoding = chardet.detect(bys)['encoding']
+            if encoding.upper() in ('GB2312', 'GBK'):
+                encoding = 'GB18030'
+            lyric_text = str(bys, encoding=encoding)
             self.lyric = parse_lyric(lyric_text)
             self.refresh_lyric()
         else:
