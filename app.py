@@ -137,6 +137,13 @@ class MyQSlider(QSlider):
         super().mousePressEvent(ev)
 
 
+class MyQLabel(QLabel):
+    clicked = pyqtSignal()
+
+    def mouseReleaseEvent(self, ev: QtGui.QMouseEvent) -> None:
+        self.clicked.emit()
+
+
 class MyPlaylist(QObject):
     current_index_changed = pyqtSignal(int)
     volume_changed = pyqtSignal(int)
@@ -288,7 +295,7 @@ class PlayerWindow(QWidget):
         self.volume_dial: QDial = None
         self.playlist_widget: QTableWidget = None
         self.lyric_wrapper: QScrollArea = None
-        self.lyric_label: QLabel = None
+        self.lyric_label: MyQLabel = None
         self.progress_dialog: QProgressDialog = None
         self.my_playlist: MyPlaylist = MyPlaylist()
         self.load_playlist_task = LoadPlaylistTask()
@@ -322,6 +329,16 @@ class PlayerWindow(QWidget):
         self.my_playlist.duration_changed.connect(self.on_player_duration_changed)
         self.my_playlist.current_index_changed.connect(self.on_playlist_current_index_changed)
         self.playlist_widget.doubleClicked.connect(self.dbl_clicked)
+        self.lyric_label.clicked.connect(self.on_lyric_clicked)
+
+    def on_lyric_clicked(self):
+        if self.lyric is None:
+            return
+        loc = self.lyric_label.mapFromGlobal(self.lyric_label.cursor().pos())
+        line = len(self.lyric) * loc.y() // self.lyric_label.height()
+        print("clicked", line)
+        time = sorted(self.lyric.items())[line][0]
+        self.my_playlist.set_position(time)
 
     def on_play_next(self):
         self.my_playlist.next()
@@ -513,7 +530,7 @@ class PlayerWindow(QWidget):
         self.playlist_widget.setContextMenuPolicy(Qt.CustomContextMenu)
         self.playlist_widget.customContextMenuRequested.connect(self.on_request_context_menu)
         self.lyric_wrapper = QScrollArea(self)
-        self.lyric_label = QLabel('<center>Hello, World!</center>')
+        self.lyric_label = MyQLabel('<center>Hello, World!</center>')
         font = self.lyric_label.font()
         font.setPointSize(14)
         self.lyric_label.setFont(font)
