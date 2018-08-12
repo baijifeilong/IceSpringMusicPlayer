@@ -245,6 +245,8 @@ class MyPlaylist(QObject):
             self._player.blockSignals(True)
             self._player.setMedia(QMediaContent(QUrl.fromLocalFile(str(music.path))))
             self._player.blockSignals(False)
+            if self._history_index == -1 and len(self._history) == 0:
+                self._history[self._history_index] = index
         else:
             self._player.blockSignals(True)
             self._player.stop()
@@ -419,9 +421,10 @@ class PlayerWindow(QWidget):
         if lyric_file.exists():
             bys = lyric_file.read_bytes()
             encoding = chardet.detect(bys)['encoding']
-            if encoding.upper() in ('GB2312', 'GBK'):
-                encoding = 'GB18030'
-            lyric_text = str(bys, encoding=encoding)
+            try:
+                lyric_text = str(bys, encoding='GB18030')
+            except UnicodeDecodeError:
+                lyric_text = str(bys, encoding=encoding)
             self.lyric = parse_lyric(lyric_text)
             self.refresh_lyric()
         else:
