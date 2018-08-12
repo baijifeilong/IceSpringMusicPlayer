@@ -8,11 +8,16 @@ setup(
     license='GPL3',
     author='BaiJiFeiLong',
     author_email='baijifeilong@gmail.com',
-    version='1.0.0',
+    version='1.0.4',
     description='A minimal music player with lyric show',
     packages=find_packages(),
     long_description=open('README.md').read(),
+    long_description_content_type='text/markdown',
     zip_safe=False,
     setup_requires=['chardet', 'pytaglib'],
-    scripts=['rawsteelp/rawsteelp.py']
+    entry_points={
+        'console_scripts': [
+            'rawsteel-music-player = rawsteelp.rawsteelp:main'
+        ]
+    }
 )
