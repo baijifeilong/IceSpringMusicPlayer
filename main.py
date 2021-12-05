@@ -540,6 +540,9 @@ class PlayerWindow(QtWidgets.QWidget):
         self.playlist_widget.horizontalHeader().sectionClicked.connect(self.on_sort_ended)
         self.playlist_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.playlist_widget.customContextMenuRequested.connect(self.on_request_context_menu)
+        self.playlist_widget.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.playlist_widget.setShowGrid(False)
+        self.playlist_widget.setAlternatingRowColors(True)
         self.lyric_wrapper = QtWidgets.QScrollArea(self)
         self.lyric_label = MyQLabel('<center>Hello, World!</center>')
         font = self.lyric_label.font()
@@ -548,6 +551,7 @@ class PlayerWindow(QtWidgets.QWidget):
         self.lyric_wrapper.setWidget(self.lyric_label)
         self.lyric_wrapper.setWidgetResizable(True)
         self.lyric_wrapper.verticalScrollBar().hide()
+        self.lyric_wrapper.setFrameShape(QtWidgets.QFrame.NoFrame)
         self.init_progress_dialog()
 
         content_layout = QtWidgets.QSplitter()
@@ -555,6 +559,7 @@ class PlayerWindow(QtWidgets.QWidget):
         content_layout.addWidget(self.lyric_wrapper)
 
         controller_layout = QtWidgets.QHBoxLayout()
+        controller_layout.setSpacing(5)
         controller_layout.addWidget(self.play_button)
         controller_layout.addWidget(self.prev_button)
         controller_layout.addWidget(self.next_button)
@@ -563,11 +568,24 @@ class PlayerWindow(QtWidgets.QWidget):
         controller_layout.addWidget(self.playback_mode_button)
         controller_layout.addWidget(self.volume_dial)
 
+        line = QtWidgets.QFrame()
+        line.setFrameShape(QtWidgets.QFrame.HLine)
+        line.setFrameShadow(QtWidgets.QFrame.Plain)
+        line.setStyleSheet("color: #D8D8D8")
+        line2 = QtWidgets.QFrame()
+        line2.setFrameShape(QtWidgets.QFrame.HLine)
+        line2.setFrameShadow(QtWidgets.QFrame.Plain)
+        line2.setStyleSheet("color: #D8D8D8")
+
         root_layout = QtWidgets.QVBoxLayout(self)
+        root_layout.setSpacing(0)
+        root_layout.addWidget(line)
         root_layout.addWidget(content_layout)
+        root_layout.addWidget(line2)
         root_layout.addLayout(controller_layout)
+        root_layout.setMargin(0)
         self.setLayout(root_layout)
-        self.resize(888, 666)
+        self.resize(1280, 720)
         self.setAcceptDrops(True)
 
     def on_request_context_menu(self):
@@ -635,11 +653,34 @@ class PlayerWindow(QtWidgets.QWidget):
         self.init_progress_dialog()
 
 
+WIN10_STYLE = """
+QHeaderView::section {
+    border-top:0px solid #D8D8D8;
+    border-left:0px solid #D8D8D8;
+    border-right:1px solid #D8D8D8;
+    border-bottom: 1px solid #D8D8D8;
+    background-color:white;
+    padding:4px;
+}
+QTableCornerButton::section {
+    border-top:0px solid #D8D8D8;
+    border-left:0px solid #D8D8D8;
+    border-right:1px solid #D8D8D8;
+    border-bottom: 1px solid #D8D8D8;
+    background-color:white;
+}
+""".strip()
+
+
 def main():
     app = QtWidgets.QApplication()
     app.setApplicationName('Ice Spring Music Player')
     app.setApplicationDisplayName('Ice Spring Music Player')
     app.setWindowIcon(qtawesome.icon("mdi.music"))
+    palette = QtGui.QPalette()
+    palette.setColor(QtGui.QPalette.Window, QtGui.QColor.fromRgb(255, 255, 255))
+    app.setPalette(palette)
+    QtCore.QSysInfo.windowsVersion() == QtCore.QSysInfo.WV_WINDOWS10 and app.setStyleSheet(WIN10_STYLE)
     window = PlayerWindow()
     window.show()
     app.exec_()
