@@ -75,13 +75,13 @@ class MusicEntry(object):
 
 
 def parse_lyric(text: str):
-    regex = re.compile('((\[\d{2}:\d{2}.\d{2}\])+)(.+)')
+    regex = re.compile(r'((\[\d{2}:\d{2}.\d{2}])+)(.+)')
     lyric: Dict[int, str] = dict()
     for line in text.splitlines():
         line = line.strip()
         if not line:
             continue
-        line = re.sub('(\d{2})\d\]', '\\1]', line)
+        line = re.sub(r'(\d{2})\d]', '\\1]', line)
         match = regex.match(line)
         if not match: continue
         time_part = match.groups()[0]
@@ -139,51 +139,6 @@ class MyQLabel(QtWidgets.QLabel):
 
     def mouseReleaseEvent(self, ev: QtGui.QMouseEvent) -> None:
         self.clicked.emit(ev)
-
-
-class MyAboutDialog(QtWidgets.QDialog):
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.resize(400, 300)
-        self.setMaximumWidth(30)
-        root = QtWidgets.QVBoxLayout(self)
-        github = 'https://github.com/baijifeilong/rawsteelp'
-        pypi = 'https://pypi.org/project/rawsteel-music-player'
-        aur = 'https://aur.archlinux.org/packages/rawsteel-music-player'
-        label = QtWidgets.QLabel('''
-        <b>Application</b>: Rawsteel Music Player
-        <br>
-        <b>Description</b>: A minimal music player with lyric show
-        <br>
-        <b>Author</b>: BaiJiFeiLong@gmail.com 
-        <br>
-        <b>Github source</b>: <a href="{0}">{0}</a>
-        <br>
-        <b>Python PyPI</b>: <a href="{1}">{1}</a>
-        <br>
-        <b>ArchLinux AUR</b>: <a href="{2}">{2}</a>
-        <br>
-        <b>License</b>: GPL3
-        <br>
-        <b>Powered by</b>: <em>Python</em> and <em>Qt</em>
-        '''.strip().format(github, pypi, aur), self)
-        font = label.font()
-        font.setPointSize(14)
-        label.setFont(font)
-        label.setOpenExternalLinks(True)
-        button = QtWidgets.QPushButton('OK', self)
-        about_qt = QtWidgets.QPushButton("About Qt", self)
-        button.clicked.connect(self.close)
-        about_qt.clicked.connect(lambda: QtWidgets.QMessageBox.aboutQt(self))
-        bottom = QtWidgets.QHBoxLayout(self)
-        bottom.addStretch(1)
-        bottom.addWidget(about_qt)
-        bottom.addWidget(button)
-        root.addWidget(label)
-        root.addLayout(bottom)
-        self.setWindowTitle("About")
-        self.setLayout(root)
 
 
 class MyPlaylist(QtCore.QObject):
@@ -385,12 +340,6 @@ class PlayerWindow(QtWidgets.QWidget):
             print("clicked", line)
             time = sorted(self.lyric.items())[line][0]
             self.my_playlist.set_position(time)
-        elif event.button() == QtCore.Qt.RightButton:
-            menu = QtWidgets.QMenu()
-            menu.addAction("About")
-            menu.triggered.connect(lambda: MyAboutDialog(self).exec())
-            menu.exec_(QtGui.QCursor.pos())
-            menu.clear()
 
     def on_play_next(self):
         self.my_playlist.next()
