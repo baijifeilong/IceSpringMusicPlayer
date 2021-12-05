@@ -1,3 +1,4 @@
-python-qt5
-pytaglib
-chardet
+PySide2==5.15.2
+pytaglib==1.4.6
+chardet==4.0.0
+

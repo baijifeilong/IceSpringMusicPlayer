@@ -4,18 +4,13 @@ import json
 import pathlib
 import random
 import re
-import sys
-import taglib
 import time
 from enum import Enum
 from typing import List, Dict, Tuple
 
 import chardet
-from PyQt5 import QtGui
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtMultimedia import *
-from PyQt5.QtWidgets import *
+import taglib
+from PySide2 import QtWidgets, QtGui, QtCore, QtMultimedia
 
 
 class Config(object):
@@ -99,9 +94,9 @@ def parse_lyric(text: str):
     return lyric
 
 
-class LoadPlaylistTask(QThread):
-    music_found_signal = pyqtSignal(tuple)
-    musics_found_signal = pyqtSignal(list)
+class LoadPlaylistTask(QtCore.QThread):
+    music_found_signal = QtCore.Signal(tuple)
+    musics_found_signal = QtCore.Signal(list)
 
     def __init__(self) -> None:
         super().__init__()
@@ -130,33 +125,33 @@ class LoadPlaylistTask(QThread):
             self.musics_found_signal.emit(musics)
 
 
-class MyQSlider(QSlider):
+class MyQSlider(QtWidgets.QSlider):
 
     def mousePressEvent(self, ev: QtGui.QMouseEvent) -> None:
-        if ev.button() == Qt.LeftButton:
+        if ev.button() == QtCore.Qt.LeftButton:
             self.setValue(self.minimum() + (self.maximum() - self.minimum()) * ev.x() // self.width())
             ev.accept()
         super().mousePressEvent(ev)
 
 
-class MyQLabel(QLabel):
-    clicked = pyqtSignal(QMouseEvent)
+class MyQLabel(QtWidgets.QLabel):
+    clicked = QtCore.Signal(QtGui.QMouseEvent)
 
     def mouseReleaseEvent(self, ev: QtGui.QMouseEvent) -> None:
         self.clicked.emit(ev)
 
 
-class MyAboutDialog(QDialog):
+class MyAboutDialog(QtWidgets.QDialog):
 
     def __init__(self, parent):
         super().__init__(parent)
         self.resize(400, 300)
         self.setMaximumWidth(30)
-        root = QVBoxLayout(self)
+        root = QtWidgets.QVBoxLayout(self)
         github = 'https://github.com/baijifeilong/rawsteelp'
         pypi = 'https://pypi.org/project/rawsteel-music-player'
         aur = 'https://aur.archlinux.org/packages/rawsteel-music-player'
-        label = QLabel('''
+        label = QtWidgets.QLabel('''
         <b>Application</b>: Rawsteel Music Player
         <br>
         <b>Description</b>: A minimal music player with lyric show
@@ -177,11 +172,11 @@ class MyAboutDialog(QDialog):
         font.setPointSize(14)
         label.setFont(font)
         label.setOpenExternalLinks(True)
-        button = QPushButton('OK', self)
-        about_qt = QPushButton("About Qt", self)
+        button = QtWidgets.QPushButton('OK', self)
+        about_qt = QtWidgets.QPushButton("About Qt", self)
         button.clicked.connect(self.close)
-        about_qt.clicked.connect(lambda: QMessageBox.aboutQt(self))
-        bottom = QHBoxLayout(self)
+        about_qt.clicked.connect(lambda: QtWidgets.QMessageBox.aboutQt(self))
+        bottom = QtWidgets.QHBoxLayout(self)
         bottom.addStretch(1)
         bottom.addWidget(about_qt)
         bottom.addWidget(button)
@@ -191,12 +186,12 @@ class MyAboutDialog(QDialog):
         self.setLayout(root)
 
 
-class MyPlaylist(QObject):
-    current_index_changed = pyqtSignal(int)
-    volume_changed = pyqtSignal(int)
-    playing_changed = pyqtSignal(bool)
-    position_changed = pyqtSignal(int)
-    duration_changed = pyqtSignal(int)
+class MyPlaylist(QtCore.QObject):
+    current_index_changed = QtCore.Signal(int)
+    volume_changed = QtCore.Signal(int)
+    playing_changed = QtCore.Signal(bool)
+    position_changed = QtCore.Signal(int)
+    duration_changed = QtCore.Signal(int)
 
     class PlaybackMode(Enum):
         LOOP = 1
@@ -204,8 +199,8 @@ class MyPlaylist(QObject):
 
     def __init__(self) -> None:
         super().__init__()
-        self._player = QMediaPlayer()
-        self._playlist = QMediaPlaylist()
+        self._player = QtMultimedia.QMediaPlayer()
+        self._playlist = QtMultimedia.QMediaPlaylist()
         self._musics: List[MusicEntry] = list()
         self._current_index = -1
         self._playback_mode = MyPlaylist.PlaybackMode.LOOP
@@ -218,7 +213,7 @@ class MyPlaylist(QObject):
 
     def _on_player_state_changed(self, state):
         print("STATE CHANGED")
-        if state == QMediaPlayer.StoppedState:
+        if state == QtMultimedia.QMediaPlayer.StoppedState:
             print("STOPPED")
             self.next()
             self.play()
@@ -289,7 +284,7 @@ class MyPlaylist(QObject):
         if index > -1:
             music = self._musics[index]
             self._player.blockSignals(True)
-            self._player.setMedia(QMediaContent(QUrl.fromLocalFile(str(music.path))))
+            self._player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(str(music.path))))
             self._player.blockSignals(False)
             if self._history_index == -1 and len(self._history) == 0:
                 self._history[self._history_index] = index
@@ -331,21 +326,21 @@ class MyPlaylist(QObject):
         return self._musics.index(music)
 
 
-class PlayerWindow(QWidget):
+class PlayerWindow(QtWidgets.QWidget):
 
     def __init__(self):
         super().__init__()
-        self.play_button: QToolButton = None
-        self.prev_button: QToolButton = None
-        self.next_button: QToolButton = None
-        self.playback_mode_button: QToolButton = None
+        self.play_button: QtWidgets.QToolButton = None
+        self.prev_button: QtWidgets.QToolButton = None
+        self.next_button: QtWidgets.QToolButton = None
+        self.playback_mode_button: QtWidgets.QToolButton = None
         self.progress_slider: MyQSlider = None
-        self.progress_label: QLabel = None
-        self.volume_dial: QDial = None
-        self.playlist_widget: QTableWidget = None
-        self.lyric_wrapper: QScrollArea = None
+        self.progress_label: QtWidgets.QLabel = None
+        self.volume_dial: QtWidgets.QDial = None
+        self.playlist_widget: QtWidgets.QTableWidget = None
+        self.lyric_wrapper: QtWidgets.QScrollArea = None
         self.lyric_label: MyQLabel = None
-        self.progress_dialog: QProgressDialog = None
+        self.progress_dialog: QtWidgets.QProgressDialog = None
         self.my_playlist: MyPlaylist = MyPlaylist()
         self.load_playlist_task = LoadPlaylistTask()
         self.musics: List[MusicEntry] = list()
@@ -353,15 +348,15 @@ class PlayerWindow(QWidget):
         self.prev_lyric_index = -1
         self.config: Config = None
         self.real_row = -1
-        self.mime_db = QMimeDatabase()
+        self.mime_db = QtCore.QMimeDatabase()
         self.setup_layout()
         self.setup_events()
         self.setup_player()
 
-    def generate_tool_button(self, icon_name: str) -> QToolButton:
-        button = QToolButton(parent=self)
-        button.setIcon(QIcon.fromTheme(icon_name))
-        button.setIconSize(QSize(50, 50))
+    def generate_tool_button(self, icon_name: str) -> QtWidgets.QToolButton:
+        button = QtWidgets.QToolButton(parent=self)
+        button.setIcon(QtGui.QIcon.fromTheme(icon_name))
+        button.setIconSize(QtCore.QSize(50, 50))
         button.setAutoRaise(True)
         return button
 
@@ -381,8 +376,8 @@ class PlayerWindow(QWidget):
         self.playlist_widget.doubleClicked.connect(self.dbl_clicked)
         self.lyric_label.clicked.connect(self.on_lyric_clicked)
 
-    def on_lyric_clicked(self, event: QMouseEvent):
-        if event.button() == Qt.LeftButton:
+    def on_lyric_clicked(self, event: QtGui.QMouseEvent):
+        if event.button() == QtCore.Qt.LeftButton:
             if self.lyric is None:
                 return
             loc = self.lyric_label.mapFromGlobal(self.lyric_label.cursor().pos())
@@ -390,11 +385,11 @@ class PlayerWindow(QWidget):
             print("clicked", line)
             time = sorted(self.lyric.items())[line][0]
             self.my_playlist.set_position(time)
-        elif event.button() == Qt.RightButton:
-            menu = QMenu()
+        elif event.button() == QtCore.Qt.RightButton:
+            menu = QtWidgets.QMenu()
             menu.addAction("About")
             menu.triggered.connect(lambda: MyAboutDialog(self).exec())
-            menu.exec(QCursor.pos())
+            menu.exec_(QtGui.QCursor.pos())
             menu.clear()
 
     def on_play_next(self):
@@ -427,19 +422,19 @@ class PlayerWindow(QWidget):
         self.config.playbackMode = playback_mode
         if playback_mode == MyPlaylist.PlaybackMode.LOOP:
             self.my_playlist.set_playback_mode(MyPlaylist.PlaybackMode.LOOP)
-            self.playback_mode_button.setIcon(QIcon.fromTheme('media-playlist-repeat'))
+            self.playback_mode_button.setIcon(QtGui.QIcon.fromTheme('media-playlist-repeat'))
         else:
             self.my_playlist.set_playback_mode(MyPlaylist.PlaybackMode.RANDOM)
-            self.playback_mode_button.setIcon(QIcon.fromTheme('media-playlist-shuffle'))
+            self.playback_mode_button.setIcon(QtGui.QIcon.fromTheme('media-playlist-shuffle'))
 
     def on_progress_slider_value_changed(self, value):
         self.my_playlist.set_position(value * 1000)
 
     def on_playing_changed(self, playing: bool):
         if playing:
-            self.play_button.setIcon(QIcon.fromTheme('media-playback-pause'))
+            self.play_button.setIcon(QtGui.QIcon.fromTheme('media-playback-pause'))
         else:
-            self.play_button.setIcon(QIcon.fromTheme('media-playback-start'))
+            self.play_button.setIcon(QtGui.QIcon.fromTheme('media-playback-start'))
 
     def on_player_position_changed(self, position: int):
         current = position // 1000
@@ -534,7 +529,7 @@ class PlayerWindow(QWidget):
         self.set_playback_mode(self.config.playbackMode)
         self.set_volume(self.config.volume)
         sort_by = dict(ARTIST=0, TITLE=1, DURATION=2)[self.config.sortBy]
-        sort_order = Qt.AscendingOrder if self.config.sortOrder == 'ASCENDING' else Qt.DescendingOrder
+        sort_order = QtCore.Qt.AscendingOrder if self.config.sortOrder == 'ASCENDING' else QtCore.Qt.DescendingOrder
         self.playlist_widget.horizontalHeader().setSortIndicator(sort_by, sort_order)
         for index, music in enumerate(self.config.playlist):
             self.add_music((music, len(self.config.playlist), index + 1), with_progress=False)
@@ -560,22 +555,22 @@ class PlayerWindow(QWidget):
         row = self.playlist_widget.rowCount()
         self.playlist_widget.setSortingEnabled(False)
         self.playlist_widget.insertRow(row)
-        self.playlist_widget.setItem(row, 0, QTableWidgetItem(music.artist))
-        self.playlist_widget.setItem(row, 1, QTableWidgetItem(music.title))
-        self.playlist_widget.setItem(row, 2, QTableWidgetItem(
+        self.playlist_widget.setItem(row, 0, QtWidgets.QTableWidgetItem(music.artist))
+        self.playlist_widget.setItem(row, 1, QtWidgets.QTableWidgetItem(music.title))
+        self.playlist_widget.setItem(row, 2, QtWidgets.QTableWidgetItem(
             '{:02d}:{:02d}'.format(music.duration // 60000, music.duration // 1000 % 60)))
-        self.playlist_widget.item(row, 0).setData(Qt.UserRole, music)
+        self.playlist_widget.item(row, 0).setData(QtCore.Qt.UserRole, music)
         # print("current: {}, last: {}".format(music.title, last_music.title))
         self.my_playlist.add_music(music)
         if current == total:
             self.progress_dialog.setValue(total)
             self.playlist_widget.scrollToBottom()
             self.playlist_widget.setSortingEnabled(True)
-            last_music: MusicEntry = self.playlist_widget.item(current - 1, 0).data(Qt.UserRole)
+            last_music: MusicEntry = self.playlist_widget.item(current - 1, 0).data(QtCore.Qt.UserRole)
             print("current: {}, last: {}".format(music.title, last_music.title))
             self.on_sort_ended()
 
-    def dbl_clicked(self, item: QModelIndex):
+    def dbl_clicked(self, item: QtCore.QModelIndex):
         self.my_playlist.set_current_index(item.row())
         self.my_playlist.play()
 
@@ -584,20 +579,20 @@ class PlayerWindow(QWidget):
         self.prev_button = self.generate_tool_button('media-skip-backward')
         self.next_button = self.generate_tool_button('media-skip-forward')
         self.playback_mode_button = self.generate_tool_button('media-playlist-shuffle')
-        self.progress_slider = MyQSlider(Qt.Horizontal, self)
-        self.progress_label = QLabel('00:00/00:00', self)
-        self.volume_dial = QDial(self)
+        self.progress_slider = MyQSlider(QtCore.Qt.Horizontal, self)
+        self.progress_label = QtWidgets.QLabel('00:00/00:00', self)
+        self.volume_dial = QtWidgets.QDial(self)
         self.volume_dial.setFixedSize(50, 50)
-        self.playlist_widget = QTableWidget(0, 3, self)
+        self.playlist_widget = QtWidgets.QTableWidget(0, 3, self)
         self.playlist_widget.setHorizontalHeaderLabels(('Artist', 'Title', 'Duration'))
-        self.playlist_widget.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.playlist_widget.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.playlist_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.playlist_widget.horizontalHeader().setSortIndicator(0, Qt.AscendingOrder)
+        self.playlist_widget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.playlist_widget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.playlist_widget.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.playlist_widget.horizontalHeader().setSortIndicator(0, QtCore.Qt.AscendingOrder)
         self.playlist_widget.horizontalHeader().sectionClicked.connect(self.on_sort_ended)
-        self.playlist_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.playlist_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.playlist_widget.customContextMenuRequested.connect(self.on_request_context_menu)
-        self.lyric_wrapper = QScrollArea(self)
+        self.lyric_wrapper = QtWidgets.QScrollArea(self)
         self.lyric_label = MyQLabel('<center>Hello, World!</center>')
         font = self.lyric_label.font()
         font.setPointSize(14)
@@ -607,11 +602,11 @@ class PlayerWindow(QWidget):
         self.lyric_wrapper.verticalScrollBar().hide()
         self.init_progress_dialog()
 
-        content_layout = QHBoxLayout()
+        content_layout = QtWidgets.QHBoxLayout()
         content_layout.addWidget(self.playlist_widget, 1)
         content_layout.addWidget(self.lyric_wrapper, 1)
 
-        controller_layout = QHBoxLayout()
+        controller_layout = QtWidgets.QHBoxLayout()
         controller_layout.addWidget(self.play_button)
         controller_layout.addWidget(self.prev_button)
         controller_layout.addWidget(self.next_button)
@@ -620,7 +615,7 @@ class PlayerWindow(QWidget):
         controller_layout.addWidget(self.playback_mode_button)
         controller_layout.addWidget(self.volume_dial)
 
-        root_layout = QVBoxLayout(self)
+        root_layout = QtWidgets.QVBoxLayout(self)
         root_layout.addLayout(content_layout)
         root_layout.addLayout(controller_layout)
         self.setLayout(root_layout)
@@ -629,10 +624,10 @@ class PlayerWindow(QWidget):
 
     def on_request_context_menu(self):
         print("Requesting...")
-        menu = QMenu()
+        menu = QtWidgets.QMenu()
         menu.addAction("Delete")
         menu.triggered.connect(self.remove_music)
-        menu.exec(QCursor.pos())
+        menu.exec_(QtGui.QCursor.pos())
         menu.clear()
 
     def remove_music(self):
@@ -653,7 +648,7 @@ class PlayerWindow(QWidget):
                 self.my_playlist.play()
 
     def init_progress_dialog(self):
-        self.progress_dialog = QProgressDialog(self)
+        self.progress_dialog = QtWidgets.QProgressDialog(self)
         # noinspection PyTypeChecker
         self.progress_dialog.setCancelButton(None)
         self.progress_dialog.setWindowTitle("Loading music")
@@ -664,13 +659,13 @@ class PlayerWindow(QWidget):
     def on_sort_ended(self):
         self.my_playlist.clear()
         for row in range(self.playlist_widget.rowCount()):
-            music: MusicEntry = self.playlist_widget.item(row, 0).data(Qt.UserRole)
+            music: MusicEntry = self.playlist_widget.item(row, 0).data(QtCore.Qt.UserRole)
             self.my_playlist.add_music(music)
         self.config.playlist = self.my_playlist.musics()
         self.config.sortBy = {0: 'ARTIST', 1: 'TITLE', 2: 'DURATION'}[
             self.playlist_widget.horizontalHeader().sortIndicatorSection()]
         self.config.sortOrder = 'ASCENDING' if \
-            self.playlist_widget.horizontalHeader().sortIndicatorOrder() == Qt.AscendingOrder else 'DESCENDING'
+            self.playlist_widget.horizontalHeader().sortIndicatorOrder() == QtCore.Qt.AscendingOrder else 'DESCENDING'
         self.config.persist()
 
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
@@ -684,22 +679,23 @@ class PlayerWindow(QWidget):
             event.accept()
 
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
-        urls: List[QUrl] = event.mimeData().urls()
-        paths = [pathlib.Path(x.toLocalFile()) for x in urls if self.mime_db.mimeTypeForUrl(x).name().startswith('audio/')]
+        urls: List[QtCore.QUrl] = event.mimeData().urls()
+        paths = [pathlib.Path(x.toLocalFile()) for x in urls if
+                 self.mime_db.mimeTypeForUrl(x).name().startswith('audio/')]
         self.load_playlist_task.music_files = paths
         self.load_playlist_task.start()
         self.init_progress_dialog()
 
 
 def main():
-    app = QApplication(sys.argv)
+    app = QtWidgets.QApplication()
     app.setApplicationName('Rawsteel Music Player')
     app.setApplicationDisplayName('Rawsteel Music Player')
-    app.setWindowIcon(QIcon.fromTheme('audio-headphones'))
+    app.setWindowIcon(QtGui.QIcon.fromTheme('audio-headphones'))
     window = PlayerWindow()
     window.show()
     try:
-        app.exec()
+        app.exec_()
     except Exception as e:
         print("Exception", e)
 
