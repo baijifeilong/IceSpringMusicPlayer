@@ -685,7 +685,7 @@ class PlayerWindow(QWidget):
 
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
         urls: List[QUrl] = event.mimeData().urls()
-        paths = [pathlib.Path(x.path()) for x in urls if self.mime_db.mimeTypeForUrl(x).name().startswith('audio/')]
+        paths = [pathlib.Path(x.toLocalFile()) for x in urls if self.mime_db.mimeTypeForUrl(x).name().startswith('audio/')]
         self.load_playlist_task.music_files = paths
         self.load_playlist_task.start()
         self.init_progress_dialog()
