@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+# Created by BaiJiFeiLong@gmail.com at 2018/8/6 0:05
 
 import json
 import pathlib
@@ -14,8 +14,7 @@ from PySide2 import QtWidgets, QtGui, QtCore, QtMultimedia
 
 
 class Config(object):
-    config_path = pathlib.Path('~/.config/rawsteel-music-player').expanduser()
-    config_path.parent.mkdir(parents=True) if not config_path.parent.exists() else None
+    config_path = pathlib.Path("config.json")
 
     def __init__(self):
         super().__init__()
@@ -83,7 +82,8 @@ def parse_lyric(text: str):
             continue
         line = re.sub(r'(\d{2})\d]', '\\1]', line)
         match = regex.match(line)
-        if not match: continue
+        if not match:
+            continue
         time_part = match.groups()[0]
         lyric_part = match.groups()[2].strip()
         for i in range(0, len(time_part), 10):
@@ -107,15 +107,14 @@ class LoadPlaylistTask(QtCore.QThread):
         count = len(self.music_files)
         musics = list()
         for index, f in enumerate(self.music_files):
-            # print("Scanning for {}".format(f))
             artist, title = 'Unknown', 'Unknown'
-            if '-' in f.stem: artist, title = f.stem.rsplit('-', maxsplit=1)
+            if '-' in f.stem:
+                artist, title = f.stem.rsplit('-', maxsplit=1)
             file = taglib.File(str(f))
             artist = file.tags.get('ARTIST', [artist])[0]
             title = file.tags.get('TITLE', [title])[0]
             duration = file.length * 1000
             music_entry = MusicEntry(path=f, artist=artist, title=title, duration=duration)
-            # self.music_found_signal.emit((music_entry, count, index + 1))
             time.sleep(0.0001)
             musics.append((music_entry, count, index + 1))
             if len(musics) == 10:
@@ -281,27 +280,28 @@ class MyPlaylist(QtCore.QObject):
         return self._musics.index(music)
 
 
+# noinspection PyAttributeOutsideInit
 class PlayerWindow(QtWidgets.QWidget):
 
     def __init__(self):
         super().__init__()
-        self.play_button: QtWidgets.QToolButton = None
-        self.prev_button: QtWidgets.QToolButton = None
-        self.next_button: QtWidgets.QToolButton = None
-        self.playback_mode_button: QtWidgets.QToolButton = None
-        self.progress_slider: MyQSlider = None
-        self.progress_label: QtWidgets.QLabel = None
-        self.volume_dial: QtWidgets.QDial = None
-        self.playlist_widget: QtWidgets.QTableWidget = None
-        self.lyric_wrapper: QtWidgets.QScrollArea = None
-        self.lyric_label: MyQLabel = None
-        self.progress_dialog: QtWidgets.QProgressDialog = None
+        self.play_button: QtWidgets.QToolButton
+        self.prev_button: QtWidgets.QToolButton
+        self.next_button: QtWidgets.QToolButton
+        self.playback_mode_button: QtWidgets.QToolButton
+        self.progress_slider: MyQSlider
+        self.progress_label: QtWidgets.QLabel
+        self.volume_dial: QtWidgets.QDial
+        self.playlist_widget: QtWidgets.QTableWidget
+        self.lyric_wrapper: QtWidgets.QScrollArea
+        self.lyric_label: MyQLabel
+        self.progress_dialog: QtWidgets.QProgressDialog
         self.my_playlist: MyPlaylist = MyPlaylist()
         self.load_playlist_task = LoadPlaylistTask()
         self.musics: List[MusicEntry] = list()
-        self.lyric: Dict[int, str] = None
+        self.lyric: Dict[int, str] = dict()
         self.prev_lyric_index = -1
-        self.config: Config = None
+        self.config: Config
         self.real_row = -1
         self.mime_db = QtCore.QMimeDatabase()
         self.setup_layout()
@@ -315,6 +315,7 @@ class PlayerWindow(QtWidgets.QWidget):
         button.setAutoRaise(True)
         return button
 
+    # noinspection DuplicatedCode
     def setup_events(self):
         self.load_playlist_task.music_found_signal.connect(self.add_music)
         self.load_playlist_task.musics_found_signal.connect(self.add_musics)
@@ -331,6 +332,7 @@ class PlayerWindow(QtWidgets.QWidget):
         self.playlist_widget.doubleClicked.connect(self.dbl_clicked)
         self.lyric_label.clicked.connect(self.on_lyric_clicked)
 
+    # noinspection PyUnresolvedReferences
     def on_lyric_clicked(self, event: QtGui.QMouseEvent):
         if event.button() == QtCore.Qt.LeftButton:
             if self.lyric is None:
@@ -338,8 +340,8 @@ class PlayerWindow(QtWidgets.QWidget):
             loc = self.lyric_label.mapFromGlobal(self.lyric_label.cursor().pos())
             line = len(self.lyric) * loc.y() // self.lyric_label.height()
             print("clicked", line)
-            time = sorted(self.lyric.items())[line][0]
-            self.my_playlist.set_position(time)
+            position = sorted(self.lyric.items())[line][0]
+            self.my_playlist.set_position(position)
 
     def on_play_next(self):
         self.my_playlist.next()
@@ -455,6 +457,7 @@ class PlayerWindow(QtWidgets.QWidget):
         )
         self.lyric_wrapper.horizontalScrollBar().setValue((hbar.maximum() + hbar.minimum()) // 2)
 
+    # noinspection PyTypeChecker
     def calc_current_lyric_index(self):
         entries: List[Tuple[int, str]] = sorted(self.lyric.items())
         current_position = self.my_playlist.get_position()
@@ -481,7 +484,7 @@ class PlayerWindow(QtWidgets.QWidget):
         sort_order = QtCore.Qt.AscendingOrder if self.config.sortOrder == 'ASCENDING' else QtCore.Qt.DescendingOrder
         self.playlist_widget.horizontalHeader().setSortIndicator(sort_by, sort_order)
         for index, music in enumerate(self.config.playlist):
-            self.add_music((music, len(self.config.playlist), index + 1), with_progress=False)
+            self.add_music((music, len(self.config.playlist), index + 1))
         if len(self.config.playlist) > 0 and self.config.currentIndex >= 0:
             self.my_playlist.set_current_index(self.config.currentIndex)
 
@@ -489,18 +492,15 @@ class PlayerWindow(QtWidgets.QWidget):
         for music in musics:
             self.add_music(music)
 
-    def add_music(self, entry, with_progress=True):
+    def add_music(self, entry):
         music: MusicEntry = entry[0]
         total: int = entry[1]
         current: int = entry[2]
-        # print("Add : {}".format(music.path))
         self.progress_dialog.show()
         if total < 300 or current % 3 == 0:
             self.progress_dialog.setMaximum(total)
             self.progress_dialog.setValue(current)
             self.progress_dialog.setLabelText(music.path.stem + music.path.suffix)
-        # if any([x.path == music.path for x in self.my_playlist.musics()]):
-        #     return
         row = self.playlist_widget.rowCount()
         self.playlist_widget.setSortingEnabled(False)
         self.playlist_widget.insertRow(row)
@@ -509,7 +509,6 @@ class PlayerWindow(QtWidgets.QWidget):
         self.playlist_widget.setItem(row, 2, QtWidgets.QTableWidgetItem(
             '{:02d}:{:02d}'.format(music.duration // 60000, music.duration // 1000 % 60)))
         self.playlist_widget.item(row, 0).setData(QtCore.Qt.UserRole, music)
-        # print("current: {}, last: {}".format(music.title, last_music.title))
         self.my_playlist.add_music(music)
         if current == total:
             self.progress_dialog.setValue(total)
@@ -638,8 +637,8 @@ class PlayerWindow(QtWidgets.QWidget):
 
 def main():
     app = QtWidgets.QApplication()
-    app.setApplicationName('Rawsteel Music Player')
-    app.setApplicationDisplayName('Rawsteel Music Player')
+    app.setApplicationName('Ice Spring Music Player')
+    app.setApplicationDisplayName('Ice Spring Music Player')
     app.setWindowIcon(QtGui.QIcon.fromTheme('audio-headphones'))
     window = PlayerWindow()
     window.show()
