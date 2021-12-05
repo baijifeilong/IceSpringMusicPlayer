@@ -550,9 +550,9 @@ class PlayerWindow(QtWidgets.QWidget):
         self.lyric_wrapper.verticalScrollBar().hide()
         self.init_progress_dialog()
 
-        content_layout = QtWidgets.QHBoxLayout()
-        content_layout.addWidget(self.playlist_widget, 1)
-        content_layout.addWidget(self.lyric_wrapper, 1)
+        content_layout = QtWidgets.QSplitter()
+        content_layout.addWidget(self.playlist_widget)
+        content_layout.addWidget(self.lyric_wrapper)
 
         controller_layout = QtWidgets.QHBoxLayout()
         controller_layout.addWidget(self.play_button)
@@ -564,7 +564,7 @@ class PlayerWindow(QtWidgets.QWidget):
         controller_layout.addWidget(self.volume_dial)
 
         root_layout = QtWidgets.QVBoxLayout(self)
-        root_layout.addLayout(content_layout)
+        root_layout.addWidget(content_layout)
         root_layout.addLayout(controller_layout)
         self.setLayout(root_layout)
         self.resize(888, 666)
@@ -642,10 +642,7 @@ def main():
     app.setWindowIcon(qtawesome.icon("mdi.music"))
     window = PlayerWindow()
     window.show()
-    try:
-        app.exec_()
-    except Exception as e:
-        print("Exception", e)
+    app.exec_()
 
 
 if __name__ == '__main__':
