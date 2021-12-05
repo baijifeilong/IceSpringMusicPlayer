@@ -9,12 +9,13 @@ from enum import Enum
 from typing import List, Dict, Tuple
 
 import chardet
+import qtawesome
 import taglib
 from PySide2 import QtWidgets, QtGui, QtCore, QtMultimedia
 
 
 class Config(object):
-    config_path = pathlib.Path("config.json")
+    configPath = pathlib.Path("config.json")
 
     def __init__(self):
         super().__init__()
@@ -29,9 +30,9 @@ class Config(object):
     def load():
         print("Prepare to load config ...")
         config = Config()
-        if Config.config_path.exists():
+        if Config.configPath.exists():
             print("Loading config ...")
-            jd = json.loads(Config.config_path.read_text())
+            jd = json.loads(Config.configPath.read_text())
             config.playbackMode = MyPlaylist.PlaybackMode(jd['playbackMode'])
             for item in jd['playlist']:
                 config.playlist.append(MusicEntry(
@@ -60,20 +61,19 @@ class Config(object):
             sortOrder=self.sortOrder
         )
         jt = json.dumps(jd, indent=4, ensure_ascii=False)
-        self.config_path.write_text(jt)
+        self.configPath.write_text(jt)
 
 
 class MusicEntry(object):
 
     def __init__(self, path, artist, title, duration) -> None:
-        super().__init__()
         self.path: pathlib.PosixPath = path
         self.artist: str = artist
         self.title: str = title
         self.duration: int = duration
 
 
-def parse_lyric(text: str):
+def parseLyric(text: str):
     regex = re.compile(r'((\[\d{2}:\d{2}.\d{2}])+)(.+)')
     lyric: Dict[int, str] = dict()
     for line in text.splitlines():
@@ -310,7 +310,7 @@ class PlayerWindow(QtWidgets.QWidget):
 
     def generate_tool_button(self, icon_name: str) -> QtWidgets.QToolButton:
         button = QtWidgets.QToolButton(parent=self)
-        button.setIcon(QtGui.QIcon.fromTheme(icon_name))
+        button.setIcon(qtawesome.icon(icon_name))
         button.setIconSize(QtCore.QSize(50, 50))
         button.setAutoRaise(True)
         return button
@@ -373,19 +373,19 @@ class PlayerWindow(QtWidgets.QWidget):
         self.config.playbackMode = playback_mode
         if playback_mode == MyPlaylist.PlaybackMode.LOOP:
             self.my_playlist.set_playback_mode(MyPlaylist.PlaybackMode.LOOP)
-            self.playback_mode_button.setIcon(QtGui.QIcon.fromTheme('media-playlist-repeat'))
+            self.playback_mode_button.setIcon(qtawesome.icon("mdi.repeat"))
         else:
             self.my_playlist.set_playback_mode(MyPlaylist.PlaybackMode.RANDOM)
-            self.playback_mode_button.setIcon(QtGui.QIcon.fromTheme('media-playlist-shuffle'))
+            self.playback_mode_button.setIcon(qtawesome.icon("mdi.shuffle"))
 
     def on_progress_slider_value_changed(self, value):
         self.my_playlist.set_position(value * 1000)
 
     def on_playing_changed(self, playing: bool):
         if playing:
-            self.play_button.setIcon(QtGui.QIcon.fromTheme('media-playback-pause'))
+            self.play_button.setIcon(qtawesome.icon("mdi.pause"))
         else:
-            self.play_button.setIcon(QtGui.QIcon.fromTheme('media-playback-start'))
+            self.play_button.setIcon(qtawesome.icon("mdi.play"))
 
     def on_player_position_changed(self, position: int):
         current = position // 1000
@@ -424,7 +424,7 @@ class PlayerWindow(QtWidgets.QWidget):
                 lyric_text = str(bys, encoding='GB18030')
             except UnicodeDecodeError:
                 lyric_text = str(bys, encoding=encoding)
-            self.lyric = parse_lyric(lyric_text)
+            self.lyric = parseLyric(lyric_text)
             if len(self.lyric) > 0:
                 self.refresh_lyric()
             else:
@@ -523,10 +523,10 @@ class PlayerWindow(QtWidgets.QWidget):
         self.my_playlist.play()
 
     def setup_layout(self):
-        self.play_button = self.generate_tool_button('media-playback-start')
-        self.prev_button = self.generate_tool_button('media-skip-backward')
-        self.next_button = self.generate_tool_button('media-skip-forward')
-        self.playback_mode_button = self.generate_tool_button('media-playlist-shuffle')
+        self.play_button = self.generate_tool_button('mdi.play')
+        self.prev_button = self.generate_tool_button('mdi.step-backward')
+        self.next_button = self.generate_tool_button('mdi.step-forward')
+        self.playback_mode_button = self.generate_tool_button('mdi.shuffle')
         self.progress_slider = MyQSlider(QtCore.Qt.Horizontal, self)
         self.progress_label = QtWidgets.QLabel('00:00/00:00', self)
         self.volume_dial = QtWidgets.QDial(self)
@@ -639,7 +639,7 @@ def main():
     app = QtWidgets.QApplication()
     app.setApplicationName('Ice Spring Music Player')
     app.setApplicationDisplayName('Ice Spring Music Player')
-    app.setWindowIcon(QtGui.QIcon.fromTheme('audio-headphones'))
+    app.setWindowIcon(qtawesome.icon("mdi.music"))
     window = PlayerWindow()
     window.show()
     try:
