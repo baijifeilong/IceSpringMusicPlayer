@@ -504,10 +504,13 @@ class PlayerWindow(QtWidgets.QWidget):
         row = self.playlist_widget.rowCount()
         self.playlist_widget.setSortingEnabled(False)
         self.playlist_widget.insertRow(row)
-        self.playlist_widget.setItem(row, 0, QtWidgets.QTableWidgetItem(music.artist))
-        self.playlist_widget.setItem(row, 1, QtWidgets.QTableWidgetItem(music.title))
-        self.playlist_widget.setItem(row, 2, QtWidgets.QTableWidgetItem(
+        self.playlist_widget.setItem(row, 0, QtWidgets.QTableWidgetItem(str(row + 1)))
+        self.playlist_widget.setItem(row, 1, QtWidgets.QTableWidgetItem(music.artist))
+        self.playlist_widget.setItem(row, 2, QtWidgets.QTableWidgetItem(music.title))
+        self.playlist_widget.setItem(row, 3, QtWidgets.QTableWidgetItem(
             '{:02d}:{:02d}'.format(music.duration // 60000, music.duration // 1000 % 60)))
+        self.playlist_widget.item(row, 0).setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.playlist_widget.item(row, 3).setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.playlist_widget.item(row, 0).setData(QtCore.Qt.UserRole, music)
         self.my_playlist.add_music(music)
         if current == total:
@@ -531,13 +534,19 @@ class PlayerWindow(QtWidgets.QWidget):
         self.progress_label = QtWidgets.QLabel('00:00/00:00', self)
         self.volume_dial = QtWidgets.QDial(self)
         self.volume_dial.setFixedSize(50, 50)
-        self.playlist_widget = QtWidgets.QTableWidget(0, 3, self)
-        self.playlist_widget.setHorizontalHeaderLabels(('Artist', 'Title', 'Duration'))
+        self.playlist_widget = QtWidgets.QTableWidget(0, 4, self)
+        self.playlist_widget.setHorizontalHeaderLabels(('Index', 'Artist', 'Title', 'Duration'))
         self.playlist_widget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.playlist_widget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.playlist_widget.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         self.playlist_widget.horizontalHeader().setSortIndicator(0, QtCore.Qt.AscendingOrder)
         self.playlist_widget.horizontalHeader().sectionClicked.connect(self.on_sort_ended)
+        self.playlist_widget.horizontalHeader().setHighlightSections(False)
+        self.playlist_widget.horizontalHeader().setStretchLastSection(True)
+        self.playlist_widget.horizontalHeader().setStyleSheet(HEADER_STYLE)
+        self.playlist_widget.verticalHeader().hide()
+        self.playlist_widget.setColumnWidth(0, 50)
+        self.playlist_widget.setColumnWidth(1, 150)
+        self.playlist_widget.setColumnWidth(2, 250)
         self.playlist_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.playlist_widget.customContextMenuRequested.connect(self.on_request_context_menu)
         self.playlist_widget.setFrameShape(QtWidgets.QFrame.NoFrame)
@@ -546,7 +555,7 @@ class PlayerWindow(QtWidgets.QWidget):
         self.lyric_wrapper = QtWidgets.QScrollArea(self)
         self.lyric_label = MyQLabel('<center>Hello, World!</center>')
         font = self.lyric_label.font()
-        font.setPointSize(14)
+        font.setPointSize(18)
         self.lyric_label.setFont(font)
         self.lyric_wrapper.setWidget(self.lyric_label)
         self.lyric_wrapper.setWidgetResizable(True)
@@ -557,6 +566,7 @@ class PlayerWindow(QtWidgets.QWidget):
         content_layout = QtWidgets.QSplitter()
         content_layout.addWidget(self.playlist_widget)
         content_layout.addWidget(self.lyric_wrapper)
+        content_layout.setSizes([1, 1])
 
         controller_layout = QtWidgets.QHBoxLayout()
         controller_layout.setSpacing(5)
@@ -653,21 +663,15 @@ class PlayerWindow(QtWidgets.QWidget):
         self.init_progress_dialog()
 
 
-WIN10_STYLE = """
+HEADER_STYLE = """
 QHeaderView::section {
     border-top:0px solid #D8D8D8;
-    border-left:0px solid #D8D8D8;
-    border-right:1px solid #D8D8D8;
+    border-left:1px solid #D8D8D8;
+    border-right:0px solid #D8D8D8;
     border-bottom: 1px solid #D8D8D8;
     background-color:white;
-    padding:4px;
-}
-QTableCornerButton::section {
-    border-top:0px solid #D8D8D8;
-    border-left:0px solid #D8D8D8;
-    border-right:1px solid #D8D8D8;
-    border-bottom: 1px solid #D8D8D8;
-    background-color:white;
+    padding:2px;
+    font-weight: light;
 }
 """.strip()
 
@@ -680,7 +684,6 @@ def main():
     palette = QtGui.QPalette()
     palette.setColor(QtGui.QPalette.Window, QtGui.QColor.fromRgb(255, 255, 255))
     app.setPalette(palette)
-    QtCore.QSysInfo.windowsVersion() == QtCore.QSysInfo.WV_WINDOWS10 and app.setStyleSheet(WIN10_STYLE)
     window = PlayerWindow()
     window.show()
     app.exec_()
