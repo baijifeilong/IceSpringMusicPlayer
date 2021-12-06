@@ -5,7 +5,13 @@ from pathlib import Path
 from typing import Dict
 
 import colorlog
-from PySide2 import QtWidgets, QtCore, QtGui
+from PySide2 import QtWidgets, QtCore, QtGui, QtMultimedia
+
+
+class MySlider(QtWidgets.QSlider):
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        event.button() == QtCore.Qt.LeftButton and self.setValue(self.minimum() + (self.maximum() - self.minimum()) * event.x() // self.width())
+        super().mousePressEvent(event)
 
 
 def onPlaylistTableDoubleClicked(modelIndex: QtCore.QModelIndex):
@@ -16,6 +22,8 @@ def onPlaylistTableDoubleClicked(modelIndex: QtCore.QModelIndex):
     lyricsText = lyricsPath.read_text()
     lyricDict = parseLyrics(lyricsText)
     lyricsLabel.setText("\n".join(lyricDict.values()))
+    player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(str(musicPath))))
+    player.play()
 
 
 def parseLyrics(lyricsText: str) -> Dict[int, str]:
@@ -87,10 +95,15 @@ mainSplitter.setSizes([1, 1])
 
 playButton = QtWidgets.QPushButton("Play", mainWidget)
 stopButton = QtWidgets.QPushButton("Stop", mainWidget)
-progressSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal, mainWidget)
+progressSlider = MySlider(QtCore.Qt.Horizontal, mainWidget)
+progressSlider.valueChanged.connect(lambda x: [player.blockSignals(True), player.setPosition(x), player.blockSignals(False)])
 controlsLayout.addWidget(playButton)
 controlsLayout.addWidget(stopButton)
 controlsLayout.addWidget(progressSlider)
+
+player = QtMultimedia.QMediaPlayer(app)
+player.durationChanged.connect(progressSlider.setMaximum)
+player.positionChanged.connect(lambda x: [progressSlider.blockSignals(True), progressSlider.setValue(x), progressSlider.blockSignals(False)])
 
 for index, path in enumerate(list(Path("~/Music").expanduser().glob("**/*.mp3"))[:20]):
     parts = [x.strip() for x in path.with_suffix("").name.rsplit("-", maxsplit=1)]
