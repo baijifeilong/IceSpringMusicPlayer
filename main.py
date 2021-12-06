@@ -1,7 +1,10 @@
 # Created by BaiJiFeiLong@gmail.com at 2021/12/6 12:52
-
+import logging
+import re
 from pathlib import Path
+from typing import Dict
 
+import colorlog
 from PySide2 import QtWidgets, QtCore, QtGui
 
 
@@ -11,9 +14,40 @@ def onPlaylistTableDoubleClicked(modelIndex: QtCore.QModelIndex):
     musicPath: Path = indexCell.data(QtCore.Qt.UserRole)
     lyricsPath = musicPath.with_suffix(".lrc")
     lyricsText = lyricsPath.read_text()
-    print(lyricsText)
-    lyricsLabel.setText(lyricsText)
+    lyricDict = parseLyrics(lyricsText)
+    lyricsLabel.setText("\n".join(lyricDict.values()))
 
+
+def parseLyrics(lyricsText: str) -> Dict[int, str]:
+    logging.info("Parsing lyrics %s...", lyricsText[:50].replace("\n", r"\n"))
+    lyricRegex = re.compile(r"^((?:\[\d+:[\d.]+])+)(.*)$")
+    lyricDict: Dict[int, str] = dict()
+    lyricLines = [x.strip() for x in lyricsText.splitlines() if x.strip()]
+    for index, line in enumerate(lyricLines):
+        logging.debug("[%02d/%02d] Lyric line: %s", index + 1, len(lyricLines), line)
+        match = lyricRegex.match(line.strip())
+        if not match:
+            logging.debug("Not valid lyric")
+            continue
+        timespans, content = [x.strip() for x in match.groups()]
+        if not content:
+            logging.debug("Lyric is empty")
+            continue
+        for timespan in timespans.replace("[", " ").replace("]", " ").split():
+            logging.debug("Parsed lyric: %s => %s", timespan, content)
+            minutes, seconds = [float(x) for x in timespan.split(":")]
+            millis = int(minutes * 60000 + seconds * 1000)
+            while millis in lyricDict:
+                millis += 1
+            lyricDict[millis] = content
+    logging.info("Total parsed lyric items: %d", len(lyricDict))
+    return dict(sorted(lyricDict.items()))
+
+
+consolePattern = "%(log_color)s%(asctime)s %(levelname)8s %(name)-10s %(message)s"
+logging.getLogger().addHandler(logging.StreamHandler())
+logging.getLogger().handlers[-1].setFormatter(colorlog.ColoredFormatter(consolePattern))
+logging.getLogger().setLevel(logging.DEBUG)
 
 app = QtWidgets.QApplication()
 app.setApplicationName("Ice Spring Music Player")
