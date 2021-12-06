@@ -84,29 +84,29 @@ def parseLyric(text: str):
         match = regex.match(line)
         if not match:
             continue
-        time_part = match.groups()[0]
-        lyric_part = match.groups()[2].strip()
-        for i in range(0, len(time_part), 10):
-            this_time = time_part[i:i + 10]
-            minutes, seconds = this_time[1:-1].split(':')
+        timePart = match.groups()[0]
+        lyricPart = match.groups()[2].strip()
+        for i in range(0, len(timePart), 10):
+            thisTime = timePart[i:i + 10]
+            minutes, seconds = thisTime[1:-1].split(':')
             milliseconds = int((int(minutes) * 60 + float(seconds)) * 1000)
-            lyric[milliseconds] = lyric_part
+            lyric[milliseconds] = lyricPart
     return lyric
 
 
 class LoadPlaylistTask(QtCore.QThread):
-    music_found_signal = QtCore.Signal(tuple)
-    musics_found_signal = QtCore.Signal(list)
+    musicFoundSignal = QtCore.Signal(tuple)
+    musicsFoundSignal = QtCore.Signal(list)
 
     def __init__(self) -> None:
         super().__init__()
-        self.music_files: List[pathlib.Path] = list()
+        self.musicFiles: List[pathlib.Path] = list()
 
     def run(self) -> None:
         print("Loading playlist...")
-        count = len(self.music_files)
+        count = len(self.musicFiles)
         musics = list()
-        for index, f in enumerate(self.music_files):
+        for index, f in enumerate(self.musicFiles):
             artist, title = 'Unknown', 'Unknown'
             if '-' in f.stem:
                 artist, title = f.stem.rsplit('-', maxsplit=1)
@@ -114,14 +114,14 @@ class LoadPlaylistTask(QtCore.QThread):
             artist = file.tags.get('ARTIST', [artist])[0]
             title = file.tags.get('TITLE', [title])[0]
             duration = file.length * 1000
-            music_entry = MusicEntry(path=f, artist=artist, title=title, duration=duration)
+            musicEntry = MusicEntry(path=f, artist=artist, title=title, duration=duration)
             time.sleep(0.0001)
-            musics.append((music_entry, count, index + 1))
+            musics.append((musicEntry, count, index + 1))
             if len(musics) == 10:
-                self.musics_found_signal.emit(musics)
+                self.musicsFoundSignal.emit(musics)
                 musics = list()
         if len(musics) > 0:
-            self.musics_found_signal.emit(musics)
+            self.musicsFoundSignal.emit(musics)
 
 
 class MyQSlider(QtWidgets.QSlider):
@@ -141,11 +141,11 @@ class MyQLabel(QtWidgets.QLabel):
 
 
 class MyPlaylist(QtCore.QObject):
-    current_index_changed = QtCore.Signal(int)
-    volume_changed = QtCore.Signal(int)
-    playing_changed = QtCore.Signal(bool)
-    position_changed = QtCore.Signal(int)
-    duration_changed = QtCore.Signal(int)
+    currentIndexChanged = QtCore.Signal(int)
+    volumeChanged = QtCore.Signal(int)
+    playingChanged = QtCore.Signal(bool)
+    positionChanged = QtCore.Signal(int)
+    durationChanged = QtCore.Signal(int)
 
     class PlaybackMode(Enum):
         LOOP = 1
@@ -153,131 +153,125 @@ class MyPlaylist(QtCore.QObject):
 
     def __init__(self) -> None:
         super().__init__()
-        self._player = QtMultimedia.QMediaPlayer()
-        self._playlist = QtMultimedia.QMediaPlaylist()
-        self._musics: List[MusicEntry] = list()
-        self._current_index = -1
-        self._playback_mode = MyPlaylist.PlaybackMode.LOOP
-        self._playing = False
-        self._player.positionChanged.connect(self.position_changed.emit)
-        self._player.durationChanged.connect(self.duration_changed.emit)
-        self._player.stateChanged.connect(self._on_player_state_changed)
-        self._history: Dict[int, int] = dict()
-        self._history_index = -1
+        self.player = QtMultimedia.QMediaPlayer()
+        self.playlist = QtMultimedia.QMediaPlaylist()
+        self.musics: List[MusicEntry] = list()
+        self.currentIndex = -1
+        self.playbackMode = MyPlaylist.PlaybackMode.LOOP
+        self.playing = False
+        self.player.positionChanged.connect(self.positionChanged.emit)
+        self.player.durationChanged.connect(self.durationChanged.emit)
+        self.player.stateChanged.connect(self.onPlayerStateChanged)
+        self.history: Dict[int, int] = dict()
+        self.historyIndex = -1
 
-    def _on_player_state_changed(self, state):
+    def onPlayerStateChanged(self, state):
         print("STATE CHANGED")
         if state == QtMultimedia.QMediaPlayer.StoppedState:
             print("STOPPED")
             self.next()
             self.play()
 
-    def add_music(self, music: MusicEntry):
-        self._musics.append(music)
+    def addMusic(self, music: MusicEntry):
+        self.musics.append(music)
 
-    def remove_music(self, index):
-        del self._musics[index]
+    def removeMusic(self, index):
+        del self.musics[index]
 
     def clear(self):
-        self._musics.clear()
+        self.musics.clear()
 
     def music(self, index):
-        return self._musics[index]
-
-    def musics(self):
-        return self._musics
+        return self.musics[index]
 
     def play(self):
-        if self.music_count() == 0:
+        if self.musicCount() == 0:
             return
-        if self._current_index == -1:
-            self.set_current_index(0)
-        self._player.play()
-        self._playing = True
-        self.playing_changed.emit(self._playing)
+        if self.currentIndex == -1:
+            self.setCurrentIndex(0)
+        self.player.play()
+        self.playing = True
+        self.playingChanged.emit(self.playing)
 
     def pause(self):
-        self._player.pause()
-        self._playing = False
-        self.playing_changed.emit(self._playing)
+        self.player.pause()
+        self.playing = False
+        self.playingChanged.emit(self.playing)
 
     def previous(self):
-        if self.music_count() == 0:
-            self.set_current_index(-1)
-        elif self._playback_mode == self.PlaybackMode.LOOP:
-            self.set_current_index(self._current_index - 1 if self._current_index > 0 else self.music_count() - 1)
+        if self.musicCount() == 0:
+            self.setCurrentIndex(-1)
+        elif self.playbackMode == self.PlaybackMode.LOOP:
+            self.setCurrentIndex(self.currentIndex - 1 if self.currentIndex > 0 else self.musicCount() - 1)
         else:
-            self._history_index -= 1
-            if (self._history_index not in self._history) or self._history[self._history_index] >= self.music_count():
-                self._history[self._history_index] = self._next_random_index()
-            self.set_current_index(self._history[self._history_index])
+            self.historyIndex -= 1
+            if (self.historyIndex not in self.history) or self.history[self.historyIndex] >= self.musicCount():
+                self.history[self.historyIndex] = self.nextRandomIndex()
+            self.setCurrentIndex(self.history[self.historyIndex])
 
     def next(self):
-        if self.music_count() == 0:
-            self.set_current_index(-1)
-        elif self._playback_mode == self.PlaybackMode.LOOP:
-            self.set_current_index(self._current_index + 1 if self._current_index < self.music_count() - 1 else 0)
+        if self.musicCount() == 0:
+            self.setCurrentIndex(-1)
+        elif self.playbackMode == self.PlaybackMode.LOOP:
+            self.setCurrentIndex(self.currentIndex + 1 if self.currentIndex < self.musicCount() - 1 else 0)
         else:
-            self._history_index += 1
-            if (self._history_index not in self._history) or self._history[self._history_index] >= self.music_count():
-                self._history[self._history_index] = self._next_random_index()
-            self.set_current_index(self._history[self._history_index])
+            self.historyIndex += 1
+            if (self.historyIndex not in self.history) or self.history[self.historyIndex] >= self.musicCount():
+                self.history[self.historyIndex] = self.nextRandomIndex()
+            self.setCurrentIndex(self.history[self.historyIndex])
 
-    def _next_random_index(self):
-        current_index = self._current_index
-        next_index = random.randint(0, self.music_count() - 1)
-        while self.music_count() > 1 and next_index == current_index:
-            next_index = random.randint(0, self.music_count() - 1)
-        return next_index
+    def nextRandomIndex(self):
+        currentIndex = self.currentIndex
+        nextIndex = random.randint(0, self.musicCount() - 1)
+        while self.musicCount() > 1 and nextIndex == currentIndex:
+            nextIndex = random.randint(0, self.musicCount() - 1)
+        return nextIndex
 
-    def music_count(self):
-        return len(self._musics)
+    def musicCount(self):
+        return len(self.musics)
 
-    def set_current_index(self, index):
-        self._current_index = index
+    def setCurrentIndex(self, index):
+        self.currentIndex = index
         if index > -1:
-            music = self._musics[index]
-            self._player.blockSignals(True)
-            self._player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(str(music.path))))
-            self._player.blockSignals(False)
-            if self._history_index == -1 and len(self._history) == 0:
-                self._history[self._history_index] = index
+            music = self.musics[index]
+            self.player.blockSignals(True)
+            self.player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(str(music.path))))
+            self.player.blockSignals(False)
+            if self.historyIndex == -1 and len(self.history) == 0:
+                self.history[self.historyIndex] = index
         else:
-            self._player.blockSignals(True)
-            self._player.stop()
-            self._player.blockSignals(False)
-        self.current_index_changed.emit(index)
+            self.player.blockSignals(True)
+            self.player.stop()
+            self.player.blockSignals(False)
+        self.currentIndexChanged.emit(index)
 
-    def current_index(self):
-        return self._current_index
+    def getPlaybackMode(self):
+        return self.playbackMode
 
-    def get_playback_mode(self):
-        return self._playback_mode
+    def setPlaybackMode(self, mode):
+        self.playbackMode = mode
 
-    def set_playback_mode(self, mode):
-        self._playback_mode = mode
+    def getVolume(self):
+        return self.player.volume()
 
-    def get_volume(self):
-        return self._player.volume()
+    def setVolume(self, volume):
+        self.player.setVolume(volume)
+        self.volumeChanged.emit(volume)
 
-    def set_volume(self, volume):
-        self._player.setVolume(volume)
-        self.volume_changed.emit(volume)
+    def getPosition(self):
+        return self.player.position()
 
-    def get_position(self):
-        return self._player.position()
+    def setPosition(self, position):
+        self.player.setPosition(position)
 
-    def set_position(self, position):
-        self._player.setPosition(position)
+    def getDuration(self):
+        return self.player.duration()
 
-    def get_duration(self):
-        return self._player.duration()
+    def isPlaying(self):
+        return self.playing
 
-    def is_playing(self):
-        return self._playing
-
-    def index_of(self, music: MusicEntry):
-        return self._musics.index(music)
+    def indexOf(self, music: MusicEntry):
+        return self.musics.index(music)
 
 
 # noinspection PyAttributeOutsideInit
@@ -285,298 +279,298 @@ class PlayerWindow(QtWidgets.QWidget):
 
     def __init__(self):
         super().__init__()
-        self.play_button: QtWidgets.QToolButton
-        self.prev_button: QtWidgets.QToolButton
-        self.next_button: QtWidgets.QToolButton
-        self.playback_mode_button: QtWidgets.QToolButton
-        self.progress_slider: MyQSlider
-        self.progress_label: QtWidgets.QLabel
-        self.volume_dial: QtWidgets.QDial
-        self.playlist_widget: QtWidgets.QTableWidget
-        self.lyric_wrapper: QtWidgets.QScrollArea
-        self.lyric_label: MyQLabel
-        self.progress_dialog: QtWidgets.QProgressDialog
-        self.my_playlist: MyPlaylist = MyPlaylist()
-        self.load_playlist_task = LoadPlaylistTask()
+        self.playButton: QtWidgets.QToolButton
+        self.prevButton: QtWidgets.QToolButton
+        self.nextButton: QtWidgets.QToolButton
+        self.playbackModeButton: QtWidgets.QToolButton
+        self.progressSlider: MyQSlider
+        self.progressLabel: QtWidgets.QLabel
+        self.volumeDial: QtWidgets.QDial
+        self.playlistWidget: QtWidgets.QTableWidget
+        self.lyricWrapper: QtWidgets.QScrollArea
+        self.lyricLabel: MyQLabel
+        self.progressDialog: QtWidgets.QProgressDialog
+        self.myPlaylist: MyPlaylist = MyPlaylist()
+        self.loadPlaylistTask = LoadPlaylistTask()
         self.musics: List[MusicEntry] = list()
         self.lyric: Dict[int, str] = dict()
-        self.prev_lyric_index = -1
+        self.prevLyricIndex = -1
         self.config: Config
-        self.real_row = -1
-        self.mime_db = QtCore.QMimeDatabase()
-        self.setup_layout()
-        self.setup_events()
-        self.setup_player()
+        self.realRow = -1
+        self.mimeDb = QtCore.QMimeDatabase()
+        self.setupLayout()
+        self.setupEvents()
+        self.setupPlayer()
 
-    def generate_tool_button(self, icon_name: str) -> QtWidgets.QToolButton:
+    def generateToolButton(self, iconName: str) -> QtWidgets.QToolButton:
         button = QtWidgets.QToolButton(parent=self)
-        button.setIcon(qtawesome.icon(icon_name))
+        button.setIcon(qtawesome.icon(iconName))
         button.setIconSize(QtCore.QSize(50, 50))
         button.setAutoRaise(True)
         return button
 
     # noinspection DuplicatedCode
-    def setup_events(self):
-        self.load_playlist_task.music_found_signal.connect(self.add_music)
-        self.load_playlist_task.musics_found_signal.connect(self.add_musics)
-        self.play_button.clicked.connect(self.toggle_play)
-        self.prev_button.clicked.connect(self.on_play_previous)
-        self.next_button.clicked.connect(self.on_play_next)
-        self.playback_mode_button.clicked.connect(lambda: self.on_playback_mode_button_clicked())
-        self.progress_slider.valueChanged.connect(self.on_progress_slider_value_changed)
-        self.volume_dial.valueChanged.connect(self.on_volume_dial_value_changed)
-        self.my_playlist.playing_changed.connect(self.on_playing_changed)
-        self.my_playlist.position_changed.connect(self.on_player_position_changed)
-        self.my_playlist.duration_changed.connect(self.on_player_duration_changed)
-        self.my_playlist.current_index_changed.connect(self.on_playlist_current_index_changed)
-        self.playlist_widget.doubleClicked.connect(self.dbl_clicked)
-        self.lyric_label.clicked.connect(self.on_lyric_clicked)
+    def setupEvents(self):
+        self.loadPlaylistTask.musicFoundSignal.connect(self.addMusic)
+        self.loadPlaylistTask.musicsFoundSignal.connect(self.addMusics)
+        self.playButton.clicked.connect(self.togglePlay)
+        self.prevButton.clicked.connect(self.onPlayPrevious)
+        self.nextButton.clicked.connect(self.onPlayNext)
+        self.playbackModeButton.clicked.connect(lambda: self.onPlaybackModeButtonClicked())
+        self.progressSlider.valueChanged.connect(self.onProgressSliderValueChanged)
+        self.volumeDial.valueChanged.connect(self.onVolumeDialValueChange)
+        self.myPlaylist.playingChanged.connect(self.onPlayingChanged)
+        self.myPlaylist.positionChanged.connect(self.onPlayerPositionChanged)
+        self.myPlaylist.durationChanged.connect(self.onPlayerDurationChanged)
+        self.myPlaylist.currentIndexChanged.connect(self.onPlaylistCurrentIndexChanged)
+        self.playlistWidget.doubleClicked.connect(self.dblClicked)
+        self.lyricLabel.clicked.connect(self.onLyricClicked)
 
     # noinspection PyUnresolvedReferences
-    def on_lyric_clicked(self, event: QtGui.QMouseEvent):
+    def onLyricClicked(self, event: QtGui.QMouseEvent):
         if event.button() == QtCore.Qt.LeftButton:
             if self.lyric is None:
                 return
-            loc = self.lyric_label.mapFromGlobal(self.lyric_label.cursor().pos())
-            line = len(self.lyric) * loc.y() // self.lyric_label.height()
+            loc = self.lyricLabel.mapFromGlobal(self.lyricLabel.cursor().pos())
+            line = len(self.lyric) * loc.y() // self.lyricLabel.height()
             print("clicked", line)
             position = sorted(self.lyric.items())[line][0]
-            self.my_playlist.set_position(position)
+            self.myPlaylist.setPosition(position)
 
-    def on_play_next(self):
-        self.my_playlist.next()
-        self.my_playlist.play()
+    def onPlayNext(self):
+        self.myPlaylist.next()
+        self.myPlaylist.play()
 
-    def on_play_previous(self):
-        self.my_playlist.previous()
-        self.my_playlist.play()
+    def onPlayPrevious(self):
+        self.myPlaylist.previous()
+        self.myPlaylist.play()
 
-    def on_volume_dial_value_changed(self, value):
-        self.set_volume(value)
+    def onVolumeDialValueChange(self, value):
+        self.setVolume(value)
         self.config.volume = value
         self.config.persist()
 
-    def set_volume(self, volume):
-        self.volume_dial.blockSignals(True)
-        self.my_playlist.set_volume(volume)
-        self.volume_dial.setValue(volume)
-        self.volume_dial.blockSignals(False)
+    def setVolume(self, volume):
+        self.volumeDial.blockSignals(True)
+        self.myPlaylist.setVolume(volume)
+        self.volumeDial.setValue(volume)
+        self.volumeDial.blockSignals(False)
 
-    def on_playback_mode_button_clicked(self):
-        if self.my_playlist.get_playback_mode() == MyPlaylist.PlaybackMode.RANDOM:
-            self.set_playback_mode(MyPlaylist.PlaybackMode.LOOP)
+    def onPlaybackModeButtonClicked(self):
+        if self.myPlaylist.getPlaybackMode() == MyPlaylist.PlaybackMode.RANDOM:
+            self.setPlaybackMode(MyPlaylist.PlaybackMode.LOOP)
         else:
-            self.set_playback_mode(MyPlaylist.PlaybackMode.RANDOM)
+            self.setPlaybackMode(MyPlaylist.PlaybackMode.RANDOM)
         self.config.persist()
 
-    def set_playback_mode(self, playback_mode: MyPlaylist.PlaybackMode):
-        self.config.playbackMode = playback_mode
-        if playback_mode == MyPlaylist.PlaybackMode.LOOP:
-            self.my_playlist.set_playback_mode(MyPlaylist.PlaybackMode.LOOP)
-            self.playback_mode_button.setIcon(qtawesome.icon("mdi.repeat"))
+    def setPlaybackMode(self, playbackMode: MyPlaylist.PlaybackMode):
+        self.config.playbackMode = playbackMode
+        if playbackMode == MyPlaylist.PlaybackMode.LOOP:
+            self.myPlaylist.setPlaybackMode(MyPlaylist.PlaybackMode.LOOP)
+            self.playbackModeButton.setIcon(qtawesome.icon("mdi.repeat"))
         else:
-            self.my_playlist.set_playback_mode(MyPlaylist.PlaybackMode.RANDOM)
-            self.playback_mode_button.setIcon(qtawesome.icon("mdi.shuffle"))
+            self.myPlaylist.setPlaybackMode(MyPlaylist.PlaybackMode.RANDOM)
+            self.playbackModeButton.setIcon(qtawesome.icon("mdi.shuffle"))
 
-    def on_progress_slider_value_changed(self, value):
-        self.my_playlist.set_position(value * 1000)
+    def onProgressSliderValueChanged(self, value):
+        self.myPlaylist.setPosition(value * 1000)
 
-    def on_playing_changed(self, playing: bool):
+    def onPlayingChanged(self, playing: bool):
         if playing:
-            self.play_button.setIcon(qtawesome.icon("mdi.pause"))
+            self.playButton.setIcon(qtawesome.icon("mdi.pause"))
         else:
-            self.play_button.setIcon(qtawesome.icon("mdi.play"))
+            self.playButton.setIcon(qtawesome.icon("mdi.play"))
 
-    def on_player_position_changed(self, position: int):
+    def onPlayerPositionChanged(self, position: int):
         current = position // 1000
-        total = self.my_playlist.get_duration() // 1000
-        self.progress_label.setText(
+        total = self.myPlaylist.getDuration() // 1000
+        self.progressLabel.setText(
             '{:02d}:{:02d}/{:02d}:{:02d}'.format(current // 60, current % 60, total // 60, total % 60))
-        self.progress_slider.blockSignals(True)
-        self.progress_slider.setValue(current)
-        self.progress_slider.blockSignals(False)
-        self.refresh_lyric()
+        self.progressSlider.blockSignals(True)
+        self.progressSlider.setValue(current)
+        self.progressSlider.blockSignals(False)
+        self.refreshLyric()
 
-    def on_player_duration_changed(self, duration: int):
+    def onPlayerDurationChanged(self, duration: int):
         total = duration // 1000
-        self.progress_slider.setMaximum(total)
+        self.progressSlider.setMaximum(total)
 
-    def on_playlist_current_index_changed(self, index):
+    def onPlaylistCurrentIndexChanged(self, index):
         print("Playlist index changed: {}".format(index))
         self.config.currentIndex = index
         self.config.persist()
         if index == -1:
             self.lyric = None
-            self.lyric_label.setText("<center><em>No music</em></center>")
+            self.lyricLabel.setText("<center><em>No music</em></center>")
             self.setWindowTitle('')
             return
-        self.progress_slider.setValue(0)
-        self.playlist_widget.selectRow(index)
-        self.prev_lyric_index = -1
-        music = self.my_playlist.music(index)
+        self.progressSlider.setValue(0)
+        self.playlistWidget.selectRow(index)
+        self.prevLyricIndex = -1
+        music = self.myPlaylist.music(index)
         self.setWindowTitle('{} - {}'.format(music.artist, music.title))
-        music_file = music.path
-        lyric_file: pathlib.PosixPath = music_file.parent / (music_file.stem + '.lrc')
-        if lyric_file.exists():
-            bys = lyric_file.read_bytes()
+        musicFile = music.path
+        lyricFile: pathlib.PosixPath = musicFile.parent / (musicFile.stem + '.lrc')
+        if lyricFile.exists():
+            bys = lyricFile.read_bytes()
             encoding = chardet.detect(bys)['encoding']
             try:
-                lyric_text = str(bys, encoding='GB18030')
+                lyricText = str(bys, encoding='GB18030')
             except UnicodeDecodeError:
-                lyric_text = str(bys, encoding=encoding)
-            self.lyric = parseLyric(lyric_text)
+                lyricText = str(bys, encoding=encoding)
+            self.lyric = parseLyric(lyricText)
             if len(self.lyric) > 0:
-                self.refresh_lyric()
+                self.refreshLyric()
             else:
                 self.lyric = None
         else:
             self.lyric = None
             print("Lyric file not found.")
 
-    def refresh_lyric(self):
-        hbar = self.lyric_wrapper.horizontalScrollBar()
+    def refreshLyric(self):
+        hbar = self.lyricWrapper.horizontalScrollBar()
         hbar.hide()
-        self.lyric_wrapper.horizontalScrollBar().setValue((hbar.maximum() + hbar.minimum()) // 2)
+        self.lyricWrapper.horizontalScrollBar().setValue((hbar.maximum() + hbar.minimum()) // 2)
         if self.lyric is None:
-            self.lyric_label.setText("<center><em>Lyric not found or not supported</em></center>")
+            self.lyricLabel.setText("<center><em>Lyric not found or not supported</em></center>")
             return
-        current_lyric_index = self.calc_current_lyric_index()
-        if current_lyric_index == self.prev_lyric_index:
+        currentLyricIndex = self.calcCurrentLyricIndex()
+        if currentLyricIndex == self.prevLyricIndex:
             return
-        self.prev_lyric_index = current_lyric_index
+        self.prevLyricIndex = currentLyricIndex
         text = ''
         for i, (k, v) in enumerate(sorted(self.lyric.items())):
-            if i == current_lyric_index:
+            if i == currentLyricIndex:
                 text += '<center><b>{}</b></center>'.format(v)
             else:
                 text += '<center>{}</center>'.format(v)
-        self.lyric_label.setText(text)
-        self.lyric_wrapper.verticalScrollBar().setValue(
-            self.lyric_label.height() * current_lyric_index // len(self.lyric)
-            - self.lyric_wrapper.height() // 2
+        self.lyricLabel.setText(text)
+        self.lyricWrapper.verticalScrollBar().setValue(
+            self.lyricLabel.height() * currentLyricIndex // len(self.lyric)
+            - self.lyricWrapper.height() // 2
         )
-        self.lyric_wrapper.horizontalScrollBar().setValue((hbar.maximum() + hbar.minimum()) // 2)
+        self.lyricWrapper.horizontalScrollBar().setValue((hbar.maximum() + hbar.minimum()) // 2)
 
     # noinspection PyTypeChecker
-    def calc_current_lyric_index(self):
+    def calcCurrentLyricIndex(self):
         entries: List[Tuple[int, str]] = sorted(self.lyric.items())
-        current_position = self.my_playlist.get_position()
-        if current_position < entries[0][0]:
+        currentPosition = self.myPlaylist.getPosition()
+        if currentPosition < entries[0][0]:
             return 0
         for i in range(len(self.lyric) - 1):
             entry = entries[i]
-            next_entry = entries[i + 1]
-            if entry[0] <= current_position < next_entry[0]:
+            nextEntry = entries[i + 1]
+            if entry[0] <= currentPosition < nextEntry[0]:
                 return i
         return len(self.lyric) - 1
 
-    def toggle_play(self):
-        if self.my_playlist.is_playing():
-            self.my_playlist.pause()
+    def togglePlay(self):
+        if self.myPlaylist.isPlaying():
+            self.myPlaylist.pause()
         else:
-            self.my_playlist.play()
+            self.myPlaylist.play()
 
-    def setup_player(self):
+    def setupPlayer(self):
         self.config = Config.load()
-        self.set_playback_mode(self.config.playbackMode)
-        self.set_volume(self.config.volume)
-        sort_by = dict(ARTIST=0, TITLE=1, DURATION=2)[self.config.sortBy]
-        sort_order = QtCore.Qt.AscendingOrder if self.config.sortOrder == 'ASCENDING' else QtCore.Qt.DescendingOrder
-        self.playlist_widget.horizontalHeader().setSortIndicator(sort_by, sort_order)
+        self.setPlaybackMode(self.config.playbackMode)
+        self.setVolume(self.config.volume)
+        sortBy = dict(ARTIST=0, TITLE=1, DURATION=2)[self.config.sortBy]
+        sortOrder = QtCore.Qt.AscendingOrder if self.config.sortOrder == 'ASCENDING' else QtCore.Qt.DescendingOrder
+        self.playlistWidget.horizontalHeader().setSortIndicator(sortBy, sortOrder)
         for index, music in enumerate(self.config.playlist):
-            self.add_music((music, len(self.config.playlist), index + 1))
+            self.addMusic((music, len(self.config.playlist), index + 1))
         if len(self.config.playlist) > 0 and self.config.currentIndex >= 0:
-            self.my_playlist.set_current_index(self.config.currentIndex)
+            self.myPlaylist.setCurrentIndex(self.config.currentIndex)
 
-    def add_musics(self, musics):
+    def addMusics(self, musics):
         for music in musics:
-            self.add_music(music)
+            self.addMusic(music)
 
-    def add_music(self, entry):
+    def addMusic(self, entry):
         music: MusicEntry = entry[0]
         total: int = entry[1]
         current: int = entry[2]
-        self.progress_dialog.show()
+        self.progressDialog.show()
         if total < 300 or current % 3 == 0:
-            self.progress_dialog.setMaximum(total)
-            self.progress_dialog.setValue(current)
-            self.progress_dialog.setLabelText(music.path.stem + music.path.suffix)
-        row = self.playlist_widget.rowCount()
-        self.playlist_widget.setSortingEnabled(False)
-        self.playlist_widget.insertRow(row)
-        self.playlist_widget.setItem(row, 0, QtWidgets.QTableWidgetItem(str(row + 1)))
-        self.playlist_widget.setItem(row, 1, QtWidgets.QTableWidgetItem(music.artist))
-        self.playlist_widget.setItem(row, 2, QtWidgets.QTableWidgetItem(music.title))
-        self.playlist_widget.setItem(row, 3, QtWidgets.QTableWidgetItem(
+            self.progressDialog.setMaximum(total)
+            self.progressDialog.setValue(current)
+            self.progressDialog.setLabelText(music.path.stem + music.path.suffix)
+        row = self.playlistWidget.rowCount()
+        self.playlistWidget.setSortingEnabled(False)
+        self.playlistWidget.insertRow(row)
+        self.playlistWidget.setItem(row, 0, QtWidgets.QTableWidgetItem(str(row + 1)))
+        self.playlistWidget.setItem(row, 1, QtWidgets.QTableWidgetItem(music.artist))
+        self.playlistWidget.setItem(row, 2, QtWidgets.QTableWidgetItem(music.title))
+        self.playlistWidget.setItem(row, 3, QtWidgets.QTableWidgetItem(
             '{:02d}:{:02d}'.format(music.duration // 60000, music.duration // 1000 % 60)))
-        self.playlist_widget.item(row, 0).setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        self.playlist_widget.item(row, 3).setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        self.playlist_widget.item(row, 0).setData(QtCore.Qt.UserRole, music)
-        self.my_playlist.add_music(music)
+        self.playlistWidget.item(row, 0).setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.playlistWidget.item(row, 3).setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.playlistWidget.item(row, 0).setData(QtCore.Qt.UserRole, music)
+        self.myPlaylist.addMusic(music)
         if current == total:
-            self.progress_dialog.setValue(total)
-            self.playlist_widget.scrollToBottom()
-            self.playlist_widget.setSortingEnabled(True)
-            last_music: MusicEntry = self.playlist_widget.item(current - 1, 0).data(QtCore.Qt.UserRole)
-            print("current: {}, last: {}".format(music.title, last_music.title))
-            self.on_sort_ended()
+            self.progressDialog.setValue(total)
+            self.playlistWidget.scrollToBottom()
+            self.playlistWidget.setSortingEnabled(True)
+            lastMusic: MusicEntry = self.playlistWidget.item(current - 1, 0).data(QtCore.Qt.UserRole)
+            print("current: {}, last: {}".format(music.title, lastMusic.title))
+            self.onSortEnded()
 
-    def dbl_clicked(self, item: QtCore.QModelIndex):
-        self.my_playlist.set_current_index(item.row())
-        self.my_playlist.play()
+    def dblClicked(self, item: QtCore.QModelIndex):
+        self.myPlaylist.setCurrentIndex(item.row())
+        self.myPlaylist.play()
 
-    def setup_layout(self):
-        self.play_button = self.generate_tool_button('mdi.play')
-        self.prev_button = self.generate_tool_button('mdi.step-backward')
-        self.next_button = self.generate_tool_button('mdi.step-forward')
-        self.playback_mode_button = self.generate_tool_button('mdi.shuffle')
-        self.progress_slider = MyQSlider(QtCore.Qt.Horizontal, self)
-        self.progress_label = QtWidgets.QLabel('00:00/00:00', self)
-        self.volume_dial = QtWidgets.QDial(self)
-        self.volume_dial.setFixedSize(50, 50)
-        self.playlist_widget = QtWidgets.QTableWidget(0, 4, self)
-        self.playlist_widget.setHorizontalHeaderLabels(('Index', 'Artist', 'Title', 'Duration'))
-        self.playlist_widget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.playlist_widget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.playlist_widget.horizontalHeader().setSortIndicator(0, QtCore.Qt.AscendingOrder)
-        self.playlist_widget.horizontalHeader().sectionClicked.connect(self.on_sort_ended)
-        self.playlist_widget.horizontalHeader().setHighlightSections(False)
-        self.playlist_widget.horizontalHeader().setStretchLastSection(True)
-        self.playlist_widget.horizontalHeader().setStyleSheet(HEADER_STYLE)
-        self.playlist_widget.verticalHeader().hide()
-        self.playlist_widget.setColumnWidth(0, 50)
-        self.playlist_widget.setColumnWidth(1, 150)
-        self.playlist_widget.setColumnWidth(2, 250)
-        self.playlist_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self.playlist_widget.customContextMenuRequested.connect(self.on_request_context_menu)
-        self.playlist_widget.setFrameShape(QtWidgets.QFrame.NoFrame)
-        self.playlist_widget.setShowGrid(False)
-        self.playlist_widget.setAlternatingRowColors(True)
-        self.lyric_wrapper = QtWidgets.QScrollArea(self)
-        self.lyric_label = MyQLabel('<center>Hello, World!</center>')
-        font = self.lyric_label.font()
+    def setupLayout(self):
+        self.playButton = self.generateToolButton('mdi.play')
+        self.prevButton = self.generateToolButton('mdi.step-backward')
+        self.nextButton = self.generateToolButton('mdi.step-forward')
+        self.playbackModeButton = self.generateToolButton('mdi.shuffle')
+        self.progressSlider = MyQSlider(QtCore.Qt.Horizontal, self)
+        self.progressLabel = QtWidgets.QLabel('00:00/00:00', self)
+        self.volumeDial = QtWidgets.QDial(self)
+        self.volumeDial.setFixedSize(50, 50)
+        self.playlistWidget = QtWidgets.QTableWidget(0, 4, self)
+        self.playlistWidget.setHorizontalHeaderLabels(('Index', 'Artist', 'Title', 'Duration'))
+        self.playlistWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.playlistWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.playlistWidget.horizontalHeader().setSortIndicator(0, QtCore.Qt.AscendingOrder)
+        self.playlistWidget.horizontalHeader().sectionClicked.connect(self.onSortEnded)
+        self.playlistWidget.horizontalHeader().setHighlightSections(False)
+        self.playlistWidget.horizontalHeader().setStretchLastSection(True)
+        self.playlistWidget.horizontalHeader().setStyleSheet(HEADER_STYLE)
+        self.playlistWidget.verticalHeader().hide()
+        self.playlistWidget.setColumnWidth(0, 50)
+        self.playlistWidget.setColumnWidth(1, 150)
+        self.playlistWidget.setColumnWidth(2, 250)
+        self.playlistWidget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.playlistWidget.customContextMenuRequested.connect(self.onRequestContextMenu)
+        self.playlistWidget.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.playlistWidget.setShowGrid(False)
+        self.playlistWidget.setAlternatingRowColors(True)
+        self.lyricWrapper = QtWidgets.QScrollArea(self)
+        self.lyricLabel = MyQLabel('<center>Hello, World!</center>')
+        font = self.lyricLabel.font()
         font.setPointSize(18)
-        self.lyric_label.setFont(font)
-        self.lyric_wrapper.setWidget(self.lyric_label)
-        self.lyric_wrapper.setWidgetResizable(True)
-        self.lyric_wrapper.verticalScrollBar().hide()
-        self.lyric_wrapper.setFrameShape(QtWidgets.QFrame.NoFrame)
-        self.init_progress_dialog()
+        self.lyricLabel.setFont(font)
+        self.lyricWrapper.setWidget(self.lyricLabel)
+        self.lyricWrapper.setWidgetResizable(True)
+        self.lyricWrapper.verticalScrollBar().hide()
+        self.lyricWrapper.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.initProgressDialog()
 
-        content_layout = QtWidgets.QSplitter()
-        content_layout.addWidget(self.playlist_widget)
-        content_layout.addWidget(self.lyric_wrapper)
-        content_layout.setSizes([1, 1])
+        contentLayout = QtWidgets.QSplitter()
+        contentLayout.addWidget(self.playlistWidget)
+        contentLayout.addWidget(self.lyricWrapper)
+        contentLayout.setSizes([1, 1])
 
-        controller_layout = QtWidgets.QHBoxLayout()
-        controller_layout.setSpacing(5)
-        controller_layout.addWidget(self.play_button)
-        controller_layout.addWidget(self.prev_button)
-        controller_layout.addWidget(self.next_button)
-        controller_layout.addWidget(self.progress_slider)
-        controller_layout.addWidget(self.progress_label)
-        controller_layout.addWidget(self.playback_mode_button)
-        controller_layout.addWidget(self.volume_dial)
+        controllerLayout = QtWidgets.QHBoxLayout()
+        controllerLayout.setSpacing(5)
+        controllerLayout.addWidget(self.playButton)
+        controllerLayout.addWidget(self.prevButton)
+        controllerLayout.addWidget(self.nextButton)
+        controllerLayout.addWidget(self.progressSlider)
+        controllerLayout.addWidget(self.progressLabel)
+        controllerLayout.addWidget(self.playbackModeButton)
+        controllerLayout.addWidget(self.volumeDial)
 
         line = QtWidgets.QFrame()
         line.setFrameShape(QtWidgets.QFrame.HLine)
@@ -587,68 +581,68 @@ class PlayerWindow(QtWidgets.QWidget):
         line2.setFrameShadow(QtWidgets.QFrame.Plain)
         line2.setStyleSheet("color: #D8D8D8")
 
-        root_layout = QtWidgets.QVBoxLayout(self)
-        root_layout.setSpacing(0)
-        root_layout.addWidget(line)
-        root_layout.addWidget(content_layout)
-        root_layout.addWidget(line2)
-        root_layout.addLayout(controller_layout)
-        root_layout.setMargin(0)
-        self.setLayout(root_layout)
+        rootLayout = QtWidgets.QVBoxLayout(self)
+        rootLayout.setSpacing(0)
+        rootLayout.addWidget(line)
+        rootLayout.addWidget(contentLayout)
+        rootLayout.addWidget(line2)
+        rootLayout.addLayout(controllerLayout)
+        rootLayout.setMargin(0)
+        self.setLayout(rootLayout)
         self.resize(1280, 720)
         self.setAcceptDrops(True)
 
-    def on_request_context_menu(self):
+    def onRequestContextMenu(self):
         print("Requesting...")
         menu = QtWidgets.QMenu()
         menu.addAction("Delete")
-        menu.triggered.connect(self.remove_music)
+        menu.triggered.connect(self.removeMusic)
         menu.exec_(QtGui.QCursor.pos())
         menu.clear()
 
-    def remove_music(self):
-        current_index = self.my_playlist.current_index()
-        playing = self.my_playlist.is_playing()
-        indices = sorted(list(set([x.row() for x in self.playlist_widget.selectedIndexes()])), reverse=True)
+    def removeMusic(self):
+        currentIndex = self.myPlaylist.currentIndex
+        playing = self.myPlaylist.isPlaying()
+        indices = sorted(list(set([x.row() for x in self.playlistWidget.selectedIndexes()])), reverse=True)
         for index in indices:
-            self.my_playlist.remove_music(index)
-            self.playlist_widget.removeRow(index)
-            print("Removing index={}, currentIndex={}".format(index, current_index))
+            self.myPlaylist.removeMusic(index)
+            self.playlistWidget.removeRow(index)
+            print("Removing index={}, currentIndex={}".format(index, currentIndex))
         self.config.persist()
-        if current_index in indices:
-            if self.my_playlist.music_count() > 0:
-                self.my_playlist.next()
+        if currentIndex in indices:
+            if self.myPlaylist.musicCount() > 0:
+                self.myPlaylist.next()
             else:
-                self.my_playlist.set_current_index(-1)
+                self.myPlaylist.setCurrentIndex(-1)
             if playing:
-                self.my_playlist.play()
+                self.myPlaylist.play()
 
-    def init_progress_dialog(self):
-        self.progress_dialog = QtWidgets.QProgressDialog(self)
+    def initProgressDialog(self):
+        self.progressDialog = QtWidgets.QProgressDialog(self)
         # noinspection PyTypeChecker
-        self.progress_dialog.setCancelButton(None)
-        self.progress_dialog.setWindowTitle("Loading music")
-        self.progress_dialog.setFixedSize(444, 150)
-        self.progress_dialog.setModal(True)
-        self.progress_dialog.setValue(100)
+        self.progressDialog.setCancelButton(None)
+        self.progressDialog.setWindowTitle("Loading music")
+        self.progressDialog.setFixedSize(444, 150)
+        self.progressDialog.setModal(True)
+        self.progressDialog.setValue(100)
 
-    def on_sort_ended(self):
-        self.my_playlist.clear()
-        for row in range(self.playlist_widget.rowCount()):
-            music: MusicEntry = self.playlist_widget.item(row, 0).data(QtCore.Qt.UserRole)
-            self.my_playlist.add_music(music)
-        self.config.playlist = self.my_playlist.musics()
+    def onSortEnded(self):
+        self.myPlaylist.clear()
+        for row in range(self.playlistWidget.rowCount()):
+            music: MusicEntry = self.playlistWidget.item(row, 0).data(QtCore.Qt.UserRole)
+            self.myPlaylist.addMusic(music)
+        self.config.playlist = self.myPlaylist.musics
         self.config.sortBy = {0: 'ARTIST', 1: 'TITLE', 2: 'DURATION'}[
-            self.playlist_widget.horizontalHeader().sortIndicatorSection()]
+            self.playlistWidget.horizontalHeader().sortIndicatorSection()]
         self.config.sortOrder = 'ASCENDING' if \
-            self.playlist_widget.horizontalHeader().sortIndicatorOrder() == QtCore.Qt.AscendingOrder else 'DESCENDING'
+            self.playlistWidget.horizontalHeader().sortIndicatorOrder() == QtCore.Qt.AscendingOrder else 'DESCENDING'
         self.config.persist()
 
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
         super().resizeEvent(a0)
         if self.lyric:
-            self.prev_lyric_index = -1
-            self.refresh_lyric()
+            self.prevLyricIndex = -1
+            self.refreshLyric()
 
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
         if event.mimeData().hasUrls():
@@ -657,10 +651,10 @@ class PlayerWindow(QtWidgets.QWidget):
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
         urls: List[QtCore.QUrl] = event.mimeData().urls()
         paths = [pathlib.Path(x.toLocalFile()) for x in urls if
-                 self.mime_db.mimeTypeForUrl(x).name().startswith('audio/')]
-        self.load_playlist_task.music_files = paths
-        self.load_playlist_task.start()
-        self.init_progress_dialog()
+                 self.mimeDb.mimeTypeForUrl(x).name().startswith('audio/')]
+        self.loadPlaylistTask.musicFiles = paths
+        self.loadPlaylistTask.start()
+        self.initProgressDialog()
 
 
 HEADER_STYLE = """
