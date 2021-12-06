@@ -14,6 +14,11 @@ class MySlider(QtWidgets.QSlider):
         super().mousePressEvent(event)
 
 
+def clearLayout(layout: QtWidgets.QLayout):
+    for i in reversed(range(layout.count())):
+        layout.itemAt(i).widget().setParent(None) if layout.itemAt(i).widget() else layout.removeItem(layout.itemAt(i))
+
+
 def onPlaylistTableDoubleClicked(modelIndex: QtCore.QModelIndex):
     indexCellIndex = playlistModel.index(modelIndex.row(), 0, modelIndex.parent())
     indexCell = playlistModel.itemFromIndex(indexCellIndex)
@@ -21,7 +26,16 @@ def onPlaylistTableDoubleClicked(modelIndex: QtCore.QModelIndex):
     lyricsPath = musicPath.with_suffix(".lrc")
     lyricsText = lyricsPath.read_text()
     lyricDict = parseLyrics(lyricsText)
-    lyricsLabel.setText("\n".join(lyricDict.values()))
+    clearLayout(lyricsLayout)
+    lyricsLayout.addStretch()
+    for lyric in list(lyricDict.values()):
+        lyricLabel = QtWidgets.QLabel(lyric, lyricsContainer)
+        lyricLabel.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+        font = lyricLabel.font()
+        font.setPointSize(12)
+        lyricLabel.setFont(font)
+        lyricsLayout.addWidget(lyricLabel)
+    lyricsLayout.addStretch()
     player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(str(musicPath))))
     player.play()
 
@@ -86,8 +100,10 @@ playlistTable.setEditTriggers(QtWidgets.QTableView.NoEditTriggers)
 playlistTable.horizontalHeader().setStretchLastSection(True)
 playlistTable.doubleClicked.connect(onPlaylistTableDoubleClicked)
 lyricsContainer = QtWidgets.QScrollArea(mainSplitter)
-lyricsLabel = QtWidgets.QLabel("Ready.", lyricsContainer)
-lyricsContainer.setWidget(lyricsLabel)
+lyricsWidget = QtWidgets.QWidget(lyricsContainer)
+lyricsLayout = QtWidgets.QVBoxLayout(lyricsWidget)
+lyricsWidget.setLayout(lyricsLayout)
+lyricsContainer.setWidget(lyricsWidget)
 lyricsContainer.setWidgetResizable(True)
 mainSplitter.addWidget(playlistTable)
 mainSplitter.addWidget(lyricsContainer)
