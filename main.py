@@ -1,17 +1,32 @@
 # Created by BaiJiFeiLong@gmail.com at 2021/12/6 12:52
 import logging
+import os
 import re
 from pathlib import Path
 from typing import Dict
 
 import colorlog
+import taglib
 from PySide2 import QtWidgets, QtCore, QtGui, QtMultimedia
 
 
+def calcProgress(position: int):
+    position = position // 1000
+    duration = player.duration() // 1000
+    return "{:02d}:{:02d}/{:02d}:{:02d}".format(position // 60, position % 60, duration // 60, duration % 60)
+
+
+class ClickableLabel(QtWidgets.QLabel):
+    clicked = QtCore.Signal(QtGui.QMouseEvent)
+
+    def mouseReleaseEvent(self, ev: QtGui.QMouseEvent) -> None:
+        ev.button() == QtCore.Qt.LeftButton and self.clicked.emit(ev)
+
+
 class MySlider(QtWidgets.QSlider):
-    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
-        event.button() == QtCore.Qt.LeftButton and self.setValue(self.minimum() + (self.maximum() - self.minimum()) * event.x() // self.width())
-        super().mousePressEvent(event)
+    def mousePressEvent(self, ev: QtGui.QMouseEvent) -> None:
+        ev.button() == QtCore.Qt.LeftButton and self.setValue(self.minimum() + (self.maximum() - self.minimum()) * ev.x() // self.width())
+        super().mousePressEvent(ev)
 
 
 def clearLayout(layout: QtWidgets.QLayout):
@@ -23,21 +38,28 @@ def onPlaylistTableDoubleClicked(modelIndex: QtCore.QModelIndex):
     indexCellIndex = playlistModel.index(modelIndex.row(), 0, modelIndex.parent())
     indexCell = playlistModel.itemFromIndex(indexCellIndex)
     musicPath: Path = indexCell.data(QtCore.Qt.UserRole)
+    player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(str(musicPath))))
+    player.play()
+
+
+def onDurationChanged(duration: int):
+    musicPath: Path = Path(player.currentMedia().canonicalUrl().toLocalFile())
     lyricsPath = musicPath.with_suffix(".lrc")
     lyricsText = lyricsPath.read_text()
     lyricDict = parseLyrics(lyricsText)
+    realDuration = musicPath.stat().st_size * 8 // taglib.File(str(musicPath)).bitrate
+    lyricDict = {int(k * duration / realDuration): v for k, v in lyricDict.items()}
     clearLayout(lyricsLayout)
     lyricsLayout.addStretch()
-    for lyric in list(lyricDict.values()):
-        lyricLabel = QtWidgets.QLabel(lyric, lyricsContainer)
+    for position, lyric in lyricDict.items():
+        lyricLabel = ClickableLabel(lyric, lyricsContainer)
         lyricLabel.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+        lyricLabel.clicked.connect(lambda _, position=position: player.setPosition(position))
         font = lyricLabel.font()
         font.setPointSize(12)
         lyricLabel.setFont(font)
         lyricsLayout.addWidget(lyricLabel)
     lyricsLayout.addStretch()
-    player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(str(musicPath))))
-    player.play()
 
 
 def parseLyrics(lyricsText: str) -> Dict[int, str]:
@@ -66,17 +88,18 @@ def parseLyrics(lyricsText: str) -> Dict[int, str]:
     return dict(sorted(lyricDict.items()))
 
 
+os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'WindowsMediaFoundation'.lower()
+
 consolePattern = "%(log_color)s%(asctime)s %(levelname)8s %(name)-10s %(message)s"
 logging.getLogger().addHandler(logging.StreamHandler())
 logging.getLogger().handlers[-1].setFormatter(colorlog.ColoredFormatter(consolePattern))
-logging.getLogger().setLevel(logging.DEBUG)
+logging.getLogger().setLevel(logging.INFO)
 
 app = QtWidgets.QApplication()
 app.setApplicationName("Ice Spring Music Player")
 app.setApplicationDisplayName(app.applicationName())
 
 mainWindow = QtWidgets.QMainWindow()
-mainWindow.show()
 mainWindow.resize(1280, 720)
 mainWidget = QtWidgets.QWidget(mainWindow)
 mainWindow.setCentralWidget(mainWidget)
@@ -85,7 +108,7 @@ mainLayout = QtWidgets.QVBoxLayout(mainWidget)
 mainWidget.setLayout(mainLayout)
 mainSplitter = QtWidgets.QSplitter(mainWidget)
 controlsLayout = QtWidgets.QHBoxLayout(mainWidget)
-mainLayout.addWidget(mainSplitter)
+mainLayout.addWidget(mainSplitter, 1)
 mainLayout.addLayout(controlsLayout)
 
 playlistTable = QtWidgets.QTableView(mainSplitter)
@@ -102,6 +125,8 @@ playlistTable.doubleClicked.connect(onPlaylistTableDoubleClicked)
 lyricsContainer = QtWidgets.QScrollArea(mainSplitter)
 lyricsWidget = QtWidgets.QWidget(lyricsContainer)
 lyricsLayout = QtWidgets.QVBoxLayout(lyricsWidget)
+lyricsLayout.setMargin(0)
+lyricsLayout.setSpacing(1)
 lyricsWidget.setLayout(lyricsLayout)
 lyricsContainer.setWidget(lyricsWidget)
 lyricsContainer.setWidgetResizable(True)
@@ -113,15 +138,19 @@ playButton = QtWidgets.QPushButton("Play", mainWidget)
 stopButton = QtWidgets.QPushButton("Stop", mainWidget)
 progressSlider = MySlider(QtCore.Qt.Horizontal, mainWidget)
 progressSlider.valueChanged.connect(lambda x: [player.blockSignals(True), player.setPosition(x), player.blockSignals(False)])
+progressLabel = QtWidgets.QLabel("00:00/00:00", mainWidget)
 controlsLayout.addWidget(playButton)
 controlsLayout.addWidget(stopButton)
 controlsLayout.addWidget(progressSlider)
+controlsLayout.addWidget(progressLabel)
 
 player = QtMultimedia.QMediaPlayer(app)
 player.durationChanged.connect(progressSlider.setMaximum)
+player.durationChanged.connect(lambda x: x != -1 and onDurationChanged(x))
 player.positionChanged.connect(lambda x: [progressSlider.blockSignals(True), progressSlider.setValue(x), progressSlider.blockSignals(False)])
+player.positionChanged.connect(lambda x: progressLabel.setText(calcProgress(x)))
 
-for index, path in enumerate(list(Path("~/Music").expanduser().glob("**/*.mp3"))[:20]):
+for index, path in enumerate(list(Path("~/Music").expanduser().glob("**/*.mp3"))[:200]):
     parts = [x.strip() for x in path.with_suffix("").name.rsplit("-", maxsplit=1)]
     artist, title = parts if len(parts) == 2 else ["Unknown"] + parts
     indexCell = QtGui.QStandardItem(str(index + 1))
@@ -130,4 +159,5 @@ for index, path in enumerate(list(Path("~/Music").expanduser().glob("**/*.mp3"))
     titleCell = QtGui.QStandardItem(title)
     playlistModel.appendRow([indexCell, artistCell, titleCell])
 
+mainWindow.show()
 app.exec_()
