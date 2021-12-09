@@ -10,10 +10,17 @@ import taglib
 from PySide2 import QtWidgets, QtCore, QtGui, QtMultimedia
 
 
-def calcProgress(position: int):
-    position = position // 1000
-    duration = player.duration() // 1000
-    return "{:02d}:{:02d}/{:02d}:{:02d}".format(position // 60, position % 60, duration // 60, duration % 60)
+def formatDelta(milliseconds):
+    seconds = int(milliseconds) // 1000
+    return f"{seconds // 60:02d}:{seconds % 60:02d}"
+
+
+def calcRealDuration(musicPath):
+    return musicPath.stat().st_size * 8 // taglib.File(str(musicPath)).bitrate
+
+
+def currentBugRate():
+    return player.duration() / calcRealDuration(Path(player.currentMedia().canonicalUrl().toLocalFile()))
 
 
 class ClickableLabel(QtWidgets.QLabel):
@@ -44,17 +51,17 @@ def onPlaylistTableDoubleClicked(modelIndex: QtCore.QModelIndex):
 
 def onDurationChanged(duration: int):
     musicPath: Path = Path(player.currentMedia().canonicalUrl().toLocalFile())
+    logging.info("Current music file: %s", musicPath)
+    logging.info("Player duration: %s, real duration: %s", formatDelta(duration), formatDelta(calcRealDuration(musicPath)))
     lyricsPath = musicPath.with_suffix(".lrc")
     lyricsText = lyricsPath.read_text()
     lyricDict = parseLyrics(lyricsText)
-    realDuration = musicPath.stat().st_size * 8 // taglib.File(str(musicPath)).bitrate
-    lyricDict = {int(k * duration / realDuration): v for k, v in lyricDict.items()}
     clearLayout(lyricsLayout)
     lyricsLayout.addStretch()
     for position, lyric in lyricDict.items():
         lyricLabel = ClickableLabel(lyric, lyricsContainer)
         lyricLabel.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
-        lyricLabel.clicked.connect(lambda _, position=position: player.setPosition(position))
+        lyricLabel.clicked.connect(lambda _, position=position: player.setPosition(position * currentBugRate()))
         font = lyricLabel.font()
         font.setPointSize(12)
         lyricLabel.setFont(font)
@@ -148,7 +155,7 @@ player = QtMultimedia.QMediaPlayer(app)
 player.durationChanged.connect(progressSlider.setMaximum)
 player.durationChanged.connect(lambda x: x != -1 and onDurationChanged(x))
 player.positionChanged.connect(lambda x: [progressSlider.blockSignals(True), progressSlider.setValue(x), progressSlider.blockSignals(False)])
-player.positionChanged.connect(lambda x: progressLabel.setText(calcProgress(x)))
+player.positionChanged.connect(lambda x: progressLabel.setText(f"{formatDelta(x / currentBugRate())}/{formatDelta(player.duration() / currentBugRate())}"))
 
 for index, path in enumerate(list(Path("~/Music").expanduser().glob("**/*.mp3"))[:200]):
     parts = [x.strip() for x in path.with_suffix("").name.rsplit("-", maxsplit=1)]
