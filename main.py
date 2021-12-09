@@ -1,5 +1,6 @@
 # Created by BaiJiFeiLong@gmail.com at 2021/12/6 12:52
 import logging
+import math
 import os
 import re
 from pathlib import Path
@@ -45,17 +46,17 @@ def onPlaylistTableDoubleClicked(modelIndex: QtCore.QModelIndex):
     indexCellIndex = playlistModel.index(modelIndex.row(), 0, modelIndex.parent())
     indexCell = playlistModel.itemFromIndex(indexCellIndex)
     musicPath: Path = indexCell.data(QtCore.Qt.UserRole)
+    logging.info("Current music file: %s", musicPath)
+    setupLyrics(musicPath)
     player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(str(musicPath))))
     player.play()
 
 
-def onDurationChanged(duration: int):
-    musicPath: Path = Path(player.currentMedia().canonicalUrl().toLocalFile())
-    logging.info("Current music file: %s", musicPath)
-    logging.info("Player duration: %s, real duration: %s", formatDelta(duration), formatDelta(calcRealDuration(musicPath)))
+def setupLyrics(musicPath):
     lyricsPath = musicPath.with_suffix(".lrc")
     lyricsText = lyricsPath.read_text()
     lyricDict = parseLyrics(lyricsText)
+    player.setProperty("lyricDict", lyricDict)
     clearLayout(lyricsLayout)
     lyricsLayout.addStretch()
     for position, lyric in lyricDict.items():
@@ -67,6 +68,22 @@ def onDurationChanged(duration: int):
         lyricLabel.setFont(font)
         lyricsLayout.addWidget(lyricLabel)
     lyricsLayout.addStretch()
+
+
+def refreshLyrics():
+    lyricDict = player.property("lyricDict")
+    lyricIndex = calcPositionIndex(math.ceil(player.position() / currentBugRate()), list(lyricDict.keys()))
+    for index in range(len(lyricDict)):
+        lyricLabel: QtWidgets.QLabel = lyricsLayout.itemAt(index + 1).widget()
+        lyricText = list(lyricDict.values())[index]
+        lyricLabel.setText(f"<b>{lyricText}</b>" if index == lyricIndex else lyricText)
+
+
+def calcPositionIndex(position, positions):
+    for index in range(len(positions) - 1):
+        if positions[index] <= position < positions[index + 1]:
+            return index
+    return len(positions) - 1
 
 
 def parseLyrics(lyricsText: str) -> Dict[int, str]:
@@ -155,9 +172,9 @@ controlsLayout.addWidget(progressLabel)
 
 player = QtMultimedia.QMediaPlayer(app)
 player.durationChanged.connect(progressSlider.setMaximum)
-player.durationChanged.connect(lambda x: x != -1 and onDurationChanged(x))
 player.positionChanged.connect(lambda x: [progressSlider.blockSignals(True), progressSlider.setValue(x), progressSlider.blockSignals(False)])
 player.positionChanged.connect(lambda x: progressLabel.setText(f"{formatDelta(x / currentBugRate())}/{formatDelta(player.duration() / currentBugRate())}"))
+player.positionChanged.connect(lambda: refreshLyrics())
 
 for index, path in enumerate(list(Path("~/Music").expanduser().glob("**/*.mp3"))[:200]):
     parts = [x.strip() for x in path.with_suffix("").name.rsplit("-", maxsplit=1)]
