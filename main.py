@@ -3,6 +3,8 @@ import logging
 import math
 import os
 import re
+import threading
+import time
 from pathlib import Path
 from typing import Dict
 
@@ -82,7 +84,11 @@ def refreshLyrics():
         lyricLabel: QtWidgets.QLabel = lyricsLayout.itemAt(index + 1).widget()
         lyricText = list(lyricDict.values())[index]
         lyricLabel.setText(f"*{lyricText}*" if index == lyricIndex else lyricText)
-        index == lyricIndex and lyricsContainer.verticalScrollBar().setValue(lyricLabel.pos().y() - lyricsContainer.height() // 2 + lyricLabel.height() // 2)
+        originalValue = lyricsContainer.verticalScrollBar().value()
+        targetValue = lyricLabel.pos().y() - lyricsContainer.height() // 2 + lyricLabel.height() // 2
+        index == lyricIndex and threading.Thread(target=lambda originalValue=originalValue, targetValue=targetValue: [
+            lyricsContainer.verticalScrollBar().setValue(originalValue + (targetValue - originalValue) / 10 * (i + 1))
+            or time.sleep(0.01) for i in range(10)]).start()
 
 
 def calcPositionIndex(position, positions):
