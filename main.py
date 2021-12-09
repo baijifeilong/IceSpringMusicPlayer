@@ -53,6 +53,7 @@ def onPlaylistTableDoubleClicked(modelIndex: QtCore.QModelIndex):
 
 
 def setupLyrics(musicPath):
+    player.setProperty("previousLyricIndex", -1)
     lyricsPath = musicPath.with_suffix(".lrc")
     lyricsText = lyricsPath.read_text()
     lyricDict = parseLyrics(lyricsText)
@@ -72,7 +73,11 @@ def setupLyrics(musicPath):
 
 def refreshLyrics():
     lyricDict = player.property("lyricDict")
+    previousLyricIndex = player.property("previousLyricIndex")
     lyricIndex = calcPositionIndex(math.ceil(player.position() / currentBugRate()), list(lyricDict.keys()))
+    if lyricIndex == previousLyricIndex:
+        return
+    player.setProperty("previousLyricIndex", lyricIndex)
     for index in range(len(lyricDict)):
         lyricLabel: QtWidgets.QLabel = lyricsLayout.itemAt(index + 1).widget()
         lyricText = list(lyricDict.values())[index]
