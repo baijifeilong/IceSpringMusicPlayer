@@ -58,8 +58,8 @@ def setupLyrics(musicPath):
     lyricDict = parseLyrics(lyricsText)
     player.setProperty("lyricDict", lyricDict)
     clearLayout(lyricsLayout)
-    lyricsLayout.addStretch()
-    for position, lyric in lyricDict.items():
+    lyricsLayout.addSpacing(lyricsContainer.height() // 2)
+    for position, lyric in list(lyricDict.items())[:]:
         lyricLabel = ClickableLabel(lyric, lyricsContainer)
         lyricLabel.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
         lyricLabel.clicked.connect(lambda _, position=position: player.setPosition(position * currentBugRate()))
@@ -67,7 +67,7 @@ def setupLyrics(musicPath):
         font.setPointSize(12)
         lyricLabel.setFont(font)
         lyricsLayout.addWidget(lyricLabel)
-    lyricsLayout.addStretch()
+    lyricsLayout.addSpacing(lyricsContainer.height() // 2)
 
 
 def refreshLyrics():
@@ -76,14 +76,15 @@ def refreshLyrics():
     for index in range(len(lyricDict)):
         lyricLabel: QtWidgets.QLabel = lyricsLayout.itemAt(index + 1).widget()
         lyricText = list(lyricDict.values())[index]
-        lyricLabel.setText(f"<b>{lyricText}</b>" if index == lyricIndex else lyricText)
+        lyricLabel.setText(f"*{lyricText}*" if index == lyricIndex else lyricText)
+        index == lyricIndex and lyricsContainer.verticalScrollBar().setValue(lyricLabel.pos().y() - lyricsContainer.height() // 2 + lyricLabel.height() // 2)
 
 
 def calcPositionIndex(position, positions):
     for index in range(len(positions) - 1):
         if positions[index] <= position < positions[index + 1]:
             return index
-    return len(positions) - 1
+    return 0 if position < positions[0] else len(positions) - 1
 
 
 def parseLyrics(lyricsText: str) -> Dict[int, str]:
@@ -154,6 +155,11 @@ lyricsLayout.setSpacing(1)
 lyricsWidget.setLayout(lyricsLayout)
 lyricsContainer.setWidget(lyricsWidget)
 lyricsContainer.setWidgetResizable(True)
+lyricsContainer.resizeEvent = lambda x: [
+    lyricsLayout.count() and lyricsLayout.itemAt(0).spacerItem().changeSize(0, x.size().height() // 2),
+    lyricsLayout.count() and lyricsLayout.itemAt(lyricsLayout.count() - 1).spacerItem().changeSize(0, x.size().height() // 2),
+    lyricsLayout.invalidate(),
+]
 mainSplitter.addWidget(playlistTable)
 mainSplitter.addWidget(lyricsContainer)
 mainSplitter.setSizes([1, 1])
