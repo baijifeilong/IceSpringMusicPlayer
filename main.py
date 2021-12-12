@@ -3,8 +3,6 @@ import logging
 import math
 import os
 import re
-import threading
-import time
 from pathlib import Path
 from typing import Dict
 
@@ -20,6 +18,10 @@ def formatDelta(milliseconds):
 
 def calcRealDuration(musicPath):
     return musicPath.stat().st_size * 8 // taglib.File(str(musicPath)).bitrate
+
+
+def currentRealDuration():
+    return calcRealDuration(Path(player.currentMedia().canonicalUrl().toLocalFile()))
 
 
 def currentBugRate():
@@ -86,9 +88,8 @@ def refreshLyrics():
         lyricLabel.setText(f"*{lyricText}*" if index == lyricIndex else lyricText)
         originalValue = lyricsContainer.verticalScrollBar().value()
         targetValue = lyricLabel.pos().y() - lyricsContainer.height() // 2 + lyricLabel.height() // 2
-        index == lyricIndex and threading.Thread(target=lambda originalValue=originalValue, targetValue=targetValue: [
-            lyricsContainer.verticalScrollBar().setValue(originalValue + (targetValue - originalValue) / 10 * (i + 1))
-            or time.sleep(0.01) for i in range(10)]).start()
+        index == lyricIndex and (lambda animation=QtCore.QPropertyAnimation(lyricsContainer.verticalScrollBar(), b"value", lyricsContainer)
+                                 : animation.setStartValue(originalValue) or animation.setEndValue(targetValue) or animation.start())()
 
 
 def calcPositionIndex(position, positions):
@@ -189,6 +190,7 @@ controlsLayout.addWidget(progressLabel)
 
 player = QtMultimedia.QMediaPlayer(app)
 player.durationChanged.connect(progressSlider.setMaximum)
+player.durationChanged.connect(lambda x: x > 0 and logging.info("Player duration: %s, real duration: %s", formatDelta(player.duration()), formatDelta(currentRealDuration())))
 player.positionChanged.connect(lambda x: [progressSlider.blockSignals(True), progressSlider.setValue(x), progressSlider.blockSignals(False)])
 player.positionChanged.connect(lambda x: progressLabel.setText(f"{formatDelta(x / currentBugRate())}/{formatDelta(player.duration() / currentBugRate())}"))
 player.positionChanged.connect(lambda: refreshLyrics())
