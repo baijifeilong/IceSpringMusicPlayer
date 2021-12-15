@@ -79,6 +79,7 @@ def setupLyrics(musicPath):
         lyricLabel.setFont(font)
         lyricsLayout.addWidget(lyricLabel)
     lyricsLayout.addSpacing(lyricsContainer.height() // 2)
+    lyricsContainer.verticalScrollBar().setValue(0)
 
 
 def refreshLyrics():
@@ -110,35 +111,39 @@ def calcPositionIndex(position, positions):
 
 
 def parseLyrics(lyricsText: str) -> Dict[int, str]:
-    logging.info("Parsing lyrics %s...", lyricsText[:50].replace("\n", r"\n"))
+    lyricsLogger.info("Parsing lyrics %s...", lyricsText[:50].replace("\n", r"\n"))
     lyricRegex = re.compile(r"^((?:\[\d+:[\d.]+])+)(.*)$")
     lyricDict: Dict[int, str] = dict()
     lyricLines = [x.strip() for x in lyricsText.splitlines() if x.strip()]
     for index, line in enumerate(lyricLines):
-        logging.debug("[%02d/%02d] Lyric line: %s", index + 1, len(lyricLines), line)
+        lyricsLogger.debug("[%02d/%02d] Lyric line: %s", index + 1, len(lyricLines), line)
         match = lyricRegex.match(line.strip())
         if not match:
-            logging.debug("Not valid lyric")
+            lyricsLogger.debug("Not valid lyric")
             continue
         timespans, content = [x.strip() for x in match.groups()]
         if not content:
-            logging.debug("Lyric is empty")
+            lyricsLogger.debug("Lyric is empty")
             continue
         for timespan in timespans.replace("[", " ").replace("]", " ").split():
-            logging.debug("Parsed lyric: %s => %s", timespan, content)
+            lyricsLogger.debug("Parsed lyric: %s => %s", timespan, content)
             minutes, seconds = [float(x) for x in timespan.split(":")]
             millis = int(minutes * 60000 + seconds * 1000)
             while millis in lyricDict:
                 millis += 1
             lyricDict[millis] = content
-    logging.info("Total parsed lyric items: %d", len(lyricDict))
+    lyricsLogger.info("Total parsed lyric items: %d", len(lyricDict))
     return dict(sorted(lyricDict.items()))
 
 
 consoleLogPattern = "%(log_color)s%(asctime)s %(levelname)8s %(name)-10s %(message)s"
 logging.getLogger().handlers = [logging.StreamHandler()]
 logging.getLogger().handlers[0].setFormatter(colorlog.ColoredFormatter(consoleLogPattern))
-logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().setLevel(logging.DEBUG)
+lyricsLogger = logging.getLogger("lyrics")
+lyricsLogger.setLevel(logging.INFO)
+positionLogger = logging.getLogger("position")
+positionLogger.setLevel(logging.DEBUG)
 
 app = QtWidgets.QApplication()
 app.setApplicationName("Ice Spring Music Player")
@@ -190,7 +195,13 @@ playButton.clicked.connect(lambda: player.pause() if player.state() == QtMultime
 stopButton = QtWidgets.QToolButton(mainWidget)
 stopButton.setIcon(qtawesome.icon("mdi.stop"))
 stopButton.clicked.connect(lambda: player.stop())
-for button in playButton, stopButton:
+previousButton = QtWidgets.QToolButton(mainWidget)
+previousButton.setIcon(qtawesome.icon("mdi.step-backward"))
+previousButton.clicked.connect(lambda: playlist.previous())
+nextButton = QtWidgets.QToolButton(mainWidget)
+nextButton.setIcon(qtawesome.icon("mdi.step-forward"))
+nextButton.clicked.connect(lambda: playlist.next())
+for button in playButton, stopButton, previousButton, nextButton:
     button.setIconSize(QtCore.QSize(50, 50))
     button.setAutoRaise(True)
 
@@ -199,16 +210,21 @@ progressSlider.valueChanged.connect(lambda x: [player.blockSignals(True), player
 progressLabel = QtWidgets.QLabel("00:00/00:00", mainWidget)
 controlsLayout.addWidget(playButton)
 controlsLayout.addWidget(stopButton)
+controlsLayout.addWidget(previousButton)
+controlsLayout.addWidget(nextButton)
 controlsLayout.addWidget(progressSlider)
 controlsLayout.addWidget(progressLabel)
 
+playlist = QtMultimedia.QMediaPlaylist()
 player = QtMultimedia.QMediaPlayer(app)
+player.setPlaylist(playlist)
+playlist.currentMediaChanged.connect(lambda x: setupLyrics(Path(x.canonicalUrl().toLocalFile())))
 player.durationChanged.connect(progressSlider.setMaximum)
-player.durationChanged.connect(lambda x: x > 0 and logging.info("Player duration: %s, real duration: %s", formatDelta(player.duration()), formatDelta(currentRealDuration())))
+player.durationChanged.connect(lambda x: logging.info("Player duration: %s, real duration: %s", formatDelta(player.duration()), formatDelta(currentRealDuration())))
+player.positionChanged.connect(lambda x: positionLogger.debug("Position changed: %d", x))
 player.positionChanged.connect(lambda x: [progressSlider.blockSignals(True), progressSlider.setValue(x), progressSlider.blockSignals(False)])
 player.positionChanged.connect(lambda x: progressLabel.setText(f"{formatDelta(x / currentBugRate())}/{formatDelta(player.duration() / currentBugRate())}"))
-player.positionChanged.connect(lambda: refreshLyrics())
-
+player.positionChanged.connect(lambda x: x and refreshLyrics())
 player.stateChanged.connect(lambda x: playButton.setIcon(qtawesome.icon("mdi.pause" if x == QtMultimedia.QMediaPlayer.PlayingState else "mdi.play")))
 
 for index, path in enumerate(list(Path("~/Music/tmp").expanduser().glob("**/*.mp3"))[:200]):
@@ -219,6 +235,7 @@ for index, path in enumerate(list(Path("~/Music/tmp").expanduser().glob("**/*.mp
     artistCell = QtGui.QStandardItem(artist)
     titleCell = QtGui.QStandardItem(title)
     playlistModel.appendRow([indexCell, artistCell, titleCell])
+    playlist.addMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(str(path))))
 
 mainWindow.show()
 app.exec_()
