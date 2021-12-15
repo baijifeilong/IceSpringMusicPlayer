@@ -1,14 +1,20 @@
 # Created by BaiJiFeiLong@gmail.com at 2021/12/6 12:52
+
+__import__("os").environ.update(dict(
+    QT_API="pyside2",
+    QT_MULTIMEDIA_PREFERRED_PLUGINS='WindowsMediaFoundation'.lower()
+))
+
 import logging
 import math
-import os
 import re
 from pathlib import Path
 from typing import Dict
 
 import colorlog
+import qtawesome
 import taglib
-from PySide2 import QtWidgets, QtCore, QtGui, QtMultimedia
+from PySide2 import QtCore, QtGui, QtMultimedia, QtWidgets
 
 
 def formatDelta(milliseconds):
@@ -88,8 +94,12 @@ def refreshLyrics():
         lyricLabel.setText(f"*{lyricText}*" if index == lyricIndex else lyricText)
         originalValue = lyricsContainer.verticalScrollBar().value()
         targetValue = lyricLabel.pos().y() - lyricsContainer.height() // 2 + lyricLabel.height() // 2
-        index == lyricIndex and (lambda animation=QtCore.QPropertyAnimation(lyricsContainer.verticalScrollBar(), b"value", lyricsContainer)
-                                 : animation.setStartValue(originalValue) or animation.setEndValue(targetValue) or animation.start())()
+        QtCore.QPropertyAnimation().start(QtCore.QPropertyAnimation.DeleteWhenStopped)
+        index == lyricIndex and (lambda animation=QtCore.QPropertyAnimation(lyricsContainer.verticalScrollBar(), b"value", lyricsContainer): [
+            animation.setStartValue(originalValue),
+            animation.setEndValue(targetValue),
+            animation.start(QtCore.QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+        ])()
 
 
 def calcPositionIndex(position, positions):
@@ -125,11 +135,9 @@ def parseLyrics(lyricsText: str) -> Dict[int, str]:
     return dict(sorted(lyricDict.items()))
 
 
-os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'WindowsMediaFoundation'.lower()
-
-consolePattern = "%(log_color)s%(asctime)s %(levelname)8s %(name)-10s %(message)s"
-logging.getLogger().addHandler(logging.StreamHandler())
-logging.getLogger().handlers[-1].setFormatter(colorlog.ColoredFormatter(consolePattern))
+consoleLogPattern = "%(log_color)s%(asctime)s %(levelname)8s %(name)-10s %(message)s"
+logging.getLogger().handlers = [logging.StreamHandler()]
+logging.getLogger().handlers[0].setFormatter(colorlog.ColoredFormatter(consoleLogPattern))
 logging.getLogger().setLevel(logging.INFO)
 
 app = QtWidgets.QApplication()
@@ -176,10 +184,16 @@ mainSplitter.addWidget(playlistTable)
 mainSplitter.addWidget(lyricsContainer)
 mainSplitter.setSizes([1, 1])
 
-playButton = QtWidgets.QPushButton("Play", mainWidget)
+playButton = QtWidgets.QToolButton(mainWidget)
+playButton.setIcon(qtawesome.icon("mdi.play"))
 playButton.clicked.connect(lambda: player.pause() if player.state() == QtMultimedia.QMediaPlayer.PlayingState else player.play())
-stopButton = QtWidgets.QPushButton("Stop", mainWidget)
+stopButton = QtWidgets.QToolButton(mainWidget)
+stopButton.setIcon(qtawesome.icon("mdi.stop"))
 stopButton.clicked.connect(lambda: player.stop())
+for button in playButton, stopButton:
+    button.setIconSize(QtCore.QSize(50, 50))
+    button.setAutoRaise(True)
+
 progressSlider = MySlider(QtCore.Qt.Horizontal, mainWidget)
 progressSlider.valueChanged.connect(lambda x: [player.blockSignals(True), player.setPosition(x), player.blockSignals(False)])
 progressLabel = QtWidgets.QLabel("00:00/00:00", mainWidget)
@@ -195,7 +209,9 @@ player.positionChanged.connect(lambda x: [progressSlider.blockSignals(True), pro
 player.positionChanged.connect(lambda x: progressLabel.setText(f"{formatDelta(x / currentBugRate())}/{formatDelta(player.duration() / currentBugRate())}"))
 player.positionChanged.connect(lambda: refreshLyrics())
 
-for index, path in enumerate(list(Path("~/Music").expanduser().glob("**/*.mp3"))[:200]):
+player.stateChanged.connect(lambda x: playButton.setIcon(qtawesome.icon("mdi.pause" if x == QtMultimedia.QMediaPlayer.PlayingState else "mdi.play")))
+
+for index, path in enumerate(list(Path("~/Music/tmp").expanduser().glob("**/*.mp3"))[:200]):
     parts = [x.strip() for x in path.with_suffix("").name.rsplit("-", maxsplit=1)]
     artist, title = parts if len(parts) == 2 else ["Unknown"] + parts
     indexCell = QtGui.QStandardItem(str(index + 1))
