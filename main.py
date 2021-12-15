@@ -47,6 +47,14 @@ class MySlider(QtWidgets.QSlider):
         super().mousePressEvent(ev)
 
 
+class NoFocusDelegate(QtWidgets.QStyledItemDelegate):
+    def paint(self, painter: QtGui.QPainter, option: QtWidgets.QStyleOptionViewItem, index: QtCore.QModelIndex) -> None:
+        itemOption = QtWidgets.QStyleOptionViewItem(option)
+        if option.state & QtWidgets.QStyle.State_HasFocus:
+            itemOption.state = itemOption.state ^ QtWidgets.QStyle.State_HasFocus
+        super().paint(painter, itemOption, index)
+
+
 def clearLayout(layout: QtWidgets.QLayout):
     for i in reversed(range(layout.count())):
         layout.itemAt(i).widget().setParent(None) if layout.itemAt(i).widget() else layout.removeItem(layout.itemAt(i))
@@ -80,6 +88,7 @@ def setupLyrics(musicPath):
         lyricsLayout.addWidget(lyricLabel)
     lyricsLayout.addSpacing(lyricsContainer.height() // 2)
     lyricsContainer.verticalScrollBar().setValue(0)
+    lyricsContainer.horizontalScrollBar().setValue((lyricsContainer.horizontalScrollBar().maximum() + lyricsContainer.horizontalScrollBar().minimum()) // 2)
 
 
 def refreshLyrics():
@@ -148,17 +157,30 @@ positionLogger.setLevel(logging.DEBUG)
 app = QtWidgets.QApplication()
 app.setApplicationName("Ice Spring Music Player")
 app.setApplicationDisplayName(app.applicationName())
+palette = QtGui.QPalette()
+palette.setColor(QtGui.QPalette.Window, QtGui.QColor.fromRgb(250, 250, 250))
+app.setPalette(palette)
 
 mainWindow = QtWidgets.QMainWindow()
 mainWindow.resize(1280, 720)
 mainWidget = QtWidgets.QWidget(mainWindow)
 mainWindow.setCentralWidget(mainWidget)
 
+lines = [QtWidgets.QFrame(mainWindow) for _ in range(2)]
+for line in lines:
+    line.setFrameShape(QtWidgets.QFrame.HLine)
+    line.setFrameShadow(QtWidgets.QFrame.Plain)
+    line.setStyleSheet("color: #D8D8D8")
 mainLayout = QtWidgets.QVBoxLayout(mainWidget)
+mainLayout.setSpacing(0)
+mainLayout.setMargin(0)
 mainWidget.setLayout(mainLayout)
 mainSplitter = QtWidgets.QSplitter(mainWidget)
 controlsLayout = QtWidgets.QHBoxLayout(mainWidget)
+controlsLayout.setSpacing(5)
+mainLayout.addWidget(lines[0])
 mainLayout.addWidget(mainSplitter, 1)
+mainLayout.addWidget(lines[1])
 mainLayout.addLayout(controlsLayout)
 
 playlistTable = QtWidgets.QTableView(mainSplitter)
@@ -172,6 +194,20 @@ playlistTable.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
 playlistTable.setEditTriggers(QtWidgets.QTableView.NoEditTriggers)
 playlistTable.horizontalHeader().setStretchLastSection(True)
 playlistTable.doubleClicked.connect(onPlaylistTableDoubleClicked)
+playlistTable.setAlternatingRowColors(True)
+playlistTable.setStyleSheet("alternate-background-color: rgb(245, 245, 245)")
+playlistTable.setFrameShape(QtWidgets.QFrame.NoFrame)
+playlistTable.setShowGrid(False)
+playlistTable.setItemDelegate(NoFocusDelegate())
+playlistTable.horizontalHeader().setStyleSheet("""
+QHeaderView::section {
+    border-top:0px solid #D8D8D8;
+    border-bottom: 1px solid #D8D8D8;
+    background-color:white;
+    padding:2px;
+    font-weight: light;
+}
+""")
 lyricsContainer = QtWidgets.QScrollArea(mainSplitter)
 lyricsWidget = QtWidgets.QWidget(lyricsContainer)
 lyricsLayout = QtWidgets.QVBoxLayout(lyricsWidget)
@@ -179,6 +215,7 @@ lyricsLayout.setMargin(0)
 lyricsLayout.setSpacing(1)
 lyricsWidget.setLayout(lyricsLayout)
 lyricsContainer.setWidget(lyricsWidget)
+lyricsContainer.setFrameShape(QtWidgets.QFrame.NoFrame)
 lyricsContainer.setWidgetResizable(True)
 lyricsContainer.resizeEvent = lambda x: [
     lyricsLayout.count() and lyricsLayout.itemAt(0).spacerItem().changeSize(0, x.size().height() // 2),
@@ -188,6 +225,7 @@ lyricsContainer.resizeEvent = lambda x: [
 mainSplitter.addWidget(playlistTable)
 mainSplitter.addWidget(lyricsContainer)
 mainSplitter.setSizes([1, 1])
+lyricsContainer.horizontalScrollBar().hide()
 
 playButton = QtWidgets.QToolButton(mainWidget)
 playButton.setIcon(qtawesome.icon("mdi.play"))
@@ -201,7 +239,12 @@ previousButton.clicked.connect(lambda: playlist.previous())
 nextButton = QtWidgets.QToolButton(mainWidget)
 nextButton.setIcon(qtawesome.icon("mdi.step-forward"))
 nextButton.clicked.connect(lambda: playlist.next())
-for button in playButton, stopButton, previousButton, nextButton:
+playbackButton = QtWidgets.QToolButton(mainWidget)
+playbackButton.setIcon(qtawesome.icon("mdi.repeat"))
+playbackButton.clicked.connect(lambda: playlist.setPlaybackMode(
+    QtMultimedia.QMediaPlaylist.PlaybackMode.Random if playlist.playbackMode() == QtMultimedia.QMediaPlaylist.PlaybackMode.Loop else
+    QtMultimedia.QMediaPlaylist.PlaybackMode.Loop))
+for button in playButton, stopButton, previousButton, nextButton, playbackButton:
     button.setIconSize(QtCore.QSize(50, 50))
     button.setAutoRaise(True)
 
@@ -214,11 +257,14 @@ controlsLayout.addWidget(previousButton)
 controlsLayout.addWidget(nextButton)
 controlsLayout.addWidget(progressSlider)
 controlsLayout.addWidget(progressLabel)
+controlsLayout.addWidget(playbackButton)
 
 playlist = QtMultimedia.QMediaPlaylist()
+playlist.setPlaybackMode(QtMultimedia.QMediaPlaylist.PlaybackMode.Loop)
 player = QtMultimedia.QMediaPlayer(app)
 player.setPlaylist(playlist)
 playlist.currentMediaChanged.connect(lambda x: setupLyrics(Path(x.canonicalUrl().toLocalFile())))
+playlist.playbackModeChanged.connect(lambda x: playbackButton.setIcon(qtawesome.icon("mdi.repeat" if x == QtMultimedia.QMediaPlaylist.PlaybackMode.Loop else "mdi.shuffle")))
 player.durationChanged.connect(progressSlider.setMaximum)
 player.durationChanged.connect(lambda x: logging.info("Player duration: %s, real duration: %s", formatDelta(player.duration()), formatDelta(currentRealDuration())))
 player.positionChanged.connect(lambda x: positionLogger.debug("Position changed: %d", x))
