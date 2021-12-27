@@ -17,23 +17,6 @@ import taglib
 from PySide2 import QtCore, QtGui, QtMultimedia, QtWidgets
 
 
-def formatDelta(milliseconds):
-    seconds = int(milliseconds) // 1000
-    return f"{seconds // 60:02d}:{seconds % 60:02d}"
-
-
-def calcRealDuration(musicPath):
-    return musicPath.stat().st_size * 8 // taglib.File(str(musicPath)).bitrate
-
-
-def currentRealDuration():
-    return calcRealDuration(Path(player.currentMedia().canonicalUrl().toLocalFile()))
-
-
-def currentBugRate():
-    return player.duration() / calcRealDuration(Path(player.currentMedia().canonicalUrl().toLocalFile()))
-
-
 class ClickableLabel(QtWidgets.QLabel):
     clicked = QtCore.Signal(QtGui.QMouseEvent)
 
@@ -53,95 +36,6 @@ class NoFocusDelegate(QtWidgets.QStyledItemDelegate):
         if option.state & QtWidgets.QStyle.State_HasFocus:
             itemOption.state = itemOption.state ^ QtWidgets.QStyle.State_HasFocus
         super().paint(painter, itemOption, index)
-
-
-def clearLayout(layout: QtWidgets.QLayout):
-    for i in reversed(range(layout.count())):
-        layout.itemAt(i).widget().setParent(None) if layout.itemAt(i).widget() else layout.removeItem(layout.itemAt(i))
-
-
-def onPlaylistIndexChanged(index):
-    filename = playlist.media(index).canonicalUrl().toLocalFile()
-    musicPath: Path = Path(filename)
-    logging.info("Current music file: %s", musicPath)
-    mainWindow.setWindowTitle(musicPath.with_suffix("").name)
-    playlistTable.selectRow(index)
-    setupLyrics(musicPath)
-
-
-def setupLyrics(musicPath):
-    player.setProperty("previousLyricIndex", -1)
-    lyricsPath = musicPath.with_suffix(".lrc")
-    lyricsText = lyricsPath.read_text()
-    lyricDict = parseLyrics(lyricsText)
-    player.setProperty("lyricDict", lyricDict)
-    clearLayout(lyricsLayout)
-    lyricsLayout.addSpacing(lyricsContainer.height() // 2)
-    for position, lyric in list(lyricDict.items())[:]:
-        lyricLabel = ClickableLabel(lyric, lyricsContainer)
-        lyricLabel.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
-        lyricLabel.clicked.connect(lambda _, position=position: player.setPosition(position * currentBugRate()))
-        font = lyricLabel.font()
-        font.setPointSize(14)
-        lyricLabel.setFont(font)
-        lyricsLayout.addWidget(lyricLabel)
-    lyricsLayout.addSpacing(lyricsContainer.height() // 2)
-    lyricsContainer.verticalScrollBar().setValue(0)
-    lyricsContainer.horizontalScrollBar().setValue((lyricsContainer.horizontalScrollBar().maximum() + lyricsContainer.horizontalScrollBar().minimum()) // 2)
-
-
-def refreshLyrics():
-    lyricDict = player.property("lyricDict")
-    previousLyricIndex = player.property("previousLyricIndex")
-    lyricIndex = calcPositionIndex(math.ceil(player.position() / currentBugRate()), list(lyricDict.keys()))
-    if lyricIndex == previousLyricIndex:
-        return
-    player.setProperty("previousLyricIndex", lyricIndex)
-    for index in range(len(lyricDict)):
-        lyricLabel: QtWidgets.QLabel = lyricsLayout.itemAt(index + 1).widget()
-        lyricText = list(lyricDict.values())[index]
-        lyricLabel.setText(f"*{lyricText}*" if index == lyricIndex else lyricText)
-        originalValue = lyricsContainer.verticalScrollBar().value()
-        targetValue = lyricLabel.pos().y() - lyricsContainer.height() // 2 + lyricLabel.height() // 2
-        QtCore.QPropertyAnimation().start(QtCore.QPropertyAnimation.DeleteWhenStopped)
-        index == lyricIndex and (lambda animation=QtCore.QPropertyAnimation(lyricsContainer.verticalScrollBar(), b"value", lyricsContainer): [
-            animation.setStartValue(originalValue),
-            animation.setEndValue(targetValue),
-            animation.start(QtCore.QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
-        ])()
-
-
-def calcPositionIndex(position, positions):
-    for index in range(len(positions) - 1):
-        if positions[index] <= position < positions[index + 1]:
-            return index
-    return 0 if position < positions[0] else len(positions) - 1
-
-
-def parseLyrics(lyricsText: str) -> Dict[int, str]:
-    lyricsLogger.info("Parsing lyrics %s...", lyricsText[:50].replace("\n", r"\n"))
-    lyricRegex = re.compile(r"^((?:\[\d+:[\d.]+])+)(.*)$")
-    lyricDict: Dict[int, str] = dict()
-    lyricLines = [x.strip() for x in lyricsText.splitlines() if x.strip()]
-    for index, line in enumerate(lyricLines):
-        lyricsLogger.debug("[%02d/%02d] Lyric line: %s", index + 1, len(lyricLines), line)
-        match = lyricRegex.match(line.strip())
-        if not match:
-            lyricsLogger.debug("Not valid lyric")
-            continue
-        timespans, content = [x.strip() for x in match.groups()]
-        if not content:
-            lyricsLogger.debug("Lyric is empty")
-            continue
-        for timespan in timespans.replace("[", " ").replace("]", " ").split():
-            lyricsLogger.debug("Parsed lyric: %s => %s", timespan, content)
-            minutes, seconds = [float(x) for x in timespan.split(":")]
-            millis = int(minutes * 60000 + seconds * 1000)
-            while millis in lyricDict:
-                millis += 1
-            lyricDict[millis] = content
-    lyricsLogger.info("Total parsed lyric items: %d", len(lyricDict))
-    return dict(sorted(lyricDict.items()))
 
 
 consoleLogPattern = "%(log_color)s%(asctime)s %(levelname)8s %(name)-10s %(message)s"
@@ -164,6 +58,7 @@ mainWindow = QtWidgets.QMainWindow()
 mainWindow.resize(1280, 720)
 mainWidget = QtWidgets.QWidget(mainWindow)
 mainWindow.setCentralWidget(mainWidget)
+mainWindow.show()
 
 lines = [QtWidgets.QFrame(mainWindow) for _ in range(2)]
 for line in lines:
@@ -288,5 +183,111 @@ for index, path in enumerate(list(Path("~/Music/tmp").expanduser().glob("**/*.mp
     playlistModel.appendRow([indexCell, artistCell, titleCell])
     playlist.addMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(str(path))))
 
-mainWindow.show()
+
+def formatDelta(milliseconds):
+    seconds = int(milliseconds) // 1000
+    return f"{seconds // 60:02d}:{seconds % 60:02d}"
+
+
+def calcRealDuration(musicPath):
+    return musicPath.stat().st_size * 8 // taglib.File(str(musicPath)).bitrate
+
+
+def currentRealDuration():
+    return calcRealDuration(Path(player.currentMedia().canonicalUrl().toLocalFile()))
+
+
+def currentBugRate():
+    return player.duration() / calcRealDuration(Path(player.currentMedia().canonicalUrl().toLocalFile()))
+
+
+def clearLayout(layout: QtWidgets.QLayout):
+    for i in reversed(range(layout.count())):
+        layout.itemAt(i).widget().setParent(None) if layout.itemAt(i).widget() else layout.removeItem(layout.itemAt(i))
+
+
+def onPlaylistIndexChanged(index):
+    filename = playlist.media(index).canonicalUrl().toLocalFile()
+    musicPath: Path = Path(filename)
+    logging.info("Current music file: %s", musicPath)
+    mainWindow.setWindowTitle(musicPath.with_suffix("").name)
+    playlistTable.selectRow(index)
+    setupLyrics(musicPath)
+
+
+def setupLyrics(musicPath):
+    player.setProperty("previousLyricIndex", -1)
+    lyricsPath = musicPath.with_suffix(".lrc")
+    lyricsText = lyricsPath.read_text()
+    lyricDict = parseLyrics(lyricsText)
+    player.setProperty("lyricDict", lyricDict)
+    clearLayout(lyricsLayout)
+    lyricsLayout.addSpacing(lyricsContainer.height() // 2)
+    for position, lyric in list(lyricDict.items())[:]:
+        lyricLabel = ClickableLabel(lyric, lyricsContainer)
+        lyricLabel.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+        lyricLabel.clicked.connect(lambda _, position=position: player.setPosition(position * currentBugRate()))
+        font = lyricLabel.font()
+        font.setPointSize(14)
+        lyricLabel.setFont(font)
+        lyricsLayout.addWidget(lyricLabel)
+    lyricsLayout.addSpacing(lyricsContainer.height() // 2)
+    lyricsContainer.verticalScrollBar().setValue(0)
+    lyricsContainer.horizontalScrollBar().setValue((lyricsContainer.horizontalScrollBar().maximum() + lyricsContainer.horizontalScrollBar().minimum()) // 2)
+
+
+def refreshLyrics():
+    lyricDict = player.property("lyricDict")
+    previousLyricIndex = player.property("previousLyricIndex")
+    lyricIndex = calcPositionIndex(math.ceil(player.position() / currentBugRate()), list(lyricDict.keys()))
+    if lyricIndex == previousLyricIndex:
+        return
+    player.setProperty("previousLyricIndex", lyricIndex)
+    for index in range(len(lyricDict)):
+        lyricLabel: QtWidgets.QLabel = lyricsLayout.itemAt(index + 1).widget()
+        lyricText = list(lyricDict.values())[index]
+        lyricLabel.setText(f"*{lyricText}*" if index == lyricIndex else lyricText)
+        originalValue = lyricsContainer.verticalScrollBar().value()
+        targetValue = lyricLabel.pos().y() - lyricsContainer.height() // 2 + lyricLabel.height() // 2
+        QtCore.QPropertyAnimation().start(QtCore.QPropertyAnimation.DeleteWhenStopped)
+        index == lyricIndex and (lambda animation=QtCore.QPropertyAnimation(lyricsContainer.verticalScrollBar(), b"value", lyricsContainer): [
+            animation.setStartValue(originalValue),
+            animation.setEndValue(targetValue),
+            animation.start(QtCore.QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+        ])()
+
+
+def calcPositionIndex(position, positions):
+    for index in range(len(positions) - 1):
+        if positions[index] <= position < positions[index + 1]:
+            return index
+    return 0 if position < positions[0] else len(positions) - 1
+
+
+def parseLyrics(lyricsText: str) -> Dict[int, str]:
+    lyricsLogger.info("Parsing lyrics %s...", lyricsText[:50].replace("\n", r"\n"))
+    lyricRegex = re.compile(r"^((?:\[\d+:[\d.]+])+)(.*)$")
+    lyricDict: Dict[int, str] = dict()
+    lyricLines = [x.strip() for x in lyricsText.splitlines() if x.strip()]
+    for index, line in enumerate(lyricLines):
+        lyricsLogger.debug("[%02d/%02d] Lyric line: %s", index + 1, len(lyricLines), line)
+        match = lyricRegex.match(line.strip())
+        if not match:
+            lyricsLogger.debug("Not valid lyric")
+            continue
+        timespans, content = [x.strip() for x in match.groups()]
+        if not content:
+            lyricsLogger.debug("Lyric is empty")
+            continue
+        for timespan in timespans.replace("[", " ").replace("]", " ").split():
+            lyricsLogger.debug("Parsed lyric: %s => %s", timespan, content)
+            minutes, seconds = [float(x) for x in timespan.split(":")]
+            millis = int(minutes * 60000 + seconds * 1000)
+            while millis in lyricDict:
+                millis += 1
+            lyricDict[millis] = content
+    lyricsLogger.info("Total parsed lyric items: %d", len(lyricDict))
+    return dict(sorted(lyricDict.items()))
+
+
 app.exec_()
