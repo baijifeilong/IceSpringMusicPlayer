@@ -198,8 +198,8 @@ def currentRealDuration():
 
 
 def currentBugRate():
-    filename = player.currentMedia().canonicalUrl().toLocalFile()
-    return player.duration() / calcRealDuration(Path(filename)) if filename else 1
+    filename = playlist.media(playlist.currentIndex()).canonicalUrl().toLocalFile()
+    return player.duration() / calcRealDuration(Path(filename))
 
 
 def clearLayout(layout: QtWidgets.QLayout):
@@ -237,13 +237,13 @@ def setupLyrics(musicPath):
     lyricsLayout.addSpacing(lyricsContainer.height() // 2)
     lyricsContainer.verticalScrollBar().setValue(0)
     lyricsContainer.horizontalScrollBar().setValue((lyricsContainer.horizontalScrollBar().maximum() + lyricsContainer.horizontalScrollBar().minimum()) // 2)
-    refreshLyrics()
+    refreshLyrics(0)
 
 
-def refreshLyrics():
+def refreshLyrics(currentIndex=None):
     lyricDict = player.property("lyricDict")
     previousLyricIndex = player.property("previousLyricIndex")
-    lyricIndex = calcPositionIndex(math.ceil(player.position() / currentBugRate()), list(lyricDict.keys()))
+    lyricIndex = currentIndex if currentIndex is not None else calcPositionIndex(math.ceil(player.position() / currentBugRate()), list(lyricDict.keys()))
     if lyricIndex == previousLyricIndex:
         return
     player.setProperty("previousLyricIndex", lyricIndex)
