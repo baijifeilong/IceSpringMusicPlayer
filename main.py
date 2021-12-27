@@ -198,7 +198,8 @@ def currentRealDuration():
 
 
 def currentBugRate():
-    return player.duration() / calcRealDuration(Path(player.currentMedia().canonicalUrl().toLocalFile()))
+    filename = player.currentMedia().canonicalUrl().toLocalFile()
+    return player.duration() / calcRealDuration(Path(filename)) if filename else 1
 
 
 def clearLayout(layout: QtWidgets.QLayout):
@@ -228,12 +229,15 @@ def setupLyrics(musicPath):
         lyricLabel.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
         lyricLabel.clicked.connect(lambda _, position=position: player.setPosition(position * currentBugRate()))
         font = lyricLabel.font()
-        font.setPointSize(14)
+        font.setFamily("等线")
+        font.setPointSize(22)
         lyricLabel.setFont(font)
+        lyricLabel.setMargin(2)
         lyricsLayout.addWidget(lyricLabel)
     lyricsLayout.addSpacing(lyricsContainer.height() // 2)
     lyricsContainer.verticalScrollBar().setValue(0)
     lyricsContainer.horizontalScrollBar().setValue((lyricsContainer.horizontalScrollBar().maximum() + lyricsContainer.horizontalScrollBar().minimum()) // 2)
+    refreshLyrics()
 
 
 def refreshLyrics():
@@ -245,8 +249,7 @@ def refreshLyrics():
     player.setProperty("previousLyricIndex", lyricIndex)
     for index in range(len(lyricDict)):
         lyricLabel: QtWidgets.QLabel = lyricsLayout.itemAt(index + 1).widget()
-        lyricText = list(lyricDict.values())[index]
-        lyricLabel.setText(f"*{lyricText}*" if index == lyricIndex else lyricText)
+        lyricLabel.setStyleSheet("color:rgb(225,65,60)" if index == lyricIndex else "color:rgb(35,85,125)")
         originalValue = lyricsContainer.verticalScrollBar().value()
         targetValue = lyricLabel.pos().y() - lyricsContainer.height() // 2 + lyricLabel.height() // 2
         QtCore.QPropertyAnimation().start(QtCore.QPropertyAnimation.DeleteWhenStopped)
