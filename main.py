@@ -167,7 +167,7 @@ player.setPlaylist(playlist)
 playlist.currentIndexChanged.connect(lambda x: onPlaylistIndexChanged(x))
 playlist.playbackModeChanged.connect(lambda x: playbackButton.setIcon(qtawesome.icon(
     "mdi.repeat" if x == QtMultimedia.QMediaPlaylist.PlaybackMode.Loop else "mdi.shuffle")))
-player.durationChanged.connect(lambda x: [
+player.durationChanged.connect(lambda x: x != -1 and [
     logging.info("Duration changed: %s (%s)", formatDelta(player.duration()), formatDelta(currentRealDuration())),
     progressSlider.setMaximum(x)])
 player.positionChanged.connect(lambda x: onPlayerPositionChanged(x))
@@ -209,9 +209,8 @@ def clearLayout(layout: QtWidgets.QLayout):
 
 
 def onPlaylistIndexChanged(index):
-    filename = playlist.media(index).canonicalUrl().toLocalFile()
-    musicPath: Path = Path(filename)
-    logging.info("Current music file: %s", musicPath)
+    musicPath: Path = Path(playlist.media(index).canonicalUrl().toLocalFile())
+    logging.info(">>> Playlist index changed: %d => %s", index, musicPath)
     mainWindow.setWindowTitle(musicPath.with_suffix("").name)
     playlistTable.selectRow(index)
     setupLyrics(musicPath)
@@ -281,7 +280,7 @@ def calcPositionIndex(position, positions):
 
 
 def parseLyrics(lyricsText: str) -> Dict[int, str]:
-    lyricsLogger.info("Parsing lyrics %s...", lyricsText[:50].replace("\n", r"\n"))
+    lyricsLogger.info("Parsing lyrics ...")
     lyricRegex = re.compile(r"^((?:\[\d+:[\d.]+])+)(.*)$")
     lyricDict: Dict[int, str] = dict()
     lyricLines = [x.strip() for x in lyricsText.splitlines() if x.strip()]
