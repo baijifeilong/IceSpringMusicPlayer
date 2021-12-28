@@ -80,11 +80,14 @@ mainLayout.addLayout(controlsLayout)
 
 playlistTable = QtWidgets.QTableView(mainSplitter)
 playlistModel = QtGui.QStandardItemModel(0, 3)
-playlistModel.setHorizontalHeaderLabels(["", "Artist", "Title"])
+playlistModel.setHorizontalHeaderLabels(["", "", "Artist", "Title"])
+playlistModel.horizontalHeaderItem(2).setTextAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+playlistModel.horizontalHeaderItem(3).setTextAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 playlistTable.setModel(playlistModel)
 playlistTable.setColumnWidth(0, 100)
-playlistTable.setColumnWidth(1, 200)
-playlistTable.setColumnWidth(2, 300)
+playlistTable.setColumnWidth(1, 30)
+playlistTable.setColumnWidth(2, 200)
+playlistTable.setColumnWidth(3, 300)
 playlistTable.setColumnHidden(0, True)
 playlistTable.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
 playlistTable.setEditTriggers(QtWidgets.QTableView.NoEditTriggers)
@@ -104,6 +107,7 @@ tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.Highlight,
 tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.HighlightedText,
     tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.HighlightedText))
 playlistTable.setPalette(tablePalette)
+playlistTable.setIconSize(QtCore.QSize(32, 32))
 
 lyricsContainer = QtWidgets.QScrollArea(mainSplitter)
 lyricsWidget = QtWidgets.QWidget(lyricsContainer)
@@ -174,8 +178,7 @@ player.durationChanged.connect(lambda x: x != -1 and [
     logging.info("Duration changed: %s (%s)", formatDelta(player.duration()), formatDelta(currentRealDuration())),
     progressSlider.setMaximum(x)])
 player.positionChanged.connect(lambda x: onPlayerPositionChanged(x))
-player.stateChanged.connect(lambda x: playButton.setIcon(qtawesome.icon(
-    "mdi.pause" if x == QtMultimedia.QMediaPlayer.PlayingState else "mdi.play")))
+player.stateChanged.connect(lambda x: onPlayerStateChanged(x))
 player.volumeChanged.connect(lambda x: logging.debug("Volume changed: %d", x))
 volumeDial.setValue(50)
 
@@ -184,9 +187,10 @@ for index, path in enumerate(list(Path("~/Music").expanduser().glob("**/*.mp3"))
     artist, title = parts if len(parts) == 2 else ["Unknown"] + parts
     indexCell = QtGui.QStandardItem(str(index + 1))
     indexCell.setData(path, QtCore.Qt.UserRole)
+    stateCell = QtGui.QStandardItem("")
     artistCell = QtGui.QStandardItem(artist)
     titleCell = QtGui.QStandardItem(title)
-    playlistModel.appendRow([indexCell, artistCell, titleCell])
+    playlistModel.appendRow([indexCell, stateCell, artistCell, titleCell])
     playlist.addMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(str(path))))
 
 
@@ -215,9 +219,13 @@ def clearLayout(layout: QtWidgets.QLayout):
 
 def onPlaylistIndexChanged(index):
     musicPath: Path = Path(playlist.media(index).canonicalUrl().toLocalFile())
-    logging.info(">>> Playlist index changed: %d => %s", index, musicPath)
+    previousIndex = player.property("previousIndex") or 0
+    player.setProperty("previousIndex", index)
+    logging.info(">>> Playlist index changed: %d => %d %s", playlist.previousIndex(1), index, musicPath)
     mainWindow.setWindowTitle(musicPath.with_suffix("").name)
     playlistTable.selectRow(index)
+    playlistModel.item(previousIndex, 1).setIcon(QtGui.QIcon())
+    playlistModel.item(index, 1).setIcon(qtawesome.icon("mdi.play"))
     setupLyrics(musicPath)
 
 
@@ -229,6 +237,14 @@ def onPlayerPositionChanged(position):
     progressLabel.setText(
         f"{formatDelta(position / currentBugRate())}/{formatDelta(player.duration() / currentBugRate())}")
     refreshLyrics(position)
+
+
+def onPlayerStateChanged(state):
+    playing = state == QtMultimedia.QMediaPlayer.PlayingState
+    buttonIcon = qtawesome.icon("mdi.pause" if playing else "mdi.play")
+    stateIcon = qtawesome.icon("mdi.play" if playing else "mdi.pause")
+    playButton.setIcon(buttonIcon)
+    playlist.currentIndex() != -1 and playlistModel.item(playlist.currentIndex(), 1).setIcon(stateIcon)
 
 
 def setupLyrics(musicPath):
