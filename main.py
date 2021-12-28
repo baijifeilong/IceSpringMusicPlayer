@@ -149,8 +149,8 @@ for button in playButton, stopButton, previousButton, nextButton, playbackButton
     button.setAutoRaise(True)
 
 progressSlider = MySlider(QtCore.Qt.Horizontal, mainWidget)
-progressSlider.valueChanged.connect(lambda x: [
-    player.blockSignals(True), player.setPosition(x), player.blockSignals(False)])
+progressSlider.valueChanged.connect(lambda x: [player.blockSignals(True), player.setPosition(x),
+    player.blockSignals(False)])
 progressLabel = QtWidgets.QLabel("00:00/00:00", mainWidget)
 controlsLayout.addWidget(playButton)
 controlsLayout.addWidget(stopButton)
@@ -167,15 +167,10 @@ player.setPlaylist(playlist)
 playlist.currentIndexChanged.connect(lambda x: onPlaylistIndexChanged(x))
 playlist.playbackModeChanged.connect(lambda x: playbackButton.setIcon(qtawesome.icon(
     "mdi.repeat" if x == QtMultimedia.QMediaPlaylist.PlaybackMode.Loop else "mdi.shuffle")))
-player.durationChanged.connect(progressSlider.setMaximum)
-player.durationChanged.connect(lambda x: logging.info("Player duration: %s, real duration: %s",
-    formatDelta(player.duration()), formatDelta(currentRealDuration())))
-player.positionChanged.connect(lambda x: positionLogger.debug("Position changed: %d", x))
-player.positionChanged.connect(lambda x: [
-    progressSlider.blockSignals(True), progressSlider.setValue(x), progressSlider.blockSignals(False)])
-player.positionChanged.connect(lambda x: progressLabel.setText(
-    f"{formatDelta(x / currentBugRate())}/{formatDelta(player.duration() / currentBugRate())}"))
-player.positionChanged.connect(lambda x: x and refreshLyrics())
+player.durationChanged.connect(lambda x: [
+    logging.info("Duration changed: %s (%s)", formatDelta(player.duration()), formatDelta(currentRealDuration())),
+    progressSlider.setMaximum(x)])
+player.positionChanged.connect(lambda x: onPlayerPositionChanged(x))
 player.stateChanged.connect(lambda x: playButton.setIcon(qtawesome.icon(
     "mdi.pause" if x == QtMultimedia.QMediaPlayer.PlayingState else "mdi.play")))
 
@@ -222,6 +217,16 @@ def onPlaylistIndexChanged(index):
     setupLyrics(musicPath)
 
 
+def onPlayerPositionChanged(position):
+    positionLogger.debug("Position changed: %d", position)
+    progressSlider.blockSignals(True)
+    progressSlider.setValue(position)
+    progressSlider.blockSignals(False)
+    progressLabel.setText(
+        f"{formatDelta(position / currentBugRate())}/{formatDelta(player.duration() / currentBugRate())}")
+    refreshLyrics(position)
+
+
 def setupLyrics(musicPath):
     player.setProperty("previousLyricIndex", -1)
     lyricsPath = musicPath.with_suffix(".lrc")
@@ -247,11 +252,10 @@ def setupLyrics(musicPath):
     refreshLyrics(0)
 
 
-def refreshLyrics(currentIndex=None):
+def refreshLyrics(position):
     lyricDict = player.property("lyricDict")
     previousLyricIndex = player.property("previousLyricIndex")
-    lyricIndex = currentIndex if currentIndex is not None else calcPositionIndex(
-        math.ceil(player.position() / currentBugRate()), list(lyricDict.keys()))
+    lyricIndex = calcPositionIndex(math.ceil(position / currentBugRate()), list(lyricDict.keys()))
     if lyricIndex == previousLyricIndex:
         return
     player.setProperty("previousLyricIndex", lyricIndex)
