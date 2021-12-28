@@ -26,7 +26,8 @@ class ClickableLabel(QtWidgets.QLabel):
 
 class MySlider(QtWidgets.QSlider):
     def mousePressEvent(self, ev: QtGui.QMouseEvent) -> None:
-        ev.button() == QtCore.Qt.LeftButton and self.setValue(self.minimum() + (self.maximum() - self.minimum()) * ev.x() // self.width())
+        ev.button() == QtCore.Qt.LeftButton and self.setValue(
+            self.minimum() + (self.maximum() - self.minimum()) * ev.x() // self.width())
         super().mousePressEvent(ev)
 
 
@@ -94,18 +95,14 @@ playlistTable.setStyleSheet("alternate-background-color: rgb(245, 245, 245)")
 playlistTable.setFrameShape(QtWidgets.QFrame.NoFrame)
 playlistTable.setShowGrid(False)
 playlistTable.setItemDelegate(NoFocusDelegate())
-playlistTable.horizontalHeader().setStyleSheet("""
-QHeaderView::section {
-    border-top:0px solid #D8D8D8;
-    border-bottom: 1px solid #D8D8D8;
-    background-color:white;
-    padding:2px;
-    font-weight: light;
-}
-""")
+playlistTable.horizontalHeader().setStyleSheet(
+    "QHeaderView::section { border-top:0px solid #D8D8D8; border-bottom: 1px solid #D8D8D8; "
+    "background-color:white; padding:2px; font-weight: light; }")
 tablePalette = playlistTable.palette()
-tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.Highlight, tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.Highlight))
-tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.HighlightedText, tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.HighlightedText))
+tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.Highlight,
+    tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.Highlight))
+tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.HighlightedText,
+    tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.HighlightedText))
 playlistTable.setPalette(tablePalette)
 
 lyricsContainer = QtWidgets.QScrollArea(mainSplitter)
@@ -119,7 +116,8 @@ lyricsContainer.setFrameShape(QtWidgets.QFrame.NoFrame)
 lyricsContainer.setWidgetResizable(True)
 lyricsContainer.resizeEvent = lambda x: [
     lyricsLayout.count() and lyricsLayout.itemAt(0).spacerItem().changeSize(0, x.size().height() // 2),
-    lyricsLayout.count() and lyricsLayout.itemAt(lyricsLayout.count() - 1).spacerItem().changeSize(0, x.size().height() // 2),
+    lyricsLayout.count() and lyricsLayout.itemAt(lyricsLayout.count() - 1).spacerItem()
+        .changeSize(0, x.size().height() // 2),
     lyricsLayout.invalidate(),
 ]
 mainSplitter.addWidget(playlistTable)
@@ -129,7 +127,8 @@ lyricsContainer.horizontalScrollBar().hide()
 
 playButton = QtWidgets.QToolButton(mainWidget)
 playButton.setIcon(qtawesome.icon("mdi.play"))
-playButton.clicked.connect(lambda: player.pause() if player.state() == QtMultimedia.QMediaPlayer.PlayingState else player.play())
+playButton.clicked.connect(lambda: (
+    player.pause() if player.state() == QtMultimedia.QMediaPlayer.PlayingState else player.play()))
 stopButton = QtWidgets.QToolButton(mainWidget)
 stopButton.setIcon(qtawesome.icon("mdi.stop"))
 stopButton.clicked.connect(lambda: player.stop())
@@ -142,14 +141,16 @@ nextButton.clicked.connect(lambda: playlist.next() or player.play())
 playbackButton = QtWidgets.QToolButton(mainWidget)
 playbackButton.setIcon(qtawesome.icon("mdi.repeat"))
 playbackButton.clicked.connect(lambda: playlist.setPlaybackMode(
-    QtMultimedia.QMediaPlaylist.PlaybackMode.Random if playlist.playbackMode() == QtMultimedia.QMediaPlaylist.PlaybackMode.Loop else
-    QtMultimedia.QMediaPlaylist.PlaybackMode.Loop))
+    QtMultimedia.QMediaPlaylist.PlaybackMode.Random
+    if playlist.playbackMode() == QtMultimedia.QMediaPlaylist.PlaybackMode.Loop
+    else QtMultimedia.QMediaPlaylist.PlaybackMode.Loop))
 for button in playButton, stopButton, previousButton, nextButton, playbackButton:
     button.setIconSize(QtCore.QSize(50, 50))
     button.setAutoRaise(True)
 
 progressSlider = MySlider(QtCore.Qt.Horizontal, mainWidget)
-progressSlider.valueChanged.connect(lambda x: [player.blockSignals(True), player.setPosition(x), player.blockSignals(False)])
+progressSlider.valueChanged.connect(lambda x: [
+    player.blockSignals(True), player.setPosition(x), player.blockSignals(False)])
 progressLabel = QtWidgets.QLabel("00:00/00:00", mainWidget)
 controlsLayout.addWidget(playButton)
 controlsLayout.addWidget(stopButton)
@@ -164,16 +165,21 @@ playlist.setPlaybackMode(QtMultimedia.QMediaPlaylist.PlaybackMode.Loop)
 player = QtMultimedia.QMediaPlayer(app)
 player.setPlaylist(playlist)
 playlist.currentIndexChanged.connect(lambda x: onPlaylistIndexChanged(x))
-playlist.playbackModeChanged.connect(lambda x: playbackButton.setIcon(qtawesome.icon("mdi.repeat" if x == QtMultimedia.QMediaPlaylist.PlaybackMode.Loop else "mdi.shuffle")))
+playlist.playbackModeChanged.connect(lambda x: playbackButton.setIcon(qtawesome.icon(
+    "mdi.repeat" if x == QtMultimedia.QMediaPlaylist.PlaybackMode.Loop else "mdi.shuffle")))
 player.durationChanged.connect(progressSlider.setMaximum)
-player.durationChanged.connect(lambda x: logging.info("Player duration: %s, real duration: %s", formatDelta(player.duration()), formatDelta(currentRealDuration())))
+player.durationChanged.connect(lambda x: logging.info("Player duration: %s, real duration: %s",
+    formatDelta(player.duration()), formatDelta(currentRealDuration())))
 player.positionChanged.connect(lambda x: positionLogger.debug("Position changed: %d", x))
-player.positionChanged.connect(lambda x: [progressSlider.blockSignals(True), progressSlider.setValue(x), progressSlider.blockSignals(False)])
-player.positionChanged.connect(lambda x: progressLabel.setText(f"{formatDelta(x / currentBugRate())}/{formatDelta(player.duration() / currentBugRate())}"))
+player.positionChanged.connect(lambda x: [
+    progressSlider.blockSignals(True), progressSlider.setValue(x), progressSlider.blockSignals(False)])
+player.positionChanged.connect(lambda x: progressLabel.setText(
+    f"{formatDelta(x / currentBugRate())}/{formatDelta(player.duration() / currentBugRate())}"))
 player.positionChanged.connect(lambda x: x and refreshLyrics())
-player.stateChanged.connect(lambda x: playButton.setIcon(qtawesome.icon("mdi.pause" if x == QtMultimedia.QMediaPlayer.PlayingState else "mdi.play")))
+player.stateChanged.connect(lambda x: playButton.setIcon(qtawesome.icon(
+    "mdi.pause" if x == QtMultimedia.QMediaPlayer.PlayingState else "mdi.play")))
 
-for index, path in enumerate(list(Path("~/Music/tmp").expanduser().glob("**/*.mp3"))[:200]):
+for index, path in enumerate(list(Path("~/Music").expanduser().glob("**/*.mp3"))[:200]):
     parts = [x.strip() for x in path.with_suffix("").name.rsplit("-", maxsplit=1)]
     artist, title = parts if len(parts) == 2 else ["Unknown"] + parts
     indexCell = QtGui.QStandardItem(str(index + 1))
@@ -230,20 +236,22 @@ def setupLyrics(musicPath):
         lyricLabel.clicked.connect(lambda _, position=position: player.setPosition(position * currentBugRate()))
         font = lyricLabel.font()
         font.setFamily("等线")
-        font.setPointSize(22)
+        font.setPointSize(12)
         lyricLabel.setFont(font)
         lyricLabel.setMargin(2)
         lyricsLayout.addWidget(lyricLabel)
     lyricsLayout.addSpacing(lyricsContainer.height() // 2)
     lyricsContainer.verticalScrollBar().setValue(0)
-    lyricsContainer.horizontalScrollBar().setValue((lyricsContainer.horizontalScrollBar().maximum() + lyricsContainer.horizontalScrollBar().minimum()) // 2)
+    lyricsContainer.horizontalScrollBar().setValue(
+        (lyricsContainer.horizontalScrollBar().maximum() + lyricsContainer.horizontalScrollBar().minimum()) // 2)
     refreshLyrics(0)
 
 
 def refreshLyrics(currentIndex=None):
     lyricDict = player.property("lyricDict")
     previousLyricIndex = player.property("previousLyricIndex")
-    lyricIndex = currentIndex if currentIndex is not None else calcPositionIndex(math.ceil(player.position() / currentBugRate()), list(lyricDict.keys()))
+    lyricIndex = currentIndex if currentIndex is not None else calcPositionIndex(
+        math.ceil(player.position() / currentBugRate()), list(lyricDict.keys()))
     if lyricIndex == previousLyricIndex:
         return
     player.setProperty("previousLyricIndex", lyricIndex)
@@ -253,7 +261,8 @@ def refreshLyrics(currentIndex=None):
         originalValue = lyricsContainer.verticalScrollBar().value()
         targetValue = lyricLabel.pos().y() - lyricsContainer.height() // 2 + lyricLabel.height() // 2
         QtCore.QPropertyAnimation().start(QtCore.QPropertyAnimation.DeleteWhenStopped)
-        index == lyricIndex and (lambda animation=QtCore.QPropertyAnimation(lyricsContainer.verticalScrollBar(), b"value", lyricsContainer): [
+        index == lyricIndex and (lambda animation=QtCore.QPropertyAnimation(
+            lyricsContainer.verticalScrollBar(), b"value", lyricsContainer): [
             animation.setStartValue(originalValue),
             animation.setEndValue(targetValue),
             animation.start(QtCore.QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
