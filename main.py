@@ -51,15 +51,17 @@ positionLogger.setLevel(logging.INFO)
 app = QtWidgets.QApplication()
 app.setApplicationName("Ice Spring Music Player")
 app.setApplicationDisplayName(app.applicationName())
-palette = QtGui.QPalette()
-palette.setColor(QtGui.QPalette.Window, QtGui.QColor.fromRgb(250, 250, 250))
-app.setPalette(palette)
 
 mainWindow = QtWidgets.QMainWindow()
 mainWindow.resize(1280, 720)
 mainWidget = QtWidgets.QWidget(mainWindow)
+mainWidget.setAutoFillBackground(True)
 mainWindow.setCentralWidget(mainWidget)
+palette = QtGui.QPalette()
+palette.setColor(QtGui.QPalette.Window, QtGui.QColor("white"))
+mainWidget.setPalette(palette)
 mainWindow.show()
+mainWindow.statusBar().showMessage("Ready.")
 
 lines = [QtWidgets.QFrame(mainWindow) for _ in range(2)]
 for line in lines:
@@ -135,7 +137,7 @@ playButton.clicked.connect(lambda: (
     player.pause() if player.state() == QtMultimedia.QMediaPlayer.PlayingState else player.play()))
 stopButton = QtWidgets.QToolButton(mainWidget)
 stopButton.setIcon(qtawesome.icon("mdi.stop"))
-stopButton.clicked.connect(lambda: player.stop())
+stopButton.clicked.connect(lambda: player.stop() or mainWindow.statusBar().showMessage("Stopped."))
 previousButton = QtWidgets.QToolButton(mainWidget)
 previousButton.setIcon(qtawesome.icon("mdi.step-backward"))
 previousButton.clicked.connect(lambda: playlist.previous() or player.play())
@@ -200,7 +202,8 @@ def formatDelta(milliseconds):
 
 
 def calcRealDuration(musicPath):
-    return musicPath.stat().st_size * 8 // taglib.File(str(musicPath)).bitrate
+    musicInfo: taglib.File = player.property("musicInfo")
+    return musicPath.stat().st_size * 8 // musicInfo.bitrate
 
 
 def currentRealDuration():
@@ -219,6 +222,8 @@ def clearLayout(layout: QtWidgets.QLayout):
 
 def onPlaylistIndexChanged(index):
     musicPath: Path = Path(playlist.media(index).canonicalUrl().toLocalFile())
+    musicInfo = taglib.File(str(musicPath))
+    player.setProperty("musicInfo", musicInfo)
     previousIndex = player.property("previousIndex") or 0
     player.setProperty("previousIndex", index)
     logging.info(">>> Playlist index changed: %d => %d %s", playlist.previousIndex(1), index, musicPath)
@@ -234,8 +239,13 @@ def onPlayerPositionChanged(position):
     progressSlider.blockSignals(True)
     progressSlider.setValue(position)
     progressSlider.blockSignals(False)
-    progressLabel.setText(
-        f"{formatDelta(position / currentBugRate())}/{formatDelta(player.duration() / currentBugRate())}")
+    progressText = f"{formatDelta(position / currentBugRate())}/{formatDelta(player.duration() / currentBugRate())}"
+    progressLabel.setText(progressText)
+    musicInfo: taglib.File = player.property("musicInfo")
+    suffix = Path(playlist.currentMedia().canonicalUrl().toLocalFile()).suffix
+    player.state() != QtMultimedia.QMediaPlayer.StoppedState and mainWindow.statusBar().showMessage(
+        "{} | {} kbps | {} Hz | {} channels | {}".format(suffix[1:].upper(), musicInfo.bitrate,
+            musicInfo.sampleRate, musicInfo.channels, progressText.replace("/", " / ")))
     refreshLyrics(position)
 
 
