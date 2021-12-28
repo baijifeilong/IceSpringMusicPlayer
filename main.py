@@ -147,11 +147,13 @@ playbackButton.clicked.connect(lambda: playlist.setPlaybackMode(
 for button in playButton, stopButton, previousButton, nextButton, playbackButton:
     button.setIconSize(QtCore.QSize(50, 50))
     button.setAutoRaise(True)
-
 progressSlider = MySlider(QtCore.Qt.Horizontal, mainWidget)
 progressSlider.valueChanged.connect(lambda x: [player.blockSignals(True), player.setPosition(x),
     player.blockSignals(False)])
 progressLabel = QtWidgets.QLabel("00:00/00:00", mainWidget)
+volumeDial = QtWidgets.QDial(mainWidget)
+volumeDial.setFixedSize(50, 50)
+volumeDial.valueChanged.connect(lambda x: player.setVolume(x))
 controlsLayout.addWidget(playButton)
 controlsLayout.addWidget(stopButton)
 controlsLayout.addWidget(previousButton)
@@ -159,6 +161,7 @@ controlsLayout.addWidget(nextButton)
 controlsLayout.addWidget(progressSlider)
 controlsLayout.addWidget(progressLabel)
 controlsLayout.addWidget(playbackButton)
+controlsLayout.addWidget(volumeDial)
 
 playlist = QtMultimedia.QMediaPlaylist()
 playlist.setPlaybackMode(QtMultimedia.QMediaPlaylist.PlaybackMode.Loop)
@@ -173,6 +176,8 @@ player.durationChanged.connect(lambda x: x != -1 and [
 player.positionChanged.connect(lambda x: onPlayerPositionChanged(x))
 player.stateChanged.connect(lambda x: playButton.setIcon(qtawesome.icon(
     "mdi.pause" if x == QtMultimedia.QMediaPlayer.PlayingState else "mdi.play")))
+player.volumeChanged.connect(lambda x: logging.debug("Volume changed: %d", x))
+volumeDial.setValue(50)
 
 for index, path in enumerate(list(Path("~/Music").expanduser().glob("**/*.mp3"))[:200]):
     parts = [x.strip() for x in path.with_suffix("").name.rsplit("-", maxsplit=1)]
