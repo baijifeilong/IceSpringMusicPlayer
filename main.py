@@ -1,4 +1,6 @@
 # Created by BaiJiFeiLong@gmail.com at 2021/12/6 12:52
+import random
+import typing
 
 __import__("os").environ.update(dict(
     QT_API="pyside2",
@@ -39,6 +41,25 @@ class NoFocusDelegate(QtWidgets.QStyledItemDelegate):
         super().paint(painter, itemOption, index)
 
 
+class Music(object):
+    def __init__(self):
+        self.filename = ""
+        self.filesize = 0
+        self.album = ""
+        self.artist = ""
+        self.title = ""
+        self.duration = 0
+        self.bitrate = 0
+        self.sampleRate = 0
+        self.channels = 0
+
+
+class Playlist(object):
+    def __init__(self, name: str):
+        self.name = name
+        self.musics: typing.List[Music] = []
+
+
 consoleLogPattern = "%(log_color)s%(asctime)s %(levelname)8s %(name)-10s %(message)s"
 logging.getLogger().handlers = [logging.StreamHandler()]
 logging.getLogger().handlers[0].setFormatter(colorlog.ColoredFormatter(consoleLogPattern))
@@ -62,6 +83,14 @@ palette.setColor(QtGui.QPalette.Window, QtGui.QColor("white"))
 mainWidget.setPalette(palette)
 mainWindow.show()
 mainWindow.statusBar().showMessage("Ready.")
+toolbar = mainWindow.addToolBar("Toolbar")
+toolbar.setMovable(False)
+actionOne = QtWidgets.QAction("Playlist One", toolbar)
+actionTwo = QtWidgets.QAction("Playlist Two", toolbar)
+actionOne.triggered.connect(lambda: playlistWidget.setCurrentIndex(0))
+actionTwo.triggered.connect(lambda: playlistWidget.setCurrentIndex(1))
+toolbar.addAction(actionOne)
+toolbar.addAction(actionTwo)
 
 lines = [QtWidgets.QFrame(mainWindow) for _ in range(2)]
 for line in lines:
@@ -80,37 +109,43 @@ mainLayout.addWidget(mainSplitter, 1)
 mainLayout.addWidget(lines[1])
 mainLayout.addLayout(controlsLayout)
 
-playlistTable = QtWidgets.QTableView(mainSplitter)
-playlistModel = QtGui.QStandardItemModel(0, 3)
-playlistModel.setHorizontalHeaderLabels(["", "", "Artist", "Title"])
-playlistModel.horizontalHeaderItem(2).setTextAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-playlistModel.horizontalHeaderItem(3).setTextAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-playlistTable.setModel(playlistModel)
-playlistTable.setColumnWidth(0, 100)
-playlistTable.setColumnWidth(1, 30)
-playlistTable.setColumnWidth(2, 200)
-playlistTable.setColumnWidth(3, 300)
-playlistTable.setColumnHidden(0, True)
-playlistTable.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
-playlistTable.setEditTriggers(QtWidgets.QTableView.NoEditTriggers)
-playlistTable.horizontalHeader().setStretchLastSection(True)
-playlistTable.doubleClicked.connect(lambda x: playlist.setCurrentIndex(x.row()) or player.play())
-playlistTable.setAlternatingRowColors(True)
-playlistTable.setStyleSheet("alternate-background-color: rgb(245, 245, 245)")
-playlistTable.setFrameShape(QtWidgets.QFrame.NoFrame)
-playlistTable.setShowGrid(False)
-playlistTable.setItemDelegate(NoFocusDelegate())
-playlistTable.horizontalHeader().setStyleSheet(
-    "QHeaderView::section { border-top:0px solid #D8D8D8; border-bottom: 1px solid #D8D8D8; "
-    "background-color:white; padding:2px; font-weight: light; }")
-tablePalette = playlistTable.palette()
-tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.Highlight,
-    tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.Highlight))
-tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.HighlightedText,
-    tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.HighlightedText))
-playlistTable.setPalette(tablePalette)
-playlistTable.setIconSize(QtCore.QSize(32, 32))
 
+def generatePlaylistTable() -> QtWidgets.QTableView:
+    playlistTable = QtWidgets.QTableView(playlistWidget)
+    playlistModel = QtGui.QStandardItemModel(0, 3)
+    playlistModel.setHorizontalHeaderLabels(["", "", "Artist", "Title"])
+    playlistModel.horizontalHeaderItem(2).setTextAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+    playlistModel.horizontalHeaderItem(3).setTextAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+    playlistTable.setModel(playlistModel)
+    playlistTable.setColumnWidth(0, 100)
+    playlistTable.setColumnWidth(1, 30)
+    playlistTable.setColumnWidth(2, 200)
+    playlistTable.setColumnWidth(3, 300)
+    playlistTable.setColumnHidden(0, True)
+    playlistTable.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
+    playlistTable.setEditTriggers(QtWidgets.QTableView.NoEditTriggers)
+    playlistTable.horizontalHeader().setStretchLastSection(True)
+    playlistTable.doubleClicked.connect(lambda x: onPlaylistTableDoubleClicked(x.row()))
+    playlistTable.setAlternatingRowColors(True)
+    playlistTable.setStyleSheet("alternate-background-color: rgb(245, 245, 245)")
+    playlistTable.setFrameShape(QtWidgets.QFrame.NoFrame)
+    playlistTable.setShowGrid(False)
+    playlistTable.setItemDelegate(NoFocusDelegate())
+    playlistTable.horizontalHeader().setStyleSheet(
+        "QHeaderView::section { border-top:0px solid #D8D8D8; border-bottom: 1px solid #D8D8D8; "
+        "background-color:white; padding:2px; font-weight: light; }")
+    playlistTable.horizontalHeader().setHighlightSections(False)
+    tablePalette = playlistTable.palette()
+    tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.Highlight,
+        tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.Highlight))
+    tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.HighlightedText,
+        tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.HighlightedText))
+    playlistTable.setPalette(tablePalette)
+    playlistTable.setIconSize(QtCore.QSize(32, 32))
+    return playlistTable
+
+
+playlistWidget = QtWidgets.QStackedWidget(mainSplitter)
 lyricsContainer = QtWidgets.QScrollArea(mainSplitter)
 lyricsWidget = QtWidgets.QWidget(lyricsContainer)
 lyricsLayout = QtWidgets.QVBoxLayout(lyricsWidget)
@@ -126,39 +161,35 @@ lyricsContainer.resizeEvent = lambda x: [
         .changeSize(0, x.size().height() // 2),
     lyricsLayout.invalidate(),
 ]
-mainSplitter.addWidget(playlistTable)
+mainSplitter.addWidget(playlistWidget)
 mainSplitter.addWidget(lyricsContainer)
-mainSplitter.setSizes([1, 1])
+mainSplitter.setSizes([2 ** 31 - 1, 2 ** 31 - 1])
 lyricsContainer.horizontalScrollBar().hide()
 
 playButton = QtWidgets.QToolButton(mainWidget)
 playButton.setIcon(qtawesome.icon("mdi.play"))
-playButton.clicked.connect(lambda: (
-    player.pause() if player.state() == QtMultimedia.QMediaPlayer.PlayingState else player.play()))
+playButton.clicked.connect(lambda: onPlayButtonClicked())
 stopButton = QtWidgets.QToolButton(mainWidget)
 stopButton.setIcon(qtawesome.icon("mdi.stop"))
-stopButton.clicked.connect(lambda: player.stop() or mainWindow.statusBar().showMessage("Stopped."))
+stopButton.clicked.connect(lambda: onStopButtonClicked())
 previousButton = QtWidgets.QToolButton(mainWidget)
 previousButton.setIcon(qtawesome.icon("mdi.step-backward"))
-previousButton.clicked.connect(lambda: playlist.previous() or player.play())
+previousButton.clicked.connect(lambda: playPrevious())
 nextButton = QtWidgets.QToolButton(mainWidget)
 nextButton.setIcon(qtawesome.icon("mdi.step-forward"))
-nextButton.clicked.connect(lambda: playlist.next() or player.play())
+nextButton.clicked.connect(lambda: playNext())
 playbackButton = QtWidgets.QToolButton(mainWidget)
 playbackButton.setIcon(qtawesome.icon("mdi.repeat"))
-playbackButton.clicked.connect(lambda: playlist.setPlaybackMode(
-    QtMultimedia.QMediaPlaylist.PlaybackMode.Random
-    if playlist.playbackMode() == QtMultimedia.QMediaPlaylist.PlaybackMode.Loop
-    else QtMultimedia.QMediaPlaylist.PlaybackMode.Loop))
+playbackButton.clicked.connect(lambda: togglePlaybackMode())
 for button in playButton, stopButton, previousButton, nextButton, playbackButton:
     button.setIconSize(QtCore.QSize(50, 50))
     button.setAutoRaise(True)
 progressSlider = MySlider(QtCore.Qt.Horizontal, mainWidget)
-progressSlider.valueChanged.connect(lambda x: [player.blockSignals(True), player.setPosition(x),
-    player.blockSignals(False)])
+progressSlider.valueChanged.connect(lambda x: player.setPosition(x))
 progressLabel = QtWidgets.QLabel("00:00/00:00", mainWidget)
 volumeDial = QtWidgets.QDial(mainWidget)
 volumeDial.setFixedSize(50, 50)
+volumeDial.setValue(50)
 volumeDial.valueChanged.connect(lambda x: player.setVolume(x))
 controlsLayout.addWidget(playButton)
 controlsLayout.addWidget(stopButton)
@@ -169,31 +200,50 @@ controlsLayout.addWidget(progressLabel)
 controlsLayout.addWidget(playbackButton)
 controlsLayout.addWidget(volumeDial)
 
-playlist = QtMultimedia.QMediaPlaylist()
-playlist.setPlaybackMode(QtMultimedia.QMediaPlaylist.PlaybackMode.Loop)
-player = QtMultimedia.QMediaPlayer(app)
-player.setPlaylist(playlist)
-playlist.currentIndexChanged.connect(lambda x: onPlaylistIndexChanged(x))
-playlist.playbackModeChanged.connect(lambda x: playbackButton.setIcon(qtawesome.icon(
-    "mdi.repeat" if x == QtMultimedia.QMediaPlaylist.PlaybackMode.Loop else "mdi.shuffle")))
-player.durationChanged.connect(lambda x: x != -1 and [
-    logging.info("Duration changed: %s (%s)", formatDelta(player.duration()), formatDelta(currentRealDuration())),
-    progressSlider.setMaximum(x)])
-player.positionChanged.connect(lambda x: onPlayerPositionChanged(x))
-player.stateChanged.connect(lambda x: onPlayerStateChanged(x))
-player.volumeChanged.connect(lambda x: logging.debug("Volume changed: %d", x))
-volumeDial.setValue(50)
-
+CURRENT_PLAYLIST_INDEX = "currentPlaylistIndex"
+CURRENT_MUSIC_INDEX = "currentMusicIndex"
+PLAYBACK_MODE = "playbackMode"
+PLAY_HISTORY_INDEX = "playHistoryIndex"
+playlists: typing.List[Playlist] = [Playlist("Alpha"), Playlist("Beta")]
 for index, path in enumerate(list(Path("~/Music").expanduser().glob("**/*.mp3"))[:200]):
     parts = [x.strip() for x in path.with_suffix("").name.rsplit("-", maxsplit=1)]
     artist, title = parts if len(parts) == 2 else ["Unknown"] + parts
-    indexCell = QtGui.QStandardItem(str(index + 1))
-    indexCell.setData(path, QtCore.Qt.UserRole)
-    stateCell = QtGui.QStandardItem("")
-    artistCell = QtGui.QStandardItem(artist)
-    titleCell = QtGui.QStandardItem(title)
-    playlistModel.appendRow([indexCell, stateCell, artistCell, titleCell])
-    playlist.addMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(str(path))))
+    info = taglib.File(str(path))
+    music = Music()
+    music.filename = str(path)
+    music.filesize = path.stat().st_size
+    music.album = info.tags.get("ALBUM", [""])[0]
+    music.title = info.tags.get("TITLE", [title])[0]
+    music.artist = info.tags.get("ARTIST", [artist])[0]
+    music.bitrate = info.bitrate
+    music.sampleRate = info.sampleRate
+    music.channels = info.channels
+    music.duration = info.length * 1000
+    playlists[0 if index % 3 == 0 else 1].musics.append(music)
+
+playlistTables = list()
+for playlistIndex, playlist in enumerate(playlists):
+    table = generatePlaylistTable()
+    playlistTables.append(table)
+    playlistWidget.addWidget(table)
+    for musicIndex, music in enumerate(playlist.musics):
+        indexCell = QtGui.QStandardItem(str(musicIndex + 1))
+        indexCell.setData(Path(music.filename), QtCore.Qt.UserRole)
+        stateCell = QtGui.QStandardItem("")
+        artistCell = QtGui.QStandardItem(music.artist)
+        titleCell = QtGui.QStandardItem(music.title)
+        table.model().appendRow([indexCell, stateCell, artistCell, titleCell])
+player = QtMultimedia.QMediaPlayer(app)
+player.durationChanged.connect(lambda x: onPlayerDurationChanged(x))
+player.stateChanged.connect(lambda x: onPlayerStateChanged(x))
+player.volumeChanged.connect(lambda x: logging.debug("Volume changed: %d", x))
+player.positionChanged.connect(lambda x: onPlayerPositionChanged(x))
+player.setProperty(CURRENT_PLAYLIST_INDEX, 0)
+player.setProperty(CURRENT_MUSIC_INDEX, -1)
+player.setProperty(PLAYBACK_MODE, "LOOP")
+player.setProperty(PLAY_HISTORY_INDEX, -1)
+player.setVolume(50)
+playHistoryDict: typing.Dict[int, int] = dict()
 
 
 def formatDelta(milliseconds):
@@ -201,18 +251,14 @@ def formatDelta(milliseconds):
     return f"{seconds // 60:02d}:{seconds % 60:02d}"
 
 
-def calcRealDuration(musicPath):
-    musicInfo: taglib.File = player.property("musicInfo")
-    return musicPath.stat().st_size * 8 // musicInfo.bitrate
-
-
 def currentRealDuration():
-    return calcRealDuration(Path(player.currentMedia().canonicalUrl().toLocalFile()))
+    currentMusic = playlists[player.property(CURRENT_PLAYLIST_INDEX)].musics[player.property(CURRENT_MUSIC_INDEX)]
+    realDuration = currentMusic.filesize * 8 // currentMusic.bitrate
+    return realDuration
 
 
 def currentBugRate():
-    filename = playlist.media(playlist.currentIndex()).canonicalUrl().toLocalFile()
-    return player.duration() / calcRealDuration(Path(filename))
+    return player.duration() / currentRealDuration()
 
 
 def clearLayout(layout: QtWidgets.QLayout):
@@ -220,46 +266,147 @@ def clearLayout(layout: QtWidgets.QLayout):
         layout.itemAt(i).widget().setParent(None) if layout.itemAt(i).widget() else layout.removeItem(layout.itemAt(i))
 
 
-def onPlaylistIndexChanged(index):
-    musicPath: Path = Path(playlist.media(index).canonicalUrl().toLocalFile())
-    musicInfo = taglib.File(str(musicPath))
-    player.setProperty("musicInfo", musicInfo)
-    previousIndex = player.property("previousIndex") or 0
-    player.setProperty("previousIndex", index)
-    logging.info(">>> Playlist index changed: %d => %d %s", playlist.previousIndex(1), index, musicPath)
-    mainWindow.setWindowTitle(musicPath.with_suffix("").name)
-    playlistTable.selectRow(index)
-    playlistModel.item(previousIndex, 1).setIcon(QtGui.QIcon())
-    playlistModel.item(index, 1).setIcon(qtawesome.icon("mdi.play"))
-    setupLyrics(musicPath)
+def togglePlaybackMode():
+    oldPlaybackMode = player.property(PLAYBACK_MODE)
+    newPlaybackMode = dict(LOOP="RANDOM", RANDOM="LOOP")[oldPlaybackMode]
+    player.setProperty(PLAYBACK_MODE, newPlaybackMode)
+    newIconName = dict(LOOP="mdi.repeat", RANDOM="mdi.shuffle")[newPlaybackMode]
+    playbackButton.setIcon(qtawesome.icon(newIconName))
+
+
+def onPlayButtonClicked():
+    logging.info("On play button clicked")
+    currentMusicIndex = player.property(CURRENT_MUSIC_INDEX)
+    if currentMusicIndex == -1:
+        player.setProperty(CURRENT_PLAYLIST_INDEX, playlistWidget.currentIndex())
+        logging.info("Current music index is -1, play next at playlist %d", playlistWidget.currentIndex())
+        playNext()
+    elif player.state() == QtMultimedia.QMediaPlayer.PlayingState:
+        logging.info("Player is playing, pause it")
+        player.pause()
+    else:
+        logging.info("Player is not playing, play it")
+        player.play()
+
+
+def onStopButtonClicked():
+    logging.info("On stop button clicked")
+    player.stop()
+    mainWindow.statusBar().showMessage("Stopped.")
+
+
+def playPrevious():
+    logging.info(">>> Play previous")
+    previousHistoryIndex = player.property(PLAY_HISTORY_INDEX) - 1
+    previousMusicIndex = playHistoryDict.get(previousHistoryIndex, -1)
+    logging.info("Previous music index: %d", previousMusicIndex)
+    playbackMode = player.property(PLAYBACK_MODE)
+    currentPlaylist = playlists[player.property(CURRENT_PLAYLIST_INDEX)]
+    currentMusicIndex = player.property(CURRENT_MUSIC_INDEX)
+    currentPlaylistLength = len(currentPlaylist.musics)
+    if previousMusicIndex == -1:
+        if playbackMode == "LOOP":
+            previousMusicIndex = (currentMusicIndex - 1) % currentPlaylistLength
+        else:
+            previousMusicIndex = random.randint(0, currentPlaylistLength - 1)
+        playHistoryDict[previousHistoryIndex] = previousMusicIndex
+    logging.info("Final previous music index: %d", previousMusicIndex)
+    player.setProperty(PLAY_HISTORY_INDEX, previousHistoryIndex)
+    playMusicAtIndex(previousMusicIndex)
+
+
+def playNext():
+    logging.info(">>> Play next")
+    nextHistoryIndex = player.property(PLAY_HISTORY_INDEX) + 1
+    nextMusicIndex = playHistoryDict.get(nextHistoryIndex, -1)
+    logging.info("Next music index: %d", nextMusicIndex)
+    playbackMode = player.property(PLAYBACK_MODE)
+    currentPlaylist = playlists[player.property(CURRENT_PLAYLIST_INDEX)]
+    currentMusicIndex = player.property(CURRENT_MUSIC_INDEX)
+    currentPlaylistLength = len(currentPlaylist.musics)
+    if nextMusicIndex == -1:
+        if playbackMode == "LOOP":
+            nextMusicIndex = (currentMusicIndex + 1) % currentPlaylistLength
+        else:
+            nextMusicIndex = random.randint(0, currentPlaylistLength - 1)
+        playHistoryDict[nextHistoryIndex] = nextMusicIndex
+    logging.info("Final next music index: %d", nextMusicIndex)
+    player.setProperty(PLAY_HISTORY_INDEX, nextHistoryIndex)
+    playMusicAtIndex(nextMusicIndex)
+
+
+def onPlaylistTableDoubleClicked(index):
+    logging.info(">>> On playlist table double clicked at %d", index)
+    previousPlaylistIndex = player.property(CURRENT_PLAYLIST_INDEX)
+    currentPlaylistIndex = playlistWidget.currentIndex()
+    logging.info("Playlist index: %d => %d", previousPlaylistIndex, currentPlaylistIndex)
+    if currentPlaylistIndex != previousPlaylistIndex:
+        logging.info("Toggle playlist from %d to %d", previousPlaylistIndex, currentPlaylistIndex)
+        previousPlaylistTable = playlistTables[previousPlaylistIndex]
+        previousMusicIndex = player.property(CURRENT_MUSIC_INDEX)
+        previousMusicIndex != -1 and previousPlaylistTable.model().item(previousMusicIndex, 1).setIcon(QtGui.QIcon())
+        player.setProperty(CURRENT_PLAYLIST_INDEX, currentPlaylistIndex)
+        player.setProperty(CURRENT_MUSIC_INDEX, -1)
+        player.setProperty(PLAY_HISTORY_INDEX, -1)
+        playHistoryDict.clear()
+    logging.info("Play music at index %d", index)
+    nextHistoryIndex = player.property(PLAY_HISTORY_INDEX) + 1
+    logging.info("Before history dict clean: %s", playHistoryDict)
+    [playHistoryDict.pop(key) for key in list(playHistoryDict) if key > nextHistoryIndex]
+    logging.info("After history dict clean: %s", playHistoryDict)
+    playHistoryDict[nextHistoryIndex] = index
+    player.setProperty(PLAY_HISTORY_INDEX, nextHistoryIndex)
+    playMusicAtIndex(index)
+
+
+def playMusicAtIndex(index):
+    previousMusicIndex = player.property(CURRENT_MUSIC_INDEX)
+    player.setProperty(CURRENT_MUSIC_INDEX, index)
+    filename = playlists[player.property(CURRENT_PLAYLIST_INDEX)].musics[index].filename
+    logging.info("Play music: %d => %d %s", previousMusicIndex, index, filename)
+    currentPlaylistTable = playlistTables[player.property(CURRENT_PLAYLIST_INDEX)]
+    currentPlaylistTable.selectRow(index)
+    previousMusicIndex != -1 and currentPlaylistTable.model().item(previousMusicIndex, 1).setIcon(QtGui.QIcon())
+    currentPlaylistTable.model().item(index, 1).setIcon(qtawesome.icon("mdi.play"))
+    setupLyrics(filename)
+    mainWindow.setWindowTitle(Path(filename).with_suffix("").name)
+    player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(filename)))
+    player.play()
+
+
+def onPlayerDurationChanged(duration):
+    playerDurationText = formatDelta(player.duration())
+    realDurationText = formatDelta(currentRealDuration())
+    logging.info("Player duration changed: %d (%s / %s)", player.duration(), playerDurationText, realDurationText)
+    progressSlider.setMaximum(duration)
 
 
 def onPlayerPositionChanged(position):
     positionLogger.debug("Position changed: %d", position)
-    progressSlider.blockSignals(True)
     progressSlider.setValue(position)
-    progressSlider.blockSignals(False)
     progressText = f"{formatDelta(position / currentBugRate())}/{formatDelta(player.duration() / currentBugRate())}"
     progressLabel.setText(progressText)
-    musicInfo: taglib.File = player.property("musicInfo")
-    suffix = Path(playlist.currentMedia().canonicalUrl().toLocalFile()).suffix
+    music = playlists[player.property(CURRENT_PLAYLIST_INDEX)].musics[player.property(CURRENT_MUSIC_INDEX)]
+    suffix = Path(player.currentMedia().canonicalUrl().toLocalFile()).suffix
     player.state() != QtMultimedia.QMediaPlayer.StoppedState and mainWindow.statusBar().showMessage(
-        "{} | {} kbps | {} Hz | {} channels | {}".format(suffix[1:].upper(), musicInfo.bitrate,
-            musicInfo.sampleRate, musicInfo.channels, progressText.replace("/", " / ")))
+        "{} | {} kbps | {} Hz | {} channels | {}".format(suffix[1:].upper(), music.bitrate, music.sampleRate,
+            music.channels, progressText.replace("/", " / ")))
     refreshLyrics(position)
 
 
 def onPlayerStateChanged(state):
-    playing = state == QtMultimedia.QMediaPlayer.PlayingState
-    buttonIcon = qtawesome.icon("mdi.pause" if playing else "mdi.play")
-    stateIcon = qtawesome.icon("mdi.play" if playing else "mdi.pause")
-    playButton.setIcon(buttonIcon)
-    playlist.currentIndex() != -1 and playlistModel.item(playlist.currentIndex(), 1).setIcon(stateIcon)
+    logging.info("Player state changed: %s [%d/%d]", state, player.position(), player.duration())
+    playButton.setIcon(qtawesome.icon(["mdi.play", "mdi.pause", "mdi.play"][state]))
+    currentPlaylistTable = playlistTables[player.property(CURRENT_PLAYLIST_INDEX)]
+    stateIcon = [QtGui.QIcon(), qtawesome.icon("mdi.play"), qtawesome.icon("mdi.pause")][state]
+    currentPlaylistTable.model().item(player.property(CURRENT_MUSIC_INDEX), 1).setIcon(stateIcon)
+    finished = state == QtMultimedia.QMediaPlayer.StoppedState and player.position() == player.duration()
+    finished and playNext()
 
 
-def setupLyrics(musicPath):
+def setupLyrics(filename):
     player.setProperty("previousLyricIndex", -1)
-    lyricsPath = musicPath.with_suffix(".lrc")
+    lyricsPath = Path(filename).with_suffix(".lrc")
     lyricsText = lyricsPath.read_text()
     lyricDict = parseLyrics(lyricsText)
     player.setProperty("lyricDict", lyricDict)
