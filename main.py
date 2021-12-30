@@ -57,7 +57,10 @@ class App(QtWidgets.QApplication):
 
     def initPlaylists(self):
         playlists: typing.List[Playlist] = [Playlist("Alpha"), Playlist("Beta")]
-        for index, path in enumerate(list(Path("~/Music").expanduser().glob("**/*.mp3"))[:200]):
+        paths = list(Path("~/Music").expanduser().glob("**/*.mp3"))[:200]
+        random.seed(0)
+        random.shuffle(paths)
+        for index, path in enumerate(paths):
             parts = [x.strip() for x in path.with_suffix("").name.rsplit("-", maxsplit=1)]
             artist, title = parts if len(parts) == 2 else ["Unknown"] + parts
             info = taglib.File(str(path))
@@ -345,6 +348,7 @@ class MainWindow(QtWidgets.QMainWindow):
             tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.HighlightedText))
         playlistTable.setPalette(tablePalette)
         playlistTable.setIconSize(QtCore.QSize(32, 32))
+        playlistTable.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
         return playlistTable
 
     def initMainSplitter(self):
@@ -418,6 +422,7 @@ class MainWindow(QtWidgets.QMainWindow):
         playlistTables = list()
         for playlistIndex, playlist in enumerate(playlists):
             table = self.generatePlaylistTable()
+            model: QtGui.QStandardItemModel = table.model()
             playlistTables.append(table)
             self.playlistWidget.addWidget(table)
             for musicIndex, music in enumerate(playlist.musics):
@@ -425,7 +430,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 stateCell.setData(Path(music.filename), QtCore.Qt.UserRole)
                 artistCell = QtGui.QStandardItem(music.artist)
                 titleCell = QtGui.QStandardItem(music.title)
-                table.model().appendRow([stateCell, artistCell, titleCell])
+                model.appendRow([stateCell, artistCell, titleCell])
+            table.setSortingEnabled(True)
         self.playlistTables = playlistTables
 
     def togglePlaybackMode(self):
