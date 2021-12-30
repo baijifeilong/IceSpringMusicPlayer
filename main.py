@@ -192,11 +192,10 @@ class App(QtWidgets.QApplication):
         self.mainWindow.currentPlaylistTable.selectRow(index)
         self.mainWindow.currentPlaylistTable.scrollTo(self.mainWindow.currentPlaylistModel.index(index, 0),
             QtWidgets.QTableView.PositionAtCenter)
-        previousMusicIndex != -1 and self.mainWindow.currentPlaylistModel \
-            .item(previousMusicIndex, 0).setIcon(QtGui.QIcon())
-        self.mainWindow.currentPlaylistModel.item(index, 0).setIcon(qtawesome.icon("mdi.play"))
         self.mainWindow.setupLyrics(filename)
         self.mainWindow.setWindowTitle(Path(filename).with_suffix("").name)
+        previousStateIndex = self.mainWindow.currentPlaylistModel.createIndex(previousMusicIndex, 0)
+        self.mainWindow.currentPlaylistModel.dataChanged.emit(previousStateIndex, previousStateIndex)
         self.player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(filename)))
         self.player.play()
 
@@ -224,8 +223,6 @@ class App(QtWidgets.QApplication):
     def onPlayerStateChanged(self, state):
         logging.info("Player state changed: %s [%d/%d]", state, self.player.position(), self.player.duration())
         self.mainWindow.playButton.setIcon(qtawesome.icon(["mdi.play", "mdi.pause", "mdi.play"][state]))
-        stateIcon = [QtGui.QIcon(), qtawesome.icon("mdi.play"), qtawesome.icon("mdi.pause")][state]
-        self.mainWindow.currentPlaylistModel.item(self.currentMusicIndex, 0).setIcon(stateIcon)
         finished = state == QtMultimedia.QMediaPlayer.StoppedState and self.player.position() == self.player.duration()
         finished and self.playNext()
 
@@ -320,13 +317,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.mainSplitter = mainSplitter
         self.controlsLayout = controlsLayout
 
-    def generatePlaylistTable(self) -> QtWidgets.QTableView:
+    def generatePlaylistTable(self, playlist: "Playlist") -> QtWidgets.QTableView:
         playlistTable = QtWidgets.QTableView(self.playlistWidget)
-        playlistModel = QtGui.QStandardItemModel(0, 3)
-        playlistModel.setHorizontalHeaderLabels(["", "Artist", "Title"])
-        playlistModel.horizontalHeaderItem(1).setTextAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        playlistModel.horizontalHeaderItem(2).setTextAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        playlistTable.setModel(playlistModel)
+        playlistTable.setModel(PlaylistModel(playlist, self))
         playlistTable.setColumnWidth(0, 30)
         playlistTable.setColumnWidth(1, 200)
         playlistTable.setColumnWidth(2, 300)
@@ -423,17 +416,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def initPlaylistTables(self, playlists):
         playlistTables = list()
         for playlistIndex, playlist in enumerate(playlists):
-            table = self.generatePlaylistTable()
-            model: QtGui.QStandardItemModel = table.model()
+            table = self.generatePlaylistTable(playlist)
             playlistTables.append(table)
             self.playlistWidget.addWidget(table)
-            for musicIndex, music in enumerate(playlist.musics):
-                stateCell = QtGui.QStandardItem("")
-                stateCell.setData(Path(music.filename), QtCore.Qt.UserRole)
-                artistCell = QtGui.QStandardItem(music.artist)
-                titleCell = QtGui.QStandardItem(music.title)
-                model.appendRow([stateCell, artistCell, titleCell])
-            table.setSortingEnabled(True)
         self.playlistTables = playlistTables
 
     def togglePlaybackMode(self):
@@ -468,10 +453,6 @@ class MainWindow(QtWidgets.QMainWindow):
         logging.info("Playlist index: %d => %d", previousPlaylistIndex, currentPlaylistIndex)
         if currentPlaylistIndex != previousPlaylistIndex:
             logging.info("Toggle playlist from %d to %d", previousPlaylistIndex, currentPlaylistIndex)
-            previousPlaylistTable = self.playlistTables[previousPlaylistIndex]
-            previousMusicIndex = self.app.currentMusicIndex
-            previousMusicIndex != -1 and previousPlaylistTable.model() \
-                .item(previousMusicIndex, 0).setIcon(QtGui.QIcon())
             self.app.currentPlaylistIndex = currentPlaylistIndex
             self.app.currentMusicIndex = -1
             self.app.currentHistoryIndex = -1
@@ -530,6 +511,36 @@ class MainWindow(QtWidgets.QMainWindow):
                 animation.setEndValue(targetValue),
                 animation.start(QtCore.QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
             ])()
+
+
+class PlaylistModel(QtCore.QAbstractTableModel):
+    def __init__(self, playlist: "Playlist", mainWindow: MainWindow,
+        parent: typing.Optional[QtCore.QObject] = None) -> None:
+        super().__init__(parent)
+        self.playlist = playlist
+        self.mainWindow = mainWindow
+        self.app = self.mainWindow.app
+
+    def rowCount(self, parent: QtCore.QModelIndex = ...) -> int:
+        return len(self.playlist.musics)
+
+    def columnCount(self, parent: QtCore.QModelIndex = ...) -> int:
+        return 3
+
+    def data(self, index: QtCore.QModelIndex, role: int = ...) -> typing.Any:
+        music = self.playlist.musics[index.row()]
+        if role == QtCore.Qt.DisplayRole:
+            return ["", music.artist, music.title][index.column()]
+        elif role == QtCore.Qt.DecorationRole:
+            if index.column() == 0 and index.row() == self.app.currentMusicIndex \
+                and self.app.currentPlaylistIndex == self.mainWindow.playlistWidget.currentIndex():
+                return [qtawesome.icon("mdi.stop"), qtawesome.icon("mdi.play"),
+                    qtawesome.icon("mdi.pause")][self.app.player.state()]
+
+    def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role: int = ...) -> typing.Any:
+        if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
+            return ["", "Artist", "Title"][section]
+        return super().headerData(section, orientation, role)
 
 
 class Playlist(object):
