@@ -72,8 +72,8 @@ class App(QtWidgets.QApplication):
             music.channels = info.channels
             music.duration = info.length * 1000
             playlists[0 if index % 3 == 0 else 1].musics.append(music)
+        self.mainWindow.setupPlaylistTables(playlists)
         self.playlists = playlists
-        self.mainWindow.initPlaylistTables(self.playlists)
 
     def initPlayer(self):
         player = QtMultimedia.QMediaPlayer(self)
@@ -154,7 +154,7 @@ class App(QtWidgets.QApplication):
         currentPlaylistLength = len(self.currentPlaylist.musics)
         if previousMusicIndex == -1:
             if self.currentPlaybackMode == "LOOP":
-                previousMusicIndex = (self.currentMusicIndex - 1) % currentPlaylistLength
+                previousMusicIndex = (self.currentPlaylist.currentMusicIndex - 1) % currentPlaylistLength
             else:
                 previousMusicIndex = random.randint(0, currentPlaylistLength - 1)
             self.currentPlaylist.playHistoryDict[previousHistoryIndex] = previousMusicIndex
@@ -227,7 +227,6 @@ class MainWindow(QtWidgets.QMainWindow):
     mainSplitter: QtWidgets.QSplitter
     controlsLayout: QtWidgets.QHBoxLayout
     playlistWidget: QtWidgets.QStackedWidget
-    playlistTables: typing.List[QtWidgets.QTableView]
     lyricsContainer: QtWidgets.QScrollArea
     lyricsLayout: QtWidgets.QVBoxLayout
     playButton: QtWidgets.QPushButton
@@ -261,7 +260,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @property
     def currentPlaylistTable(self) -> QtWidgets.QTableView:
-        return self.playlistTables[self.app.currentPlaylistIndex]
+        return self.playlistWidget.widget(self.app.currentPlaylistIndex)
 
     @property
     def currentPlaylistModel(self) -> QtGui.QStandardItemModel:
@@ -408,13 +407,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.progressSlider = progressSlider
         self.progressLabel = progressLabel
 
-    def initPlaylistTables(self, playlists):
-        playlistTables = list()
-        for playlistIndex, playlist in enumerate(playlists):
-            table = self.generatePlaylistTable(playlist)
-            playlistTables.append(table)
-            self.playlistWidget.addWidget(table)
-        self.playlistTables = playlistTables
+    def setupPlaylistTables(self, playlists):
+        for playlist in playlists:
+            self.playlistWidget.addWidget(self.generatePlaylistTable(playlist))
 
     def togglePlaybackMode(self):
         oldPlaybackMode = self.app.currentPlaybackMode
