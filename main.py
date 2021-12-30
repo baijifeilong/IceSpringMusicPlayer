@@ -2,6 +2,7 @@
 import random
 import typing
 
+import PySide2
 import typing_extensions
 
 __import__("os").environ.update(dict(
@@ -344,6 +345,7 @@ class MainWindow(QtWidgets.QMainWindow):
         playlistTable.setPalette(tablePalette)
         playlistTable.setIconSize(QtCore.QSize(32, 32))
         playlistTable.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
+        playlistTable.setSortingEnabled(True)
         return playlistTable
 
     def initMainSplitter(self):
@@ -541,6 +543,13 @@ class PlaylistModel(QtCore.QAbstractTableModel):
         if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
             return ["", "Artist", "Title"][section]
         return super().headerData(section, orientation, role)
+
+    def sort(self, column: int, order: PySide2.QtCore.Qt.SortOrder = ...) -> None:
+        if column == 0:
+            return
+        self.playlist.musics = sorted(self.playlist.musics,
+            key=lambda x: x.artist if column == 1 else x.title, reverse=order == QtCore.Qt.DescendingOrder)
+        self.endResetModel()
 
 
 class Playlist(object):
