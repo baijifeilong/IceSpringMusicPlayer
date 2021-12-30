@@ -2,7 +2,6 @@
 import random
 import typing
 
-import PySide2
 import typing_extensions
 
 __import__("os").environ.update(dict(
@@ -25,10 +24,7 @@ from PySide2 import QtCore, QtGui, QtMultimedia, QtWidgets
 class App(QtWidgets.QApplication):
     playlists: typing.List["Playlist"]
     player: QtMultimedia.QMediaPlayer
-    playHistoryDict: typing.Dict[int, int]
     currentPlaylistIndex: int
-    currentMusicIndex: int
-    currentHistoryIndex: int
     currentPlaybackMode: typing_extensions.Literal["LOOP", "RANDOM"]
 
     @staticmethod
@@ -78,7 +74,6 @@ class App(QtWidgets.QApplication):
             playlists[0 if index % 3 == 0 else 1].musics.append(music)
         self.playlists = playlists
         self.mainWindow.initPlaylistTables(self.playlists)
-        self.playHistoryDict = dict()
 
     def initPlayer(self):
         player = QtMultimedia.QMediaPlayer(self)
@@ -89,8 +84,6 @@ class App(QtWidgets.QApplication):
         player.positionChanged.connect(self.onPlayerPositionChanged)
         self.player = player
         self.currentPlaylistIndex = 0
-        self.currentMusicIndex = -1
-        self.currentHistoryIndex = -1
         self.currentPlaybackMode = "LOOP"
 
     def parseLyrics(self, lyricsText: str) -> Dict[int, str]:
@@ -137,7 +130,7 @@ class App(QtWidgets.QApplication):
 
     @property
     def currentMusic(self) -> "Music":
-        return self.currentPlaylist.musics[self.currentMusicIndex]
+        return self.currentPlaylist.musics[self.currentPlaylist.currentMusicIndex]
 
     @property
     def currentRealDuration(self):
@@ -155,8 +148,8 @@ class App(QtWidgets.QApplication):
 
     def playPrevious(self):
         logging.info(">>> Play previous")
-        previousHistoryIndex = self.currentHistoryIndex - 1
-        previousMusicIndex = self.playHistoryDict.get(previousHistoryIndex, -1)
+        previousHistoryIndex = self.currentPlaylist.currentHistoryIndex - 1
+        previousMusicIndex = self.currentPlaylist.playHistoryDict.get(previousHistoryIndex, -1)
         logging.info("Previous music index: %d", previousMusicIndex)
         currentPlaylistLength = len(self.currentPlaylist.musics)
         if previousMusicIndex == -1:
@@ -164,30 +157,30 @@ class App(QtWidgets.QApplication):
                 previousMusicIndex = (self.currentMusicIndex - 1) % currentPlaylistLength
             else:
                 previousMusicIndex = random.randint(0, currentPlaylistLength - 1)
-            self.playHistoryDict[previousHistoryIndex] = previousMusicIndex
+            self.currentPlaylist.playHistoryDict[previousHistoryIndex] = previousMusicIndex
         logging.info("Final previous music index: %d", previousMusicIndex)
-        self.currentHistoryIndex = previousHistoryIndex
+        self.currentPlaylist.currentHistoryIndex = previousHistoryIndex
         self.playMusicAtIndex(previousMusicIndex)
 
     def playNext(self):
         logging.info(">>> Play next")
-        nextHistoryIndex = self.currentHistoryIndex + 1
-        nextMusicIndex = self.playHistoryDict.get(nextHistoryIndex, -1)
+        nextHistoryIndex = self.currentPlaylist.currentHistoryIndex + 1
+        nextMusicIndex = self.currentPlaylist.playHistoryDict.get(nextHistoryIndex, -1)
         logging.info("Next music index: %d", nextMusicIndex)
         currentPlaylistLength = len(self.currentPlaylist.musics)
         if nextMusicIndex == -1:
             if self.currentPlaybackMode == "LOOP":
-                nextMusicIndex = (self.currentMusicIndex + 1) % currentPlaylistLength
+                nextMusicIndex = (self.currentPlaylist.currentMusicIndex + 1) % currentPlaylistLength
             else:
                 nextMusicIndex = random.randint(0, currentPlaylistLength - 1)
-            self.playHistoryDict[nextHistoryIndex] = nextMusicIndex
+            self.currentPlaylist.playHistoryDict[nextHistoryIndex] = nextMusicIndex
         logging.info("Final next music index: %d", nextMusicIndex)
-        self.currentHistoryIndex = nextHistoryIndex
+        self.currentPlaylist.currentHistoryIndex = nextHistoryIndex
         self.playMusicAtIndex(nextMusicIndex)
 
     def playMusicAtIndex(self, index):
-        previousMusicIndex = self.currentMusicIndex
-        self.currentMusicIndex = index
+        previousMusicIndex = self.currentPlaylist.currentMusicIndex
+        self.currentPlaylist.currentMusicIndex = index
         filename = self.currentMusic.filename
         logging.info("Play music: %d => %d %s", previousMusicIndex, index, filename)
         self.mainWindow.currentPlaylistTable.selectRow(index)
@@ -259,12 +252,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onStatusBarDoubleClicked(self):
         self.logger.info("On status bar double clocked")
-        if self.app.currentMusicIndex == -1:
+        if self.app.currentPlaylist.currentMusicIndex == -1:
             return
         self.playlistWidget.setCurrentIndex(self.app.currentPlaylistIndex)
-        self.currentPlaylistTable.selectRow(self.app.currentMusicIndex)
-        self.currentPlaylistTable.scrollTo(self.currentPlaylistModel.index(self.app.currentMusicIndex, 0),
-            QtWidgets.QTableView.PositionAtCenter)
+        self.currentPlaylistTable.selectRow(self.app.currentPlaylist.currentMusicIndex)
+        self.currentPlaylistTable.scrollTo(self.currentPlaylistModel.index(
+            self.app.currentPlaylist.currentMusicIndex, 0), QtWidgets.QTableView.PositionAtCenter)
 
     @property
     def currentPlaylistTable(self) -> QtWidgets.QTableView:
@@ -432,7 +425,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onPlayButtonClicked(self):
         logging.info("On play button clicked")
-        if self.app.currentMusicIndex == -1:
+        if self.app.currentPlaylist.currentMusicIndex == -1:
             self.app.currentPlaylistIndex = self.playlistWidget.currentIndex()
             logging.info("Current music index is -1, play next at playlist %d", self.playlistWidget.currentIndex())
             self.app.playNext()
@@ -450,22 +443,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onPlaylistTableDoubleClicked(self, index):
         logging.info(">>> On playlist table double clicked at %d", index)
-        previousPlaylistIndex = self.app.currentPlaylistIndex
-        currentPlaylistIndex = self.playlistWidget.currentIndex()
-        logging.info("Playlist index: %d => %d", previousPlaylistIndex, currentPlaylistIndex)
-        if currentPlaylistIndex != previousPlaylistIndex:
-            logging.info("Toggle playlist from %d to %d", previousPlaylistIndex, currentPlaylistIndex)
-            self.app.currentPlaylistIndex = currentPlaylistIndex
-            self.app.currentMusicIndex = -1
-            self.app.currentHistoryIndex = -1
-            self.app.playHistoryDict.clear()
+        self.app.currentPlaylistIndex = self.playlistWidget.currentIndex()
         logging.info("Play music at index %d", index)
-        nextHistoryIndex = self.app.currentHistoryIndex + 1
-        logging.info("Before history dict clean: %s", self.app.playHistoryDict)
-        [self.app.playHistoryDict.pop(key) for key in list(self.app.playHistoryDict) if key > nextHistoryIndex]
-        logging.info("After history dict clean: %s", self.app.playHistoryDict)
-        self.app.playHistoryDict[nextHistoryIndex] = index
-        self.app.currentHistoryIndex = nextHistoryIndex
+        nextHistoryIndex = self.app.currentPlaylist.currentHistoryIndex + 1
+        playHistoryDict = self.app.currentPlaylist.playHistoryDict
+        logging.info("Before history dict clean: %s", playHistoryDict)
+        [playHistoryDict.pop(key) for key in list(playHistoryDict) if key > nextHistoryIndex]
+        logging.info("After history dict clean: %s", playHistoryDict)
+        playHistoryDict[nextHistoryIndex] = index
+        self.app.currentPlaylist.currentHistoryIndex = nextHistoryIndex
         self.app.playMusicAtIndex(index)
 
     def setupLyrics(self, filename):
@@ -534,7 +520,7 @@ class PlaylistModel(QtCore.QAbstractTableModel):
         if role == QtCore.Qt.DisplayRole:
             return ["", music.artist, music.title][index.column()]
         elif role == QtCore.Qt.DecorationRole:
-            if index.column() == 0 and index.row() == self.app.currentMusicIndex \
+            if index.column() == 0 and index.row() == self.app.currentPlaylist.currentMusicIndex \
                 and self.app.currentPlaylistIndex == self.mainWindow.playlistWidget.currentIndex():
                 return [qtawesome.icon("mdi.stop"), qtawesome.icon("mdi.play"),
                     qtawesome.icon("mdi.pause")][self.app.player.state()]
@@ -544,7 +530,7 @@ class PlaylistModel(QtCore.QAbstractTableModel):
             return ["", "Artist", "Title"][section]
         return super().headerData(section, orientation, role)
 
-    def sort(self, column: int, order: PySide2.QtCore.Qt.SortOrder = ...) -> None:
+    def sort(self, column: int, order: QtCore.Qt.SortOrder = ...) -> None:
         if column == 0:
             return
         self.playlist.musics = sorted(self.playlist.musics,
@@ -556,6 +542,9 @@ class Playlist(object):
     def __init__(self, name: str):
         self.name = name
         self.musics: typing.List[Music] = []
+        self.playHistoryDict = dict()
+        self.currentMusicIndex = -1
+        self.currentHistoryIndex = -1
 
 
 class Music(object):
