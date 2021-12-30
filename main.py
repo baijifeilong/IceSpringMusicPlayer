@@ -160,7 +160,7 @@ class App(QtWidgets.QApplication):
             self.currentPlaylist.playHistoryDict[previousHistoryIndex] = previousMusicIndex
         logging.info("Final previous music index: %d", previousMusicIndex)
         self.currentPlaylist.currentHistoryIndex = previousHistoryIndex
-        self.playMusicAtIndex(previousMusicIndex)
+        self.playMusicAtIndex(previousMusicIndex, dontFollow=self.currentPlaybackMode == "LOOP")
 
     def playNext(self):
         logging.info(">>> Play next")
@@ -176,16 +176,16 @@ class App(QtWidgets.QApplication):
             self.currentPlaylist.playHistoryDict[nextHistoryIndex] = nextMusicIndex
         logging.info("Final next music index: %d", nextMusicIndex)
         self.currentPlaylist.currentHistoryIndex = nextHistoryIndex
-        self.playMusicAtIndex(nextMusicIndex)
+        self.playMusicAtIndex(nextMusicIndex, dontFollow=self.currentPlaybackMode == "LOOP")
 
-    def playMusicAtIndex(self, index):
+    def playMusicAtIndex(self, index, dontFollow=False):
         previousMusicIndex = self.currentPlaylist.currentMusicIndex
         self.currentPlaylist.currentMusicIndex = index
         filename = self.currentMusic.filename
         logging.info("Play music: %d => %d %s", previousMusicIndex, index, filename)
         self.mainWindow.currentPlaylistTable.selectRow(index)
-        self.mainWindow.currentPlaylistTable.scrollTo(self.mainWindow.currentPlaylistModel.index(index, 0),
-            QtWidgets.QTableView.PositionAtCenter)
+        not dontFollow and self.mainWindow.currentPlaylistTable.scrollTo(
+            self.mainWindow.currentPlaylistModel.index(index, 0), QtWidgets.QTableView.PositionAtCenter)
         self.mainWindow.setupLyrics(filename)
         self.mainWindow.setWindowTitle(Path(filename).with_suffix("").name)
         previousStateIndex = self.mainWindow.currentPlaylistModel.createIndex(previousMusicIndex, 0)
@@ -447,7 +447,7 @@ class MainWindow(QtWidgets.QMainWindow):
         logging.info("After history dict clean: %s", playHistoryDict)
         playHistoryDict[nextHistoryIndex] = index
         self.app.currentPlaylist.currentHistoryIndex = nextHistoryIndex
-        self.app.playMusicAtIndex(index)
+        self.app.playMusicAtIndex(index, dontFollow=True)
 
     def setupLyrics(self, filename):
         self.app.player.setProperty("previousLyricIndex", -1)
