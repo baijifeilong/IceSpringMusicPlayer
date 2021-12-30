@@ -209,7 +209,9 @@ class App(QtWidgets.QApplication):
 
     def onPlayerPositionChanged(self, position):
         self.positionLogger.debug("Position changed: %d", position)
+        self.mainWindow.progressSlider.blockSignals(True)
         self.mainWindow.progressSlider.setValue(position)
+        self.mainWindow.progressSlider.blockSignals(False)
         progressText = f"{self.formatDelta(position / self.currentBugRate)}" \
                        f"/{self.formatDelta(self.player.duration() / self.currentBugRate)}"
         self.mainWindow.progressLabel.setText(progressText)
