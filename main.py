@@ -2,6 +2,8 @@
 import random
 import typing
 
+import typing_extensions
+
 __import__("os").environ.update(dict(
     QT_API="pyside2",
     QT_MULTIMEDIA_PREFERRED_PLUGINS='WindowsMediaFoundation'.lower()
@@ -23,6 +25,10 @@ class App(QtWidgets.QApplication):
     playlists: typing.List["Playlist"]
     player: QtMultimedia.QMediaPlayer
     playHistoryDict: typing.Dict[int, int]
+    currentPlaylistIndex: int
+    currentMusicIndex: int
+    currentHistoryIndex: int
+    currentPlaybackMode: typing_extensions.Literal["LOOP", "RANDOM"]
 
     @staticmethod
     def initLogging():
@@ -77,11 +83,11 @@ class App(QtWidgets.QApplication):
         player.stateChanged.connect(self.onPlayerStateChanged)
         player.volumeChanged.connect(lambda x: logging.debug("Volume changed: %d", x))
         player.positionChanged.connect(self.onPlayerPositionChanged)
-        player.setProperty(CURRENT_PLAYLIST_INDEX, 0)
-        player.setProperty(CURRENT_MUSIC_INDEX, -1)
-        player.setProperty(PLAYBACK_MODE, "LOOP")
-        player.setProperty(PLAY_HISTORY_INDEX, -1)
         self.player = player
+        self.currentPlaylistIndex = 0
+        self.currentMusicIndex = -1
+        self.currentHistoryIndex = -1
+        self.currentPlaybackMode = "LOOP"
 
     def parseLyrics(self, lyricsText: str) -> Dict[int, str]:
         lyricsLogger = self.lyricsLogger
@@ -121,15 +127,21 @@ class App(QtWidgets.QApplication):
         seconds = int(milliseconds) // 1000
         return f"{seconds // 60:02d}:{seconds % 60:02d}"
 
-    def currentRealDuration(self):
-        currentPlaylistIndex = self.player.property(CURRENT_PLAYLIST_INDEX)
-        currentMusicIndex = self.player.property(CURRENT_MUSIC_INDEX)
-        currentMusic = self.playlists[currentPlaylistIndex].musics[currentMusicIndex]
-        realDuration = currentMusic.filesize * 8 // currentMusic.bitrate
-        return realDuration
+    @property
+    def currentPlaylist(self) -> "Playlist":
+        return self.playlists[self.currentPlaylistIndex]
 
+    @property
+    def currentMusic(self) -> "Music":
+        return self.currentPlaylist.musics[self.currentMusicIndex]
+
+    @property
+    def currentRealDuration(self):
+        return self.currentMusic.filesize * 8 // self.currentMusic.bitrate
+
+    @property
     def currentBugRate(self):
-        return self.player.duration() / self.currentRealDuration()
+        return self.player.duration() / self.currentRealDuration
 
     @staticmethod
     def clearLayout(layout: QtWidgets.QLayout):
@@ -139,51 +151,45 @@ class App(QtWidgets.QApplication):
 
     def playPrevious(self):
         logging.info(">>> Play previous")
-        previousHistoryIndex = self.player.property(PLAY_HISTORY_INDEX) - 1
+        previousHistoryIndex = self.currentHistoryIndex - 1
         previousMusicIndex = self.playHistoryDict.get(previousHistoryIndex, -1)
         logging.info("Previous music index: %d", previousMusicIndex)
-        playbackMode = self.player.property(PLAYBACK_MODE)
-        currentPlaylist = self.playlists[self.player.property(CURRENT_PLAYLIST_INDEX)]
-        currentMusicIndex = self.player.property(CURRENT_MUSIC_INDEX)
-        currentPlaylistLength = len(currentPlaylist.musics)
+        currentPlaylistLength = len(self.currentPlaylist.musics)
         if previousMusicIndex == -1:
-            if playbackMode == "LOOP":
-                previousMusicIndex = (currentMusicIndex - 1) % currentPlaylistLength
+            if self.currentPlaybackMode == "LOOP":
+                previousMusicIndex = (self.currentMusicIndex - 1) % currentPlaylistLength
             else:
                 previousMusicIndex = random.randint(0, currentPlaylistLength - 1)
             self.playHistoryDict[previousHistoryIndex] = previousMusicIndex
         logging.info("Final previous music index: %d", previousMusicIndex)
-        self.player.setProperty(PLAY_HISTORY_INDEX, previousHistoryIndex)
+        self.currentHistoryIndex = previousHistoryIndex
         self.playMusicAtIndex(previousMusicIndex)
 
     def playNext(self):
         logging.info(">>> Play next")
-        nextHistoryIndex = self.player.property(PLAY_HISTORY_INDEX) + 1
+        nextHistoryIndex = self.currentHistoryIndex + 1
         nextMusicIndex = self.playHistoryDict.get(nextHistoryIndex, -1)
         logging.info("Next music index: %d", nextMusicIndex)
-        playbackMode = self.player.property(PLAYBACK_MODE)
-        currentPlaylist = self.playlists[self.player.property(CURRENT_PLAYLIST_INDEX)]
-        currentMusicIndex = self.player.property(CURRENT_MUSIC_INDEX)
-        currentPlaylistLength = len(currentPlaylist.musics)
+        currentPlaylistLength = len(self.currentPlaylist.musics)
         if nextMusicIndex == -1:
-            if playbackMode == "LOOP":
-                nextMusicIndex = (currentMusicIndex + 1) % currentPlaylistLength
+            if self.currentPlaybackMode == "LOOP":
+                nextMusicIndex = (self.currentMusicIndex + 1) % currentPlaylistLength
             else:
                 nextMusicIndex = random.randint(0, currentPlaylistLength - 1)
             self.playHistoryDict[nextHistoryIndex] = nextMusicIndex
         logging.info("Final next music index: %d", nextMusicIndex)
-        self.player.setProperty(PLAY_HISTORY_INDEX, nextHistoryIndex)
+        self.currentHistoryIndex = nextHistoryIndex
         self.playMusicAtIndex(nextMusicIndex)
 
     def playMusicAtIndex(self, index):
-        previousMusicIndex = self.player.property(CURRENT_MUSIC_INDEX)
-        self.player.setProperty(CURRENT_MUSIC_INDEX, index)
-        filename = self.playlists[self.player.property(CURRENT_PLAYLIST_INDEX)].musics[index].filename
+        previousMusicIndex = self.currentMusicIndex
+        self.currentMusicIndex = index
+        filename = self.currentMusic.filename
         logging.info("Play music: %d => %d %s", previousMusicIndex, index, filename)
-        currentPlaylistTable = self.mainWindow.playlistTables[self.player.property(CURRENT_PLAYLIST_INDEX)]
-        currentPlaylistTable.selectRow(index)
-        previousMusicIndex != -1 and currentPlaylistTable.model().item(previousMusicIndex, 1).setIcon(QtGui.QIcon())
-        currentPlaylistTable.model().item(index, 1).setIcon(qtawesome.icon("mdi.play"))
+        self.mainWindow.currentPlaylistTable.selectRow(index)
+        previousMusicIndex != -1 and self.mainWindow.currentPlaylistModel \
+            .item(previousMusicIndex, 1).setIcon(QtGui.QIcon())
+        self.mainWindow.currentPlaylistModel.item(index, 1).setIcon(qtawesome.icon("mdi.play"))
         self.mainWindow.setupLyrics(filename)
         self.mainWindow.setWindowTitle(Path(filename).with_suffix("").name)
         self.player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(filename)))
@@ -191,7 +197,7 @@ class App(QtWidgets.QApplication):
 
     def onPlayerDurationChanged(self, duration):
         playerDurationText = self.formatDelta(self.player.duration())
-        realDurationText = self.formatDelta(self.currentRealDuration())
+        realDurationText = self.formatDelta(self.currentRealDuration)
         logging.info("Player duration changed: %d (%s / %s)", self.player.duration(), playerDurationText,
             realDurationText)
         self.mainWindow.progressSlider.setMaximum(duration)
@@ -199,23 +205,20 @@ class App(QtWidgets.QApplication):
     def onPlayerPositionChanged(self, position):
         self.positionLogger.debug("Position changed: %d", position)
         self.mainWindow.progressSlider.setValue(position)
-        progressText = f"{self.formatDelta(position / self.currentBugRate())}" \
-                       f"/{self.formatDelta(self.player.duration() / self.currentBugRate())}"
+        progressText = f"{self.formatDelta(position / self.currentBugRate)}" \
+                       f"/{self.formatDelta(self.player.duration() / self.currentBugRate)}"
         self.mainWindow.progressLabel.setText(progressText)
-        music = self.playlists[self.player.property(CURRENT_PLAYLIST_INDEX)].musics[
-            self.player.property(CURRENT_MUSIC_INDEX)]
         suffix = Path(self.player.currentMedia().canonicalUrl().toLocalFile()).suffix
         self.player.state() != QtMultimedia.QMediaPlayer.StoppedState and self.mainWindow.statusBar().showMessage(
-            "{} | {} kbps | {} Hz | {} channels | {}".format(suffix[1:].upper(), music.bitrate, music.sampleRate,
-                music.channels, progressText.replace("/", " / ")))
-        self.mainWindow.refreshLyrics(math.ceil(position / self.currentBugRate()))
+            "{} | {} kbps | {} Hz | {} channels | {}".format(suffix[1:].upper(), self.currentMusic.bitrate,
+                self.currentMusic.sampleRate, self.currentMusic.channels, progressText.replace("/", " / ")))
+        self.mainWindow.refreshLyrics(math.ceil(position / self.currentBugRate))
 
     def onPlayerStateChanged(self, state):
         logging.info("Player state changed: %s [%d/%d]", state, self.player.position(), self.player.duration())
         self.mainWindow.playButton.setIcon(qtawesome.icon(["mdi.play", "mdi.pause", "mdi.play"][state]))
-        currentPlaylistTable = self.mainWindow.playlistTables[self.player.property(CURRENT_PLAYLIST_INDEX)]
         stateIcon = [QtGui.QIcon(), qtawesome.icon("mdi.play"), qtawesome.icon("mdi.pause")][state]
-        currentPlaylistTable.model().item(self.player.property(CURRENT_MUSIC_INDEX), 1).setIcon(stateIcon)
+        self.mainWindow.currentPlaylistModel.item(self.currentMusicIndex, 1).setIcon(stateIcon)
         finished = state == QtMultimedia.QMediaPlayer.StoppedState and self.player.position() == self.player.duration()
         finished and self.playNext()
 
@@ -241,6 +244,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.initToolbar()
         self.initLayout()
         self.statusBar().showMessage("Ready.")
+
+    @property
+    def currentPlaylistTable(self) -> QtWidgets.QTableView:
+        return self.playlistTables[self.app.currentPlaylistIndex]
+
+    @property
+    def currentPlaylistModel(self) -> QtGui.QStandardItemModel:
+        return self.currentPlaylistTable.model()
 
     def initToolbar(self):
         toolbar = self.addToolBar("Toolbar")
@@ -403,17 +414,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.playlistTables = playlistTables
 
     def togglePlaybackMode(self):
-        oldPlaybackMode = self.app.player.property(PLAYBACK_MODE)
+        oldPlaybackMode = self.app.currentPlaybackMode
         newPlaybackMode = dict(LOOP="RANDOM", RANDOM="LOOP")[oldPlaybackMode]
-        self.app.player.setProperty(PLAYBACK_MODE, newPlaybackMode)
+        self.app.currentPlaybackMode = newPlaybackMode
         newIconName = dict(LOOP="mdi.repeat", RANDOM="mdi.shuffle")[newPlaybackMode]
         self.playbackButton.setIcon(qtawesome.icon(newIconName))
 
     def onPlayButtonClicked(self):
         logging.info("On play button clicked")
-        currentMusicIndex = self.app.player.property(CURRENT_MUSIC_INDEX)
-        if currentMusicIndex == -1:
-            self.app.player.setProperty(CURRENT_PLAYLIST_INDEX, self.playlistWidget.currentIndex())
+        if self.app.currentMusicIndex == -1:
+            self.app.currentPlaylistIndex = self.playlistWidget.currentIndex()
             logging.info("Current music index is -1, play next at playlist %d", self.playlistWidget.currentIndex())
             self.app.playNext()
         elif self.app.player.state() == QtMultimedia.QMediaPlayer.PlayingState:
@@ -430,26 +440,26 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onPlaylistTableDoubleClicked(self, index):
         logging.info(">>> On playlist table double clicked at %d", index)
-        previousPlaylistIndex = self.app.player.property(CURRENT_PLAYLIST_INDEX)
+        previousPlaylistIndex = self.app.currentPlaylistIndex
         currentPlaylistIndex = self.playlistWidget.currentIndex()
         logging.info("Playlist index: %d => %d", previousPlaylistIndex, currentPlaylistIndex)
         if currentPlaylistIndex != previousPlaylistIndex:
             logging.info("Toggle playlist from %d to %d", previousPlaylistIndex, currentPlaylistIndex)
             previousPlaylistTable = self.playlistTables[previousPlaylistIndex]
-            previousMusicIndex = self.app.player.property(CURRENT_MUSIC_INDEX)
+            previousMusicIndex = self.app.currentMusicIndex
             previousMusicIndex != -1 and previousPlaylistTable.model().item(previousMusicIndex, 1).setIcon(
                 QtGui.QIcon())
-            self.app.player.setProperty(CURRENT_PLAYLIST_INDEX, currentPlaylistIndex)
-            self.app.player.setProperty(CURRENT_MUSIC_INDEX, -1)
-            self.app.player.setProperty(PLAY_HISTORY_INDEX, -1)
+            self.app.currentPlaylistIndex = currentPlaylistIndex
+            self.app.currentMusicIndex = -1
+            self.app.currentHistoryIndex = -1
             self.app.playHistoryDict.clear()
         logging.info("Play music at index %d", index)
-        nextHistoryIndex = self.app.player.property(PLAY_HISTORY_INDEX) + 1
+        nextHistoryIndex = self.app.currentHistoryIndex + 1
         logging.info("Before history dict clean: %s", self.app.playHistoryDict)
         [self.app.playHistoryDict.pop(key) for key in list(self.app.playHistoryDict) if key > nextHistoryIndex]
         logging.info("After history dict clean: %s", self.app.playHistoryDict)
         self.app.playHistoryDict[nextHistoryIndex] = index
-        self.app.player.setProperty(PLAY_HISTORY_INDEX, nextHistoryIndex)
+        self.app.currentHistoryIndex = nextHistoryIndex
         self.app.playMusicAtIndex(index)
 
     def setupLyrics(self, filename):
@@ -464,7 +474,7 @@ class MainWindow(QtWidgets.QMainWindow):
             lyricLabel = ClickableLabel(lyric, self.lyricsContainer)
             lyricLabel.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
             lyricLabel.clicked.connect(
-                lambda _, position=position: self.app.player.setPosition(position * self.app.currentBugRate()))
+                lambda _, position=position: self.app.player.setPosition(position * self.app.currentBugRate))
             font = lyricLabel.font()
             font.setFamily("等线")
             font.setPointSize(12)
@@ -506,16 +516,15 @@ class Playlist(object):
 
 
 class Music(object):
-    def __init__(self):
-        self.filename = ""
-        self.filesize = 0
-        self.album = ""
-        self.artist = ""
-        self.title = ""
-        self.duration = 0
-        self.bitrate = 0
-        self.sampleRate = 0
-        self.channels = 0
+    filename: str
+    filesize: int
+    album: str
+    artist: str
+    title: str
+    duration: int
+    bitrate: int
+    sampleRate: int
+    channels: int
 
 
 class ClickableLabel(QtWidgets.QLabel):
@@ -540,8 +549,5 @@ class NoFocusDelegate(QtWidgets.QStyledItemDelegate):
         super().paint(painter, itemOption, index)
 
 
-CURRENT_PLAYLIST_INDEX = "currentPlaylistIndex"
-CURRENT_MUSIC_INDEX = "currentMusicIndex"
-PLAYBACK_MODE = "playbackMode"
-PLAY_HISTORY_INDEX = "playHistoryIndex"
-App().exec_()
+if __name__ == '__main__':
+    App().exec_()

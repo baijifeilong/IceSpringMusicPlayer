@@ -3,5 +3,6 @@ pytaglib==1.4.6
 chardet==4.0.0
 QtAwesome==1.1.1
 colorlog==6.6.0
+typing-extensions==4.0.1
 
 
