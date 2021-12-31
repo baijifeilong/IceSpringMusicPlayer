@@ -51,30 +51,34 @@ class App(QtWidgets.QApplication):
         self.initPlaylists()
 
     def exec_(self) -> int:
+        self.mainWindow.resize(1280, 720)
         self.mainWindow.show()
         return super().exec_()
+
+    @staticmethod
+    def parseMusic(filename) -> "Music":
+        parts = [x.strip() for x in Path(filename).with_suffix("").name.rsplit("-", maxsplit=1)]
+        artist, title = parts if len(parts) == 2 else ["Unknown"] + parts
+        info = taglib.File(filename)
+        music = Music()
+        music.filename = filename
+        music.filesize = Path(filename).stat().st_size
+        music.album = info.tags.get("ALBUM", [""])[0]
+        music.title = info.tags.get("TITLE", [title])[0]
+        music.artist = info.tags.get("ARTIST", [artist])[0]
+        music.bitrate = info.bitrate
+        music.sampleRate = info.sampleRate
+        music.channels = info.channels
+        music.duration = info.length * 1000
+        return music
 
     def initPlaylists(self):
         playlists: typing.List[Playlist] = [
             Playlist("Alpha", self.currentPlaybackMode), Playlist("Beta", self.currentPlaybackMode)]
         paths = list(Path("~/Music").expanduser().glob("**/*.mp3"))[:200]
-        random.seed(0)
-        random.shuffle(paths)
+        random.Random(0).shuffle(paths)
         for index, path in enumerate(paths):
-            parts = [x.strip() for x in path.with_suffix("").name.rsplit("-", maxsplit=1)]
-            artist, title = parts if len(parts) == 2 else ["Unknown"] + parts
-            info = taglib.File(str(path))
-            music = Music()
-            music.filename = str(path)
-            music.filesize = path.stat().st_size
-            music.album = info.tags.get("ALBUM", [""])[0]
-            music.title = info.tags.get("TITLE", [title])[0]
-            music.artist = info.tags.get("ARTIST", [artist])[0]
-            music.bitrate = info.bitrate
-            music.sampleRate = info.sampleRate
-            music.channels = info.channels
-            music.duration = info.length * 1000
-            playlists[0 if index % 3 == 0 else 1].musics.append(music)
+            playlists[0 if index % 3 == 0 else 1].musics.append(self.parseMusic(str(path)))
         self.mainWindow.setupPlaylistTables(playlists)
         self.playlists = playlists
         self.currentPlaylist = playlists[0]
@@ -153,7 +157,7 @@ class App(QtWidgets.QApplication):
         self.playMusic(self.currentPlaylist.playNext(), dontFollow=self.currentPlaybackMode == "LOOP")
 
     def playMusic(self, music: "Music", dontFollow=False):
-        self.logger.info(">>> Play music %s:%s", music.artist, music.title)
+        self.logger.info(">>> Play music %s : %s", music.artist, music.title)
         oldMusicIndex = -1 if self.currentPlaylist.lastMusic is None \
             else self.currentPlaylist.musics.index(self.currentPlaylist.lastMusic)
         newMusicIndex = self.currentPlaylist.currentMusicIndex
@@ -213,9 +217,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self, app: App):
         super().__init__()
-        self.logger = logging.getLogger("mainWindow")
         self.app = app
-        self.resize(1280, 720)
+        self.logger = logging.getLogger("mainWindow")
+        self.initMenu()
         self.initToolbar()
         self.initLayout()
         self.statusBar().showMessage("Ready.")
@@ -242,6 +246,28 @@ class MainWindow(QtWidgets.QMainWindow):
     @property
     def currentPlaylistModel(self) -> QtGui.QStandardItemModel:
         return self.currentPlaylistTable.model()
+
+    def initMenu(self):
+        fileMenu = self.menuBar().addMenu("File")
+        openAction = fileMenu.addAction("Open")
+        openAction.triggered.connect(self.onOpenActionTriggered)
+
+    def onOpenActionTriggered(self):
+        musicRoot = str(Path("~/Music").expanduser().absolute())
+        filenames = QtWidgets.QFileDialog.getOpenFileNames(
+            self, "Open music files", musicRoot, "Audio files (*.mp3 *.wma) ;; All files (*)")[0]
+        self.logger.info("There are %d files to open", len(filenames))
+        oldMusics = self.app.currentPlaylist.musics
+        newMusics = [self.app.parseMusic(x) for x in filenames]
+        beginRow, endRow = len(oldMusics), len(oldMusics) + len(newMusics) - 1
+        self.currentPlaylistModel.beginInsertRows(QtCore.QModelIndex(), beginRow, endRow)
+        self.app.currentPlaylist.musics.extend(newMusics)
+        self.currentPlaylistModel.endInsertRows()
+        topLeftIndex = self.currentPlaylistModel.index(beginRow, 0)
+        bottomRightIndex = self.currentPlaylistModel.index(endRow, 0)
+        selection = QtCore.QItemSelection(topLeftIndex, bottomRightIndex)
+        self.currentPlaylistTable.selectionModel().select(selection,
+            QtCore.QItemSelectionModel.Select | QtCore.QItemSelectionModel.Rows)
 
     def initToolbar(self):
         toolbar = self.addToolBar("Toolbar")
@@ -506,6 +532,8 @@ class PlaylistModel(QtCore.QAbstractTableModel):
             self.mainWindow.currentPlaylistTable.selectRow(self.playlist.currentMusicIndex)
             self.mainWindow.currentPlaylistTable.scrollTo(self.mainWindow.currentPlaylistModel.index(
                 self.playlist.currentMusicIndex, 0), QtWidgets.QTableView.PositionAtCenter)
+        else:
+            self.endResetModel()
 
 
 class Playlist(object):
