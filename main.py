@@ -1,4 +1,5 @@
 # Created by BaiJiFeiLong@gmail.com at 2021/12/6 12:52
+import hashlib
 import random
 import typing
 
@@ -36,6 +37,8 @@ class App(QtWidgets.QApplication):
 
     def __init__(self):
         super().__init__()
+        self.currentPlaylistIndex = 0
+        self.currentPlaybackMode = "LOOP"
         self.initLogging()
         self.logger = logging.getLogger("app")
         self.lyricsLogger = logging.getLogger("lyrics")
@@ -53,7 +56,8 @@ class App(QtWidgets.QApplication):
         return super().exec_()
 
     def initPlaylists(self):
-        playlists: typing.List[Playlist] = [Playlist("Alpha"), Playlist("Beta")]
+        playlists: typing.List[Playlist] = [
+            Playlist("Alpha", self.currentPlaybackMode), Playlist("Beta", self.currentPlaybackMode)]
         paths = list(Path("~/Music").expanduser().glob("**/*.mp3"))[:200]
         random.seed(0)
         random.shuffle(paths)
@@ -83,8 +87,6 @@ class App(QtWidgets.QApplication):
         player.volumeChanged.connect(lambda x: logging.debug("Volume changed: %d", x))
         player.positionChanged.connect(self.onPlayerPositionChanged)
         self.player = player
-        self.currentPlaylistIndex = 0
-        self.currentPlaybackMode = "LOOP"
 
     def parseLyrics(self, lyricsText: str) -> Dict[int, str]:
         lyricsLogger = self.lyricsLogger
@@ -129,12 +131,8 @@ class App(QtWidgets.QApplication):
         return self.playlists[self.currentPlaylistIndex]
 
     @property
-    def currentMusic(self) -> "Music":
-        return self.currentPlaylist.musics[self.currentPlaylist.currentMusicIndex]
-
-    @property
     def currentRealDuration(self):
-        return self.currentMusic.filesize * 8 // self.currentMusic.bitrate
+        return self.currentPlaylist.currentMusic.filesize * 8 // self.currentPlaylist.currentMusic.bitrate
 
     @property
     def currentBugRate(self):
@@ -147,50 +145,28 @@ class App(QtWidgets.QApplication):
                 else layout.removeItem(layout.itemAt(i))
 
     def playPrevious(self):
-        logging.info(">>> Play previous")
-        previousHistoryIndex = self.currentPlaylist.currentHistoryIndex - 1
-        previousMusicIndex = self.currentPlaylist.playHistoryDict.get(previousHistoryIndex, -1)
-        logging.info("Previous music index: %d", previousMusicIndex)
-        currentPlaylistLength = len(self.currentPlaylist.musics)
-        if previousMusicIndex == -1:
-            if self.currentPlaybackMode == "LOOP":
-                previousMusicIndex = (self.currentPlaylist.currentMusicIndex - 1) % currentPlaylistLength
-            else:
-                previousMusicIndex = random.randint(0, currentPlaylistLength - 1)
-            self.currentPlaylist.playHistoryDict[previousHistoryIndex] = previousMusicIndex
-        logging.info("Final previous music index: %d", previousMusicIndex)
-        self.currentPlaylist.currentHistoryIndex = previousHistoryIndex
-        self.playMusicAtIndex(previousMusicIndex, dontFollow=self.currentPlaybackMode == "LOOP")
+        self.logger.info(">>> Play previous")
+        self.playMusic(self.currentPlaylist.playPrevious(), dontFollow=self.currentPlaybackMode == "LOOP")
 
     def playNext(self):
-        logging.info(">>> Play next")
-        nextHistoryIndex = self.currentPlaylist.currentHistoryIndex + 1
-        nextMusicIndex = self.currentPlaylist.playHistoryDict.get(nextHistoryIndex, -1)
-        logging.info("Next music index: %d", nextMusicIndex)
-        currentPlaylistLength = len(self.currentPlaylist.musics)
-        if nextMusicIndex == -1:
-            if self.currentPlaybackMode == "LOOP":
-                nextMusicIndex = (self.currentPlaylist.currentMusicIndex + 1) % currentPlaylistLength
-            else:
-                nextMusicIndex = random.randint(0, currentPlaylistLength - 1)
-            self.currentPlaylist.playHistoryDict[nextHistoryIndex] = nextMusicIndex
-        logging.info("Final next music index: %d", nextMusicIndex)
-        self.currentPlaylist.currentHistoryIndex = nextHistoryIndex
-        self.playMusicAtIndex(nextMusicIndex, dontFollow=self.currentPlaybackMode == "LOOP")
+        self.logger.info(">>> Play next")
+        self.playMusic(self.currentPlaylist.playNext(), dontFollow=self.currentPlaybackMode == "LOOP")
 
-    def playMusicAtIndex(self, index, dontFollow=False):
-        previousMusicIndex = self.currentPlaylist.currentMusicIndex
-        self.currentPlaylist.currentMusicIndex = index
-        filename = self.currentMusic.filename
-        logging.info("Play music: %d => %d %s", previousMusicIndex, index, filename)
-        self.mainWindow.currentPlaylistTable.selectRow(index)
-        not dontFollow and self.mainWindow.currentPlaylistTable.scrollTo(
-            self.mainWindow.currentPlaylistModel.index(index, 0), QtWidgets.QTableView.PositionAtCenter)
-        self.mainWindow.setupLyrics(filename)
-        self.mainWindow.setWindowTitle(Path(filename).with_suffix("").name)
-        previousStateIndex = self.mainWindow.currentPlaylistModel.createIndex(previousMusicIndex, 0)
-        self.mainWindow.currentPlaylistModel.dataChanged.emit(previousStateIndex, previousStateIndex)
-        self.player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(filename)))
+    def playMusic(self, music: "Music", dontFollow=False):
+        self.logger.info(">>> Play music %s:%s", music.artist, music.title)
+        oldMusicIndex = -1 if self.currentPlaylist.lastMusic is None \
+            else self.currentPlaylist.musics.index(self.currentPlaylist.lastMusic)
+        newMusicIndex = self.currentPlaylist.currentMusicIndex
+        self.mainWindow.setWindowTitle(Path(music.filename).with_suffix("").name)
+        self.mainWindow.setupLyrics(music.filename)
+        self.mainWindow.currentPlaylistTable.selectRow(newMusicIndex)
+        self.mainWindow.currentPlaylistTable.scrollTo(
+            self.mainWindow.currentPlaylistModel.index(newMusicIndex, 0), QtWidgets.QTableView.PositionAtCenter) \
+            if not dontFollow else None
+        self.mainWindow.currentPlaylistModel.dataChanged.emit(
+            self.mainWindow.currentPlaylistModel.createIndex(oldMusicIndex, 0),
+            self.mainWindow.currentPlaylistModel.createIndex(oldMusicIndex, 0))
+        self.player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(music.filename)))
         self.player.play()
 
     def onPlayerDurationChanged(self, duration):
@@ -209,9 +185,10 @@ class App(QtWidgets.QApplication):
                        f"/{self.formatDelta(self.player.duration() / self.currentBugRate)}"
         self.mainWindow.progressLabel.setText(progressText)
         suffix = Path(self.player.currentMedia().canonicalUrl().toLocalFile()).suffix
+        currentMusic = self.currentPlaylist.currentMusic
         self.player.state() != QtMultimedia.QMediaPlayer.StoppedState and self.mainWindow.statusBar().showMessage(
-            "{} | {} kbps | {} Hz | {} channels | {}".format(suffix[1:].upper(), self.currentMusic.bitrate,
-                self.currentMusic.sampleRate, self.currentMusic.channels, progressText.replace("/", " / ")))
+            "{} | {} kbps | {} Hz | {} channels | {}".format(suffix[1:].upper(), currentMusic.bitrate,
+                currentMusic.sampleRate, currentMusic.channels, progressText.replace("/", " / ")))
         self.mainWindow.refreshLyrics(math.ceil(position / self.currentBugRate))
 
     def onPlayerStateChanged(self, state):
@@ -251,7 +228,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onStatusBarDoubleClicked(self):
         self.logger.info("On status bar double clocked")
-        if self.app.currentPlaylist.currentMusicIndex == -1:
+        if self.app.currentPlaylist.currentMusic is None:
             return
         self.playlistWidget.setCurrentIndex(self.app.currentPlaylistIndex)
         self.currentPlaylistTable.selectRow(self.app.currentPlaylist.currentMusicIndex)
@@ -415,14 +392,16 @@ class MainWindow(QtWidgets.QMainWindow):
         oldPlaybackMode = self.app.currentPlaybackMode
         newPlaybackMode = dict(LOOP="RANDOM", RANDOM="LOOP")[oldPlaybackMode]
         self.app.currentPlaybackMode = newPlaybackMode
+        for playlist in self.app.playlists:
+            playlist.playbackMode = newPlaybackMode
         newIconName = dict(LOOP="mdi.repeat", RANDOM="mdi.shuffle")[newPlaybackMode]
         self.playbackButton.setIcon(qtawesome.icon(newIconName))
 
     def onPlayButtonClicked(self):
         logging.info("On play button clicked")
-        if self.app.currentPlaylist.currentMusicIndex == -1:
+        if self.app.currentPlaylist.currentMusic is None:
             self.app.currentPlaylistIndex = self.playlistWidget.currentIndex()
-            logging.info("Current music index is -1, play next at playlist %d", self.playlistWidget.currentIndex())
+            logging.info("Current music is none, play next at playlist %d", self.playlistWidget.currentIndex())
             self.app.playNext()
         elif self.app.player.state() == QtMultimedia.QMediaPlayer.PlayingState:
             logging.info("Player is playing, pause it")
@@ -440,14 +419,7 @@ class MainWindow(QtWidgets.QMainWindow):
         logging.info(">>> On playlist table double clicked at %d", index)
         self.app.currentPlaylistIndex = self.playlistWidget.currentIndex()
         logging.info("Play music at index %d", index)
-        nextHistoryIndex = self.app.currentPlaylist.currentHistoryIndex + 1
-        playHistoryDict = self.app.currentPlaylist.playHistoryDict
-        logging.info("Before history dict clean: %s", playHistoryDict)
-        [playHistoryDict.pop(key) for key in list(playHistoryDict) if key > nextHistoryIndex]
-        logging.info("After history dict clean: %s", playHistoryDict)
-        playHistoryDict[nextHistoryIndex] = index
-        self.app.currentPlaylist.currentHistoryIndex = nextHistoryIndex
-        self.app.playMusicAtIndex(index, dontFollow=True)
+        self.app.playMusic(self.app.currentPlaylist.playMusic(self.app.currentPlaylist.musics[index]), True)
 
     def setupLyrics(self, filename):
         self.app.player.setProperty("previousLyricIndex", -1)
@@ -530,16 +502,75 @@ class PlaylistModel(QtCore.QAbstractTableModel):
             return
         self.playlist.musics = sorted(self.playlist.musics,
             key=lambda x: x.artist if column == 1 else x.title, reverse=order == QtCore.Qt.DescendingOrder)
-        self.endResetModel()
+        if self.playlist.currentMusic is not None:
+            self.mainWindow.currentPlaylistTable.selectRow(self.playlist.currentMusicIndex)
+            self.mainWindow.currentPlaylistTable.scrollTo(self.mainWindow.currentPlaylistModel.index(
+                self.playlist.currentMusicIndex, 0), QtWidgets.QTableView.PositionAtCenter)
 
 
 class Playlist(object):
-    def __init__(self, name: str):
+    def __init__(self, name: str, playbackMode: typing_extensions.Literal["LOOP", "RANDOM"]):
         self.name = name
+        self.playbackMode = playbackMode
         self.musics: typing.List[Music] = []
-        self.playHistoryDict = dict()
-        self.currentMusicIndex = -1
-        self.currentHistoryIndex = -1
+        self.historyDict: typing.Dict[int, Music] = dict()
+        self.historyPosition = -1
+        self.lastMusic: typing.Optional[Music] = None
+        self.random = random.Random(0)
+
+    @property
+    def currentMusic(self) -> typing.Optional["Music"]:
+        return self.historyDict.get(self.historyPosition, None)
+
+    @property
+    def currentMusicIndex(self) -> int:
+        return -1 if self.currentMusic is None else self.musics.index(self.currentMusic)
+
+    def playNext(self) -> "Music":
+        return self.playMusicAtRelativePosition(self.nextMusic(), 1)
+
+    def playPrevious(self) -> "Music":
+        return self.playMusicAtRelativePosition(self.previousMusic(), -1)
+
+    def playMusic(self, music: "Music"):
+        return self.playMusicAtRelativePosition(music, 1)
+
+    def playMusicAtRelativePosition(self, music: "Music", relativePosition) -> "Music":
+        self.lastMusic = self.currentMusic
+        self.historyPosition += relativePosition
+        self.historyDict[self.historyPosition] = music
+        return music
+
+    def nextMusic(self) -> "Music":
+        historyNextMusic = self.historyDict.get(self.historyPosition + 1, None)
+        randomNextMusic = self.musics[self.memorizedNextRandomMusicIndex()]
+        loopNextMusic = self.musics[0] if self.currentMusic is None \
+            else self.musics[(self.currentMusicIndex + 1) % len(self.musics)]
+        return loopNextMusic if self.playbackMode == "LOOP" else historyNextMusic or randomNextMusic
+
+    def previousMusic(self) -> "Music":
+        historyPreviousMusic = self.historyDict.get(self.historyPosition - 1, None)
+        randomPreviousMusic = self.musics[self.memorizedPreviousRandomMusicIndex()]
+        loopPreviousMusic = self.musics[-1] if self.currentMusic is None \
+            else self.musics[(self.currentMusicIndex - 1) % len(self.musics)]
+        return loopPreviousMusic if self.playbackMode == "LOOP" else historyPreviousMusic or randomPreviousMusic
+
+    def memorizedNextRandomValue(self) -> float:
+        oldMemoryFlag = getattr(Playlist.memorizedNextRandomValue, "flag", "-1/-1")
+        newMemoryFlag = "{}/{}".format(self.historyPosition, len(self.musics))
+        if newMemoryFlag != oldMemoryFlag:
+            setattr(Playlist.memorizedNextRandomValue, "flag", newMemoryFlag)
+            setattr(Playlist.memorizedNextRandomValue, "value", self.random.random())
+        assert hasattr(Playlist.memorizedNextRandomValue, "value")
+        return getattr(Playlist.memorizedNextRandomValue, "value")
+
+    def memorizedPreviousRandomMusicIndex(self):
+        index = int(hashlib.md5(f"P/{self.memorizedNextRandomValue()}".encode()).hexdigest(), 16) % len(self.musics)
+        return index if index != self.currentMusicIndex else (index - 1) % len(self.musics)
+
+    def memorizedNextRandomMusicIndex(self):
+        index = int(hashlib.md5(f"N/{self.memorizedNextRandomValue()}".encode()).hexdigest(), 16) % len(self.musics)
+        return index if index != self.currentMusicIndex else (index + 1) % len(self.musics)
 
 
 class Music(object):
