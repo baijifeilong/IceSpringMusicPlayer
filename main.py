@@ -143,8 +143,8 @@ class App(QtWidgets.QApplication):
     @staticmethod
     def clearLayout(layout: QtWidgets.QLayout):
         for i in reversed(range(layout.count())):
-            layout.itemAt(i).widget().setParent(None) if layout.itemAt(i).widget() else layout.removeItem(
-                layout.itemAt(i))
+            layout.itemAt(i).widget().setParent(None) if layout.itemAt(i).widget() \
+                else layout.removeItem(layout.itemAt(i))
 
     def playPrevious(self):
         logging.info(">>> Play previous")
@@ -387,7 +387,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for button in playButton, stopButton, previousButton, nextButton, playbackButton:
             button.setIconSize(QtCore.QSize(50, 50))
             button.setAutoRaise(True)
-        progressSlider = MySlider(QtCore.Qt.Horizontal, mainWidget)
+        progressSlider = FluentSlider(QtCore.Qt.Horizontal, mainWidget)
         progressSlider.valueChanged.connect(lambda x: self.app.player.setPosition(x))
         progressLabel = QtWidgets.QLabel("00:00/00:00", mainWidget)
         volumeDial = QtWidgets.QDial(mainWidget)
@@ -498,7 +498,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 class PlaylistModel(QtCore.QAbstractTableModel):
     def __init__(self, playlist: "Playlist", mainWindow: MainWindow,
-        parent: typing.Optional[QtCore.QObject] = None) -> None:
+            parent: typing.Optional[QtCore.QObject] = None) -> None:
         super().__init__(parent)
         self.playlist = playlist
         self.mainWindow = mainWindow
@@ -516,7 +516,7 @@ class PlaylistModel(QtCore.QAbstractTableModel):
             return ["", music.artist, music.title][index.column()]
         elif role == QtCore.Qt.DecorationRole:
             if index.column() == 0 and index.row() == self.app.currentPlaylist.currentMusicIndex \
-                and self.app.currentPlaylistIndex == self.mainWindow.playlistWidget.currentIndex():
+                    and self.app.currentPlaylistIndex == self.mainWindow.playlistWidget.currentIndex():
                 return [qtawesome.icon("mdi.stop"), qtawesome.icon("mdi.play"),
                     qtawesome.icon("mdi.pause")][self.app.player.state()]
 
@@ -561,7 +561,7 @@ class ClickableLabel(QtWidgets.QLabel):
         ev.button() == QtCore.Qt.LeftButton and self.clicked.emit(ev)
 
 
-class MySlider(QtWidgets.QSlider):
+class FluentSlider(QtWidgets.QSlider):
     def mousePressEvent(self, ev: QtGui.QMouseEvent) -> None:
         ev.button() == QtCore.Qt.LeftButton and self.setValue(
             self.minimum() + (self.maximum() - self.minimum()) * ev.x() // self.width())
