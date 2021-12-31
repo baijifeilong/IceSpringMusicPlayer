@@ -25,7 +25,7 @@ from PySide2 import QtCore, QtGui, QtMultimedia, QtWidgets
 class App(QtWidgets.QApplication):
     playlists: typing.List["Playlist"]
     player: QtMultimedia.QMediaPlayer
-    currentPlaylistIndex: int
+    currentPlaylist: "Playlist"
     currentPlaybackMode: typing_extensions.Literal["LOOP", "RANDOM"]
 
     @staticmethod
@@ -37,7 +37,6 @@ class App(QtWidgets.QApplication):
 
     def __init__(self):
         super().__init__()
-        self.currentPlaylistIndex = 0
         self.currentPlaybackMode = "LOOP"
         self.initLogging()
         self.logger = logging.getLogger("app")
@@ -48,10 +47,10 @@ class App(QtWidgets.QApplication):
         self.setApplicationName("Ice Spring Music Player")
         self.setApplicationDisplayName(self.applicationName())
         self.mainWindow = MainWindow(self)
+        self.initPlayer()
+        self.initPlaylists()
 
     def exec_(self) -> int:
-        self.initPlaylists()
-        self.initPlayer()
         self.mainWindow.show()
         return super().exec_()
 
@@ -78,6 +77,7 @@ class App(QtWidgets.QApplication):
             playlists[0 if index % 3 == 0 else 1].musics.append(music)
         self.mainWindow.setupPlaylistTables(playlists)
         self.playlists = playlists
+        self.currentPlaylist = playlists[0]
 
     def initPlayer(self):
         player = QtMultimedia.QMediaPlayer(self)
@@ -127,8 +127,8 @@ class App(QtWidgets.QApplication):
         return f"{seconds // 60:02d}:{seconds % 60:02d}"
 
     @property
-    def currentPlaylist(self) -> "Playlist":
-        return self.playlists[self.currentPlaylistIndex]
+    def currentPlaylistIndex(self) -> int:
+        return self.playlists.index(self.currentPlaylist)
 
     @property
     def currentRealDuration(self):
@@ -400,7 +400,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def onPlayButtonClicked(self):
         logging.info("On play button clicked")
         if self.app.currentPlaylist.currentMusic is None:
-            self.app.currentPlaylistIndex = self.playlistWidget.currentIndex()
+            self.app.currentPlaylist = self.app.playlists[self.playlistWidget.currentIndex()]
             logging.info("Current music is none, play next at playlist %d", self.playlistWidget.currentIndex())
             self.app.playNext()
         elif self.app.player.state() == QtMultimedia.QMediaPlayer.PlayingState:
@@ -417,7 +417,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onPlaylistTableDoubleClicked(self, index):
         logging.info(">>> On playlist table double clicked at %d", index)
-        self.app.currentPlaylistIndex = self.playlistWidget.currentIndex()
+        self.app.currentPlaylist = self.app.playlists[self.playlistWidget.currentIndex()]
         logging.info("Play music at index %d", index)
         self.app.playMusic(self.app.currentPlaylist.playMusic(self.app.currentPlaylist.musics[index]), True)
 
