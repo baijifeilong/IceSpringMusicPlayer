@@ -49,6 +49,7 @@ class App(QtWidgets.QApplication):
         self.mainWindow = MainWindow(self)
         self.initPlayer()
         self.initPlaylists()
+        self.mainWindow.refreshStatusBarLabels()
 
     def exec_(self) -> int:
         self.mainWindow.resize(1280, 720)
@@ -170,6 +171,7 @@ class App(QtWidgets.QApplication):
         self.mainWindow.currentPlaylistModel.dataChanged.emit(
             self.mainWindow.currentPlaylistModel.createIndex(oldMusicIndex, 0),
             self.mainWindow.currentPlaylistModel.createIndex(oldMusicIndex, 0))
+        self.mainWindow.refreshStatusBarLabels()
         self.player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(music.filename)))
         self.player.play()
 
@@ -214,6 +216,8 @@ class MainWindow(QtWidgets.QMainWindow):
     playbackButton: QtWidgets.QPushButton
     progressSlider: QtWidgets.QSlider
     progressLabel: QtWidgets.QLabel
+    previousLabel: QtWidgets.QLabel
+    nextLabel: QtWidgets.QLabel
 
     def __init__(self, app: App):
         super().__init__()
@@ -222,8 +226,25 @@ class MainWindow(QtWidgets.QMainWindow):
         self.initMenu()
         self.initToolbar()
         self.initLayout()
+        self.initStatusBar()
+
+    def initStatusBar(self):
+        previousLabel = QtWidgets.QLabel("Prev. ", self.statusBar())
+        previousLabel.setStyleSheet("margin: 0 15px")
+        nextLabel = QtWidgets.QLabel(" Next.", self.statusBar())
+        nextLabel.setStyleSheet("margin: 0 15px")
+        self.statusBar().addPermanentWidget(previousLabel)
+        self.statusBar().addPermanentWidget(nextLabel)
         self.statusBar().showMessage("Ready.")
         self.statusBar().installEventFilter(self)
+        self.previousLabel = previousLabel
+        self.nextLabel = nextLabel
+
+    def refreshStatusBarLabels(self):
+        previousMusic = self.app.currentPlaylist.previousMusic()
+        nextMusic = self.app.currentPlaylist.nextMusic()
+        self.previousLabel.setText("{} - {}".format(previousMusic.artist, previousMusic.title))
+        self.nextLabel.setText("{} - {}".format(nextMusic.artist, nextMusic.title))
 
     def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
         if watched == self.statusBar() and event.type() == QtCore.QEvent.MouseButtonDblClick:
@@ -422,6 +443,7 @@ class MainWindow(QtWidgets.QMainWindow):
             playlist.playbackMode = newPlaybackMode
         newIconName = dict(LOOP="mdi.repeat", RANDOM="mdi.shuffle")[newPlaybackMode]
         self.playbackButton.setIcon(qtawesome.icon(newIconName))
+        self.refreshStatusBarLabels()
 
     def onPlayButtonClicked(self):
         logging.info("On play button clicked")
