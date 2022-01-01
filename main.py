@@ -167,9 +167,7 @@ class App(QtWidgets.QApplication):
         self.mainWindow.currentPlaylistTable.scrollTo(
             self.mainWindow.currentPlaylistModel.index(newMusicIndex, 0), QtWidgets.QTableView.PositionAtCenter) \
             if not dontFollow else None
-        self.mainWindow.currentPlaylistModel.dataChanged.emit(
-            self.mainWindow.currentPlaylistModel.createIndex(oldMusicIndex, 0),
-            self.mainWindow.currentPlaylistModel.createIndex(oldMusicIndex, 0))
+        self.mainWindow.currentPlaylistModel.refreshRow(oldMusicIndex)
         self.mainWindow.statusLabel.setText("{} - {}".format(music.artist, music.title))
         self.player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(music.filename)))
         self.player.play()
@@ -201,6 +199,7 @@ class App(QtWidgets.QApplication):
         self.mainWindow.playButton.setIcon(qtawesome.icon(["mdi.play", "mdi.pause", "mdi.play"][state]))
         finished = state == QtMultimedia.QMediaPlayer.StoppedState and self.player.position() == self.player.duration()
         finished and self.playNext()
+        self.mainWindow.currentPlaylistModel.refreshRow(self.currentPlaylist.currentMusicIndex)
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -253,7 +252,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return self.playlistWidget.widget(self.app.currentPlaylistIndex)
 
     @property
-    def currentPlaylistModel(self) -> QtGui.QStandardItemModel:
+    def currentPlaylistModel(self) -> "PlaylistModel":
         return self.currentPlaylistTable.model()
 
     def initMenu(self):
@@ -525,8 +524,7 @@ class PlaylistModel(QtCore.QAbstractTableModel):
         elif role == QtCore.Qt.DecorationRole:
             if index.column() == 0 and index.row() == self.app.currentPlaylist.currentMusicIndex \
                     and self.app.currentPlaylistIndex == self.mainWindow.playlistWidget.currentIndex():
-                return [qtawesome.icon("mdi.stop"), qtawesome.icon("mdi.play"),
-                    qtawesome.icon("mdi.pause")][self.app.player.state()]
+                return [QtGui.QIcon(), qtawesome.icon("mdi.play"), qtawesome.icon("mdi.pause")][self.app.player.state()]
 
     def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role: int = ...) -> typing.Any:
         if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
@@ -544,6 +542,9 @@ class PlaylistModel(QtCore.QAbstractTableModel):
                 self.playlist.currentMusicIndex, 0), QtWidgets.QTableView.PositionAtCenter)
         else:
             self.endResetModel()
+
+    def refreshRow(self, row):
+        self.dataChanged.emit(self.index(row, 0), self.index(row, 0))
 
 
 class Playlist(object):
