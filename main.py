@@ -324,7 +324,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def generatePlaylistTable(self, playlist: "Playlist") -> QtWidgets.QTableView:
         playlistTable = QtWidgets.QTableView(self.playlistWidget)
         playlistTable.setModel(PlaylistModel(playlist, self))
-        playlistTable.setColumnWidth(0, 30)
+        playlistTable.setColumnWidth(0, 35)
         playlistTable.setColumnWidth(1, 200)
         playlistTable.setColumnWidth(2, 300)
         playlistTable.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
