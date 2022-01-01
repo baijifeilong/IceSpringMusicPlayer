@@ -137,7 +137,7 @@ class App(QtWidgets.QApplication):
 
     @property
     def currentBugRate(self):
-        return self.player.duration() / self.currentRealDuration
+        return 1 if self.currentPlaylist.currentMusic is None else self.player.duration() / self.currentRealDuration
 
     @staticmethod
     def clearLayout(layout: QtWidgets.QLayout):
@@ -159,11 +159,9 @@ class App(QtWidgets.QApplication):
             else self.currentPlaylist.musics.index(self.currentPlaylist.lastMusic)
         newMusicIndex = self.currentPlaylist.currentMusicIndex
         self.mainWindow.setWindowTitle(Path(music.filename).with_suffix("").name)
-        self.mainWindow.setupLyrics(music.filename)
         self.mainWindow.currentPlaylistTable.selectRow(newMusicIndex)
         not dontFollow and self.mainWindow.currentPlaylistTable.scrollToRow(newMusicIndex)
         self.mainWindow.currentPlaylistModel.refreshRow(oldMusicIndex)
-        self.mainWindow.statusLabel.setText("{} - {}".format(music.artist, music.title))
         self.player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(music.filename)))
         self.player.play()
 
@@ -187,13 +185,26 @@ class App(QtWidgets.QApplication):
         self.player.state() != QtMultimedia.QMediaPlayer.StoppedState and self.mainWindow.statusBar().showMessage(
             "{} | {} kbps | {} Hz | {} channels | {}".format(suffix[1:].upper(), currentMusic.bitrate,
                 currentMusic.sampleRate, currentMusic.channels, progressText.replace("/", " / ")))
-        self.mainWindow.refreshLyrics(math.ceil(position / self.currentBugRate))
+        position != 0 and self.mainWindow.refreshLyrics(math.ceil(position / self.currentBugRate))
 
     def onPlayerStateChanged(self, state):
+        oldState = self.player.property("_state") or QtMultimedia.QMediaPlayer.StoppedState
+        self.player.setProperty("_state", state)
+        if oldState == QtMultimedia.QMediaPlayer.StoppedState and state == QtMultimedia.QMediaPlayer.PlayingState:
+            self.mainWindow.setupLyrics()
         logging.info("Player state changed: %s [%d/%d]", state, self.player.position(), self.player.duration())
         self.mainWindow.playButton.setIcon(qtawesome.icon(["mdi.play", "mdi.pause", "mdi.play"][state]))
-        finished = state == QtMultimedia.QMediaPlayer.StoppedState and self.player.position() == self.player.duration()
-        finished and self.playNext()
+        currentMusic = self.currentPlaylist.currentMusic
+        self.mainWindow.statusLabel.setText("{} - {}".format(currentMusic.artist,
+            currentMusic.title) if state == QtMultimedia.QMediaPlayer.StoppedState else "")
+        self.mainWindow.statusLabel.setText("" if state == QtMultimedia.QMediaPlayer.StoppedState else "{} - {}".
+            format(currentMusic.artist, currentMusic.title))
+        if state == QtMultimedia.QMediaPlayer.StoppedState:
+            if self.player.position() == self.player.duration():
+                self.playNext()
+            else:
+                self.mainWindow.statusBar().showMessage("Stopped.")
+                self.clearLayout(self.mainWindow.lyricsLayout)
         self.mainWindow.currentPlaylistModel.refreshRow(self.currentPlaylist.currentMusicIndex)
 
 
@@ -415,12 +426,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def onStopButtonClicked(self):
         logging.info("On stop button clicked")
         self.app.player.stop()
-        self.statusBar().showMessage("Stopped.")
-        self.statusLabel.setText("")
 
-    def setupLyrics(self, filename):
+    def setupLyrics(self):
         self.app.player.setProperty("previousLyricIndex", -1)
-        lyricsPath = Path(filename).with_suffix(".lrc")
+        lyricsPath = Path(self.app.currentPlaylist.currentMusic.filename).with_suffix(".lrc")
         lyricsText = lyricsPath.read_text()
         lyricDict = self.app.parseLyrics(lyricsText)
         self.app.player.setProperty("lyricDict", lyricDict)
@@ -466,6 +475,7 @@ class PlaylistTable(QtWidgets.QTableView):
     def __init__(self, playlist: "Playlist", mainWindow: "MainWindow") -> None:
         super().__init__(mainWindow.playlistWidget)
         self.logger = logging.getLogger("playlistTable")
+        self.playlist = playlist
         self.mainWindow = mainWindow
         self.app = self.mainWindow.app
         self.setModel(PlaylistModel(playlist, mainWindow))
@@ -496,6 +506,9 @@ class PlaylistTable(QtWidgets.QTableView):
         self.setSortingEnabled(True)
         self.viewport().installEventFilter(mainWindow)
 
+    def model(self) -> "PlaylistModel":
+        return super().model()
+
     def onDoubleClicked(self, index):
         self.logger.info(">>> On playlist table double clicked at %d", index)
         self.app.currentPlaylist = self.app.playlists[self.mainWindow.playlistWidget.currentIndex()]
@@ -510,6 +523,20 @@ class PlaylistTable(QtWidgets.QTableView):
         self.selectionModel().select(
             QtCore.QItemSelection(self.model().index(fromRow, 0), self.model().index(toRow, 0)),
             QtCore.QItemSelectionModel.Select | QtCore.QItemSelectionModel.Rows)
+
+    def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
+        menu = QtWidgets.QMenu()
+        menu.addAction(f"Remove", lambda: self.onRemove(sorted({x.row() for x in self.selectedIndexes()})))
+        menu.exec_(QtGui.QCursor.pos())
+
+    def onRemove(self, indexes: typing.List[int]):
+        self.logger.info("Removing musics at indexes: %s", indexes)
+        if self.playlist == self.app.currentPlaylist and self.playlist.currentMusicIndex in indexes:
+            self.logger.info("Stop playing music: %s", self.playlist.currentMusic)
+            self.app.player.stop()
+        self.playlist.resetHistory(
+            keepCurrent=self.playlist == self.app.currentPlaylist and self.playlist.currentMusicIndex not in indexes)
+        self.model().removeMusicsByIndexes(indexes)
 
 
 class PlaylistModel(QtCore.QAbstractTableModel):
@@ -561,6 +588,12 @@ class PlaylistModel(QtCore.QAbstractTableModel):
         self.endInsertRows()
         return beginRow, endRow
 
+    def removeMusicsByIndexes(self, indexes: typing.List[int]) -> None:
+        for index in sorted(indexes, reverse=True):
+            self.beginRemoveRows(QtCore.QModelIndex(), index, index)
+            del self.playlist.musics[index]
+        self.endRemoveRows()
+
 
 class Playlist(object):
     def __init__(self, name: str, playbackMode: typing_extensions.Literal["LOOP", "RANDOM"]):
@@ -571,6 +604,14 @@ class Playlist(object):
         self.historyPosition = -1
         self.lastMusic: typing.Optional[Music] = None
         self.random = random.Random(0)
+
+    def resetHistory(self, keepCurrent: bool) -> None:
+        currentMusic = self.currentMusic
+        self.historyDict.clear()
+        self.historyPosition = -1
+        if keepCurrent:
+            self.historyDict[0] = currentMusic
+            self.historyPosition = 0
 
     @property
     def currentMusic(self) -> typing.Optional["Music"]:
