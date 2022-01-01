@@ -236,6 +236,12 @@ class MainWindow(QtWidgets.QMainWindow):
     def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
         if watched == self.statusBar() and event.type() == QtCore.QEvent.MouseButtonDblClick:
             self.onStatusBarDoubleClicked()
+        if isinstance(watched.parent(), QtWidgets.QTableView):
+            if event.type() == QtCore.QEvent.MouseButtonDblClick:
+                assert isinstance(event, QtGui.QMouseEvent)
+                if event.button() == QtCore.Qt.RightButton:
+                    self.logger.debug("Ignore double click event on playlist table")
+                    return True
         return super().eventFilter(watched, event)
 
     def onStatusBarDoubleClicked(self):
@@ -349,6 +355,7 @@ class MainWindow(QtWidgets.QMainWindow):
         playlistTable.setIconSize(QtCore.QSize(32, 32))
         playlistTable.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
         playlistTable.setSortingEnabled(True)
+        playlistTable.viewport().installEventFilter(self)
         return playlistTable
 
     def initMainSplitter(self):
