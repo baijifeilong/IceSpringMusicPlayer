@@ -49,7 +49,6 @@ class App(QtWidgets.QApplication):
         self.mainWindow = MainWindow(self)
         self.initPlayer()
         self.initPlaylists()
-        self.mainWindow.refreshStatusBarLabels()
 
     def exec_(self) -> int:
         self.mainWindow.resize(1280, 720)
@@ -171,7 +170,7 @@ class App(QtWidgets.QApplication):
         self.mainWindow.currentPlaylistModel.dataChanged.emit(
             self.mainWindow.currentPlaylistModel.createIndex(oldMusicIndex, 0),
             self.mainWindow.currentPlaylistModel.createIndex(oldMusicIndex, 0))
-        self.mainWindow.refreshStatusBarLabels()
+        self.mainWindow.statusLabel.setText("{} - {}".format(music.artist, music.title))
         self.player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(music.filename)))
         self.player.play()
 
@@ -216,8 +215,7 @@ class MainWindow(QtWidgets.QMainWindow):
     playbackButton: QtWidgets.QPushButton
     progressSlider: QtWidgets.QSlider
     progressLabel: QtWidgets.QLabel
-    previousLabel: QtWidgets.QLabel
-    nextLabel: QtWidgets.QLabel
+    statusLabel: QtWidgets.QLabel
 
     def __init__(self, app: App):
         super().__init__()
@@ -229,22 +227,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.initStatusBar()
 
     def initStatusBar(self):
-        previousLabel = QtWidgets.QLabel("Prev. ", self.statusBar())
-        previousLabel.setStyleSheet("margin: 0 15px")
-        nextLabel = QtWidgets.QLabel(" Next.", self.statusBar())
-        nextLabel.setStyleSheet("margin: 0 15px")
-        self.statusBar().addPermanentWidget(previousLabel)
-        self.statusBar().addPermanentWidget(nextLabel)
+        statusLabel = QtWidgets.QLabel("", self.statusBar())
+        statusLabel.setStyleSheet("margin: 0 15px")
+        self.statusBar().addPermanentWidget(statusLabel)
         self.statusBar().showMessage("Ready.")
         self.statusBar().installEventFilter(self)
-        self.previousLabel = previousLabel
-        self.nextLabel = nextLabel
-
-    def refreshStatusBarLabels(self):
-        previousMusic = self.app.currentPlaylist.previousMusic()
-        nextMusic = self.app.currentPlaylist.nextMusic()
-        self.previousLabel.setText("{} - {}".format(previousMusic.artist, previousMusic.title))
-        self.nextLabel.setText("{} - {}".format(nextMusic.artist, nextMusic.title))
+        self.statusLabel = statusLabel
 
     def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
         if watched == self.statusBar() and event.type() == QtCore.QEvent.MouseButtonDblClick:
@@ -376,19 +364,22 @@ class MainWindow(QtWidgets.QMainWindow):
         lyricsContainer.setWidget(lyricsWidget)
         lyricsContainer.setFrameShape(QtWidgets.QFrame.NoFrame)
         lyricsContainer.setWidgetResizable(True)
-        lyricsContainer.resizeEvent = lambda x: [
-            lyricsLayout.count() and lyricsLayout.itemAt(0).spacerItem().changeSize(0, x.size().height() // 2),
-            lyricsLayout.count() and lyricsLayout.itemAt(lyricsLayout.count() - 1).spacerItem()
-                .changeSize(0, x.size().height() // 2),
-            lyricsLayout.invalidate(),
-        ]
+        lyricsContainer.resizeEvent = self.onLyricsContainerResize
+        lyricsContainer.horizontalScrollBar().rangeChanged.connect(lambda *args, bar=lyricsContainer.
+            horizontalScrollBar(): bar.setValue((bar.maximum() + bar.minimum()) // 2))
         mainSplitter.addWidget(playlistWidget)
         mainSplitter.addWidget(lyricsContainer)
         mainSplitter.setSizes([2 ** 31 - 1, 2 ** 31 - 1])
-        lyricsContainer.horizontalScrollBar().hide()
         self.playlistWidget = playlistWidget
         self.lyricsContainer = lyricsContainer
         self.lyricsLayout = lyricsLayout
+
+    def onLyricsContainerResize(self, event):
+        if self.lyricsLayout.count() <= 0:
+            return
+        self.lyricsLayout.itemAt(0).spacerItem().changeSize(0, event.size().height() // 2)
+        self.lyricsLayout.itemAt(self.lyricsLayout.count() - 1).spacerItem().changeSize(0, event.size().height() // 2)
+        self.lyricsLayout.invalidate()
 
     def initControlsLayout(self):
         mainWidget = self.mainWidget
@@ -443,7 +434,6 @@ class MainWindow(QtWidgets.QMainWindow):
             playlist.playbackMode = newPlaybackMode
         newIconName = dict(LOOP="mdi.repeat", RANDOM="mdi.shuffle")[newPlaybackMode]
         self.playbackButton.setIcon(qtawesome.icon(newIconName))
-        self.refreshStatusBarLabels()
 
     def onPlayButtonClicked(self):
         logging.info("On play button clicked")
@@ -462,6 +452,7 @@ class MainWindow(QtWidgets.QMainWindow):
         logging.info("On stop button clicked")
         self.app.player.stop()
         self.statusBar().showMessage("Stopped.")
+        self.statusLabel.setText("")
 
     def onPlaylistTableDoubleClicked(self, index):
         logging.info(">>> On playlist table double clicked at %d", index)
@@ -484,15 +475,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 lambda _, position=position: self.app.player.setPosition(position * self.app.currentBugRate))
             font = lyricLabel.font()
             font.setFamily("等线")
-            font.setPointSize(12)
+            font.setPointSize(18)
             lyricLabel.setFont(font)
             lyricLabel.setMargin(2)
             self.lyricsLayout.addWidget(lyricLabel)
         self.lyricsLayout.addSpacing(self.lyricsContainer.height() // 2)
         self.lyricsContainer.verticalScrollBar().setValue(0)
-        self.lyricsContainer.horizontalScrollBar().setValue(
-            (self.lyricsContainer.horizontalScrollBar().maximum()
-             + self.lyricsContainer.horizontalScrollBar().minimum()) // 2)
         self.refreshLyrics(0)
 
     def refreshLyrics(self, position):
