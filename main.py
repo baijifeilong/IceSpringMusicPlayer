@@ -30,15 +30,15 @@ class App(QtWidgets.QApplication):
 
     @staticmethod
     def initLogging():
-        consoleLogPattern = "%(log_color)s%(asctime)s %(levelname)8s %(name)-10s %(message)s"
+        consoleLogPattern = "%(log_color)s%(asctime)s %(levelname)8s %(name)-16s %(message)s"
         logging.getLogger().handlers = [logging.StreamHandler()]
         logging.getLogger().handlers[0].setFormatter(colorlog.ColoredFormatter(consoleLogPattern))
         logging.getLogger().setLevel(logging.DEBUG)
 
     def __init__(self):
         super().__init__()
-        self.currentPlaybackMode = "LOOP"
         self.initLogging()
+        self.currentPlaybackMode = "LOOP"
         self.logger = logging.getLogger("app")
         self.lyricsLogger = logging.getLogger("lyrics")
         self.lyricsLogger.setLevel(logging.INFO)
@@ -164,9 +164,7 @@ class App(QtWidgets.QApplication):
         self.mainWindow.setWindowTitle(Path(music.filename).with_suffix("").name)
         self.mainWindow.setupLyrics(music.filename)
         self.mainWindow.currentPlaylistTable.selectRow(newMusicIndex)
-        self.mainWindow.currentPlaylistTable.scrollTo(
-            self.mainWindow.currentPlaylistModel.index(newMusicIndex, 0), QtWidgets.QTableView.PositionAtCenter) \
-            if not dontFollow else None
+        not dontFollow and self.mainWindow.currentPlaylistTable.scrollToRow(newMusicIndex)
         self.mainWindow.currentPlaylistModel.refreshRow(oldMusicIndex)
         self.mainWindow.statusLabel.setText("{} - {}".format(music.artist, music.title))
         self.player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(music.filename)))
@@ -254,7 +252,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.app.currentPlaylist.currentMusicIndex, 0), QtWidgets.QTableView.PositionAtCenter)
 
     @property
-    def currentPlaylistTable(self) -> QtWidgets.QTableView:
+    def currentPlaylistTable(self) -> "PlaylistTable":
         return self.playlistWidget.widget(self.app.currentPlaylistIndex)
 
     @property
@@ -326,37 +324,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.mainWidget = mainWidget
         self.mainSplitter = mainSplitter
         self.controlsLayout = controlsLayout
-
-    def generatePlaylistTable(self, playlist: "Playlist") -> QtWidgets.QTableView:
-        playlistTable = QtWidgets.QTableView(self.playlistWidget)
-        playlistTable.setModel(PlaylistModel(playlist, self))
-        playlistTable.setColumnWidth(0, 35)
-        playlistTable.setColumnWidth(1, 200)
-        playlistTable.setColumnWidth(2, 300)
-        playlistTable.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
-        playlistTable.setEditTriggers(QtWidgets.QTableView.NoEditTriggers)
-        playlistTable.horizontalHeader().setStretchLastSection(True)
-        playlistTable.doubleClicked.connect(lambda x: self.onPlaylistTableDoubleClicked(x.row()))
-        playlistTable.setAlternatingRowColors(True)
-        playlistTable.setStyleSheet("alternate-background-color: rgb(245, 245, 245)")
-        playlistTable.setFrameShape(QtWidgets.QFrame.NoFrame)
-        playlistTable.setShowGrid(False)
-        playlistTable.setItemDelegate(NoFocusDelegate())
-        playlistTable.horizontalHeader().setStyleSheet(
-            "QHeaderView::section { border-top:0px solid #D8D8D8; border-bottom: 1px solid #D8D8D8; "
-            "background-color:white; padding:2px; font-weight: light; }")
-        playlistTable.horizontalHeader().setHighlightSections(False)
-        tablePalette = playlistTable.palette()
-        tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.Highlight,
-            tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.Highlight))
-        tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.HighlightedText,
-            tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.HighlightedText))
-        playlistTable.setPalette(tablePalette)
-        playlistTable.setIconSize(QtCore.QSize(32, 32))
-        playlistTable.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
-        playlistTable.setSortingEnabled(True)
-        playlistTable.viewport().installEventFilter(self)
-        return playlistTable
 
     def initMainSplitter(self):
         mainSplitter = self.mainSplitter
@@ -430,7 +397,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def setupPlaylistTables(self, playlists):
         for playlist in playlists:
-            self.playlistWidget.addWidget(self.generatePlaylistTable(playlist))
+            self.playlistWidget.addWidget(PlaylistTable(playlist, self))
 
     def togglePlaybackMode(self):
         oldPlaybackMode = self.app.currentPlaybackMode
@@ -459,12 +426,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.app.player.stop()
         self.statusBar().showMessage("Stopped.")
         self.statusLabel.setText("")
-
-    def onPlaylistTableDoubleClicked(self, index):
-        logging.info(">>> On playlist table double clicked at %d", index)
-        self.app.currentPlaylist = self.app.playlists[self.playlistWidget.currentIndex()]
-        logging.info("Play music at index %d", index)
-        self.app.playMusic(self.app.currentPlaylist.playMusic(self.app.currentPlaylist.musics[index]), True)
 
     def setupLyrics(self, filename):
         self.app.player.setProperty("previousLyricIndex", -1)
@@ -510,6 +471,50 @@ class MainWindow(QtWidgets.QMainWindow):
             ])()
 
 
+class PlaylistTable(QtWidgets.QTableView):
+    def __init__(self, playlist: "Playlist", mainWindow: "MainWindow") -> None:
+        super().__init__(mainWindow.playlistWidget)
+        self.logger = logging.getLogger("playlistTable")
+        self.mainWindow = mainWindow
+        self.app = self.mainWindow.app
+        self.setModel(PlaylistModel(playlist, mainWindow))
+        self.setColumnWidth(0, 35)
+        self.setColumnWidth(1, 200)
+        self.setColumnWidth(2, 300)
+        self.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
+        self.setEditTriggers(QtWidgets.QTableView.NoEditTriggers)
+        self.horizontalHeader().setStretchLastSection(True)
+        self.doubleClicked.connect(lambda x: self.onDoubleClicked(x.row()))
+        self.setAlternatingRowColors(True)
+        self.setStyleSheet("alternate-background-color: rgb(245, 245, 245)")
+        self.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.setShowGrid(False)
+        self.setItemDelegate(NoFocusDelegate())
+        self.horizontalHeader().setStyleSheet(
+            "QHeaderView::section { border-top:0px solid #D8D8D8; border-bottom: 1px solid #D8D8D8; "
+            "background-color:white; padding:2px; font-weight: light; }")
+        self.horizontalHeader().setHighlightSections(False)
+        tablePalette = self.palette()
+        tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.Highlight,
+            tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.Highlight))
+        tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.HighlightedText,
+            tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.HighlightedText))
+        self.setPalette(tablePalette)
+        self.setIconSize(QtCore.QSize(32, 32))
+        self.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
+        self.setSortingEnabled(True)
+        self.viewport().installEventFilter(mainWindow)
+
+    def onDoubleClicked(self, index):
+        self.logger.info(">>> On playlist table double clicked at %d", index)
+        self.app.currentPlaylist = self.app.playlists[self.mainWindow.playlistWidget.currentIndex()]
+        self.logger.info("Play music at index %d", index)
+        self.app.playMusic(self.app.currentPlaylist.playMusic(self.app.currentPlaylist.musics[index]), True)
+
+    def scrollToRow(self, index):
+        self.scrollTo(self.model().index(index, 0), QtWidgets.QTableView.PositionAtCenter)
+
+
 class PlaylistModel(QtCore.QAbstractTableModel):
     def __init__(self, playlist: "Playlist", mainWindow: MainWindow,
             parent: typing.Optional[QtCore.QObject] = None) -> None:
@@ -545,8 +550,7 @@ class PlaylistModel(QtCore.QAbstractTableModel):
             key=lambda x: x.artist if column == 1 else x.title, reverse=order == QtCore.Qt.DescendingOrder)
         if self.playlist.currentMusic is not None:
             self.mainWindow.currentPlaylistTable.selectRow(self.playlist.currentMusicIndex)
-            self.mainWindow.currentPlaylistTable.scrollTo(self.mainWindow.currentPlaylistModel.index(
-                self.playlist.currentMusicIndex, 0), QtWidgets.QTableView.PositionAtCenter)
+            self.mainWindow.currentPlaylistTable.scrollToRow(self.playlist.currentMusicIndex)
         else:
             self.endResetModel()
 
@@ -578,7 +582,7 @@ class Playlist(object):
     def playPrevious(self) -> "Music":
         return self.playMusicAtRelativePosition(self.previousMusic(), -1)
 
-    def playMusic(self, music: "Music"):
+    def playMusic(self, music: "Music") -> "Music":
         return self.playMusicAtRelativePosition(music, 1)
 
     def playMusicAtRelativePosition(self, music: "Music", relativePosition) -> "Music":
