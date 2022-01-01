@@ -1,24 +1,21 @@
 # Created by BaiJiFeiLong@gmail.com at 2021/12/6 12:52
-import hashlib
-import random
-import typing
-
-import typing_extensions
-
 __import__("os").environ.update(dict(
     QT_API="pyside2",
     QT_MULTIMEDIA_PREFERRED_PLUGINS='WindowsMediaFoundation'.lower()
 ))
-
+import hashlib
 import logging
 import math
+import random
 import re
+import typing
 from pathlib import Path
 from typing import Dict
 
 import colorlog
 import qtawesome
 import taglib
+import typing_extensions
 from PySide2 import QtCore, QtGui, QtMultimedia, QtWidgets
 
 
@@ -269,17 +266,11 @@ class MainWindow(QtWidgets.QMainWindow):
         filenames = QtWidgets.QFileDialog.getOpenFileNames(
             self, "Open music files", musicRoot, "Audio files (*.mp3 *.wma) ;; All files (*)")[0]
         self.logger.info("There are %d files to open", len(filenames))
-        oldMusics = self.app.currentPlaylist.musics
-        newMusics = [self.app.parseMusic(x) for x in filenames]
-        beginRow, endRow = len(oldMusics), len(oldMusics) + len(newMusics) - 1
-        self.currentPlaylistModel.beginInsertRows(QtCore.QModelIndex(), beginRow, endRow)
-        self.app.currentPlaylist.musics.extend(newMusics)
-        self.currentPlaylistModel.endInsertRows()
-        topLeftIndex = self.currentPlaylistModel.index(beginRow, 0)
-        bottomRightIndex = self.currentPlaylistModel.index(endRow, 0)
-        selection = QtCore.QItemSelection(topLeftIndex, bottomRightIndex)
-        self.currentPlaylistTable.selectionModel().select(selection,
-            QtCore.QItemSelectionModel.Select | QtCore.QItemSelectionModel.Rows)
+        musics = [self.app.parseMusic(x) for x in filenames]
+        beginRow, endRow = self.currentPlaylistModel.insertMusics(musics)
+        self.currentPlaylistTable.selectRowRange(beginRow, endRow)
+        self.currentPlaylistTable.repaint()
+        self.currentPlaylistTable.scrollToRow(beginRow)
 
     def initToolbar(self):
         toolbar = self.addToolBar("Toolbar")
@@ -514,6 +505,12 @@ class PlaylistTable(QtWidgets.QTableView):
     def scrollToRow(self, index):
         self.scrollTo(self.model().index(index, 0), QtWidgets.QTableView.PositionAtCenter)
 
+    def selectRowRange(self, fromRow, toRow):
+        self.clearSelection()
+        self.selectionModel().select(
+            QtCore.QItemSelection(self.model().index(fromRow, 0), self.model().index(toRow, 0)),
+            QtCore.QItemSelectionModel.Select | QtCore.QItemSelectionModel.Rows)
+
 
 class PlaylistModel(QtCore.QAbstractTableModel):
     def __init__(self, playlist: "Playlist", mainWindow: MainWindow,
@@ -556,6 +553,13 @@ class PlaylistModel(QtCore.QAbstractTableModel):
 
     def refreshRow(self, row):
         self.dataChanged.emit(self.index(row, 0), self.index(row, 0))
+
+    def insertMusics(self, musics: typing.List["Music"]) -> (int, int):
+        beginRow, endRow = len(self.playlist.musics), len(self.playlist.musics) + len(musics) - 1
+        self.beginInsertRows(QtCore.QModelIndex(), beginRow, endRow)
+        self.playlist.musics.extend(musics)
+        self.endInsertRows()
+        return beginRow, endRow
 
 
 class Playlist(object):
