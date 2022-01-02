@@ -147,11 +147,17 @@ class App(QtWidgets.QApplication):
 
     def playPrevious(self):
         self.logger.info(">>> Play previous")
-        self.playMusic(self.currentPlaylist.playPrevious(), dontFollow=self.currentPlaybackMode == "LOOP")
+        if not self.currentPlaylist.musics:
+            self.logger.info("No music to play.")
+        else:
+            self.playMusic(self.currentPlaylist.playPrevious(), dontFollow=self.currentPlaybackMode == "LOOP")
 
     def playNext(self):
         self.logger.info(">>> Play next")
-        self.playMusic(self.currentPlaylist.playNext(), dontFollow=self.currentPlaybackMode == "LOOP")
+        if not self.currentPlaylist.musics:
+            self.logger.info("No music to play.")
+        else:
+            self.playMusic(self.currentPlaylist.playNext(), dontFollow=self.currentPlaybackMode == "LOOP")
 
     def playMusic(self, music: "Music", dontFollow=False):
         self.logger.info(">>> Play music %s : %s", music.artist, music.title)
@@ -177,8 +183,9 @@ class App(QtWidgets.QApplication):
         self.mainWindow.progressSlider.blockSignals(True)
         self.mainWindow.progressSlider.setValue(position)
         self.mainWindow.progressSlider.blockSignals(False)
+        duration = 0 if self.player.state() == QtMultimedia.QMediaPlayer.StoppedState else self.player.duration()
         progressText = f"{self.formatDelta(position / self.currentBugRate)}" \
-                       f"/{self.formatDelta(self.player.duration() / self.currentBugRate)}"
+                       f"/{self.formatDelta(duration / self.currentBugRate)}"
         self.mainWindow.progressLabel.setText(progressText)
         suffix = Path(self.player.currentMedia().canonicalUrl().toLocalFile()).suffix
         currentMusic = self.currentPlaylist.currentMusic
@@ -199,6 +206,7 @@ class App(QtWidgets.QApplication):
             currentMusic.title) if state == QtMultimedia.QMediaPlayer.StoppedState else "")
         self.mainWindow.statusLabel.setText("" if state == QtMultimedia.QMediaPlayer.StoppedState else "{} - {}".
             format(currentMusic.artist, currentMusic.title))
+        self.mainWindow.progressSlider.setDisabled(state == QtMultimedia.QMediaPlayer.StoppedState)
         if state == QtMultimedia.QMediaPlayer.StoppedState:
             if self.player.position() == self.player.duration():
                 self.playNext()
@@ -378,6 +386,7 @@ class MainWindow(QtWidgets.QMainWindow):
             button.setIconSize(QtCore.QSize(50, 50))
             button.setAutoRaise(True)
         progressSlider = FluentSlider(QtCore.Qt.Horizontal, mainWidget)
+        progressSlider.setDisabled(True)
         progressSlider.valueChanged.connect(lambda x: self.app.player.setPosition(x))
         progressLabel = QtWidgets.QLabel("00:00/00:00", mainWidget)
         volumeDial = QtWidgets.QDial(mainWidget)
