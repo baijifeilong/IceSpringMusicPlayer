@@ -24,6 +24,7 @@ class App(QtWidgets.QApplication):
     player: QtMultimedia.QMediaPlayer
     currentPlaylist: "Playlist"
     currentPlaybackMode: typing_extensions.Literal["LOOP", "RANDOM"]
+    frontPlaylist: "Playlist"
 
     @staticmethod
     def initLogging():
@@ -76,9 +77,19 @@ class App(QtWidgets.QApplication):
         random.Random(0).shuffle(paths)
         for index, path in enumerate(paths):
             playlists[0 if index % 3 == 0 else 1].musics.append(self.parseMusic(str(path)))
-        self.mainWindow.setupPlaylistTables(playlists)
+        self.mainWindow.setupPlaylists(playlists)
         self.playlists = playlists
         self.currentPlaylist = playlists[0]
+        self.frontPlaylist = self.currentPlaylist
+
+    def setFrontPlaylist(self, playlist: "Playlist"):
+        if playlist == self.frontPlaylist:
+            return
+        self.frontPlaylist = playlist
+        self.mainWindow.playlistWidget.setCurrentIndex(self.frontPlaylistIndex)
+
+    def setFrontPlaylistAtIndex(self, playlistIndex):
+        self.setFrontPlaylist(self.playlists[playlistIndex])
 
     def initPlayer(self):
         player = QtMultimedia.QMediaPlayer(self)
@@ -130,6 +141,10 @@ class App(QtWidgets.QApplication):
     @property
     def currentPlaylistIndex(self) -> int:
         return self.playlists.index(self.currentPlaylist)
+
+    @property
+    def frontPlaylistIndex(self) -> int:
+        return self.playlists.index(self.frontPlaylist)
 
     @property
     def currentRealDuration(self):
@@ -229,6 +244,7 @@ class MainWindow(QtWidgets.QMainWindow):
     progressSlider: QtWidgets.QSlider
     progressLabel: QtWidgets.QLabel
     statusLabel: QtWidgets.QLabel
+    playlistsCombo: QtWidgets.QComboBox
 
     def __init__(self, app: App):
         super().__init__()
@@ -294,13 +310,13 @@ class MainWindow(QtWidgets.QMainWindow):
     def initToolbar(self):
         toolbar = self.addToolBar("Toolbar")
         toolbar.setMovable(False)
-        actionOne = QtWidgets.QAction("Playlist One", toolbar)
-        actionTwo = QtWidgets.QAction("Playlist Two", toolbar)
-        actionOne.triggered.connect(lambda: self.playlistWidget.setCurrentIndex(0))
-        actionTwo.triggered.connect(lambda: self.playlistWidget.setCurrentIndex(1))
-        toolbar.addAction(actionOne)
-        toolbar.addAction(actionTwo)
+        playlistsCombo = QtWidgets.QComboBox(toolbar)
+        playlistsCombo.activated.connect(lambda index: self.logger.info("Active playlist: %d", index))
+        playlistsCombo.activated.connect(lambda index: self.app.setFrontPlaylistAtIndex(index))
+        toolbar.addWidget(QtWidgets.QLabel("Playlist:", toolbar))
+        toolbar.addWidget(playlistsCombo)
         self.toolbar = toolbar
+        self.playlistsCombo = playlistsCombo
 
     def initLayout(self):
         mainWidget = QtWidgets.QWidget(self)
@@ -406,9 +422,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.progressSlider = progressSlider
         self.progressLabel = progressLabel
 
-    def setupPlaylistTables(self, playlists):
+    def setupPlaylists(self, playlists):
         for playlist in playlists:
             self.playlistWidget.addWidget(PlaylistTable(playlist, self))
+        for playlist in playlists:
+            self.playlistsCombo.addItem(playlist.name)
 
     def togglePlaybackMode(self):
         oldPlaybackMode = self.app.currentPlaybackMode
