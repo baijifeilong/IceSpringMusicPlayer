@@ -89,6 +89,7 @@ class App(QtWidgets.QApplication):
             return
         self.frontPlaylist = playlist
         self.mainWindow.playlistWidget.setCurrentIndex(self.frontPlaylistIndex)
+        self.mainWindow.playlistCombo.setCurrentIndex(self.frontPlaylistIndex)
 
     def setFrontPlaylistAtIndex(self, playlistIndex):
         self.setFrontPlaylist(self.playlists[playlistIndex])
@@ -291,6 +292,10 @@ class MainWindow(QtWidgets.QMainWindow):
         return self.playlistWidget.widget(self.app.currentPlaylistIndex)
 
     @property
+    def frontPlaylistTable(self) -> "PlaylistTable":
+        return self.playlistWidget.widget(self.app.frontPlaylistIndex)
+
+    @property
     def currentPlaylistModel(self) -> "PlaylistModel":
         return self.currentPlaylistTable.model()
 
@@ -306,10 +311,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self, "Open music files", musicRoot, "Audio files (*.mp3 *.wma) ;; All files (*)")[0]
         self.logger.info("There are %d files to open", len(filenames))
         musics = [self.app.parseMusic(x) for x in filenames]
-        beginRow, endRow = self.currentPlaylistModel.insertMusics(musics)
-        self.currentPlaylistTable.selectRowRange(beginRow, endRow)
-        self.currentPlaylistTable.repaint()
-        self.currentPlaylistTable.scrollToRow(beginRow)
+        beginRow, endRow = self.frontPlaylistTable.model().insertMusics(musics)
+        self.frontPlaylistTable.selectRowRange(beginRow, endRow)
+        self.frontPlaylistTable.repaint()
+        self.frontPlaylistTable.scrollToRow(beginRow)
 
     def initToolbar(self):
         toolbar = self.addToolBar("Toolbar")
@@ -317,7 +322,7 @@ class MainWindow(QtWidgets.QMainWindow):
         playlistCombo = QtWidgets.QComboBox(toolbar)
         playlistCombo.activated.connect(lambda index: self.logger.info("On playlist combobox activated at: %d", index))
         playlistCombo.activated.connect(lambda index: self.app.setFrontPlaylistAtIndex(index))
-        toolbar.addWidget(QtWidgets.QLabel("Playlist:", toolbar))
+        toolbar.addWidget(QtWidgets.QLabel("Playlist: ", toolbar))
         toolbar.addWidget(playlistCombo)
         self.toolbar = toolbar
         self.playlistCombo = playlistCombo
@@ -428,10 +433,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def setupPlaylists(self, playlists):
         for playlist in playlists:
-            self.playlistWidget.addWidget(PlaylistTable(playlist, self))
-        for playlist in playlists:
-            self.playlistCombo.addItem(playlist.name)
+            self.addPlaylist(playlist)
         self.playlistsDialog = PlaylistsDialog(playlists, self)
+
+    def addPlaylist(self, playlist: "Playlist"):
+        self.playlistWidget.addWidget(PlaylistTable(playlist, self))
+        self.playlistCombo.addItem(playlist.name)
 
     def togglePlaybackMode(self):
         oldPlaybackMode = self.app.currentPlaybackMode
@@ -751,15 +758,30 @@ class PlaylistsDialog(QtWidgets.QDialog):
 class PlaylistsTable(IceTableView):
     def __init__(self, playlists: typing.List[Playlist], parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
-        self.app: App = self.parent().parent().app
+        self.mainWindow: MainWindow = self.parent().parent()
+        self.app: App = self.mainWindow.app
         self.logger = logging.getLogger("playlistsTable")
         self.setModel(PlaylistsModel(playlists, self))
         self.setColumnWidth(0, 320)
         self.doubleClicked.connect(lambda x: self.onDoubleClickedAtRow(x.row()))
 
+    def model(self) -> "PlaylistsModel":
+        return super().model()
+
     def onDoubleClickedAtRow(self, row):
         self.logger.info("On double clicked at row: %d", row)
         self.app.setFrontPlaylistAtIndex(row)
+
+    def contextMenuEvent(self, arg__1: PySide2.QtGui.QContextMenuEvent) -> None:
+        menu = QtWidgets.QMenu(self)
+        menu.addAction("Create", self.onCreatePlaylist)
+        menu.exec_(QtGui.QCursor.pos())
+
+    def onCreatePlaylist(self):
+        name = "Playlist {}".format(len(self.app.playlists) + 1)
+        playlist = Playlist(name, self.app.currentPlaybackMode)
+        self.model().insertPlaylist(playlist)
+        self.mainWindow.addPlaylist(playlist)
 
 
 class PlaylistsModel(QtCore.QAbstractTableModel):
@@ -785,6 +807,12 @@ class PlaylistsModel(QtCore.QAbstractTableModel):
         if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
             return ["Name", "Items"][section]
         return super().headerData(section, orientation, role)
+
+    def insertPlaylist(self, playlist):
+        index = len(self.playlists)
+        self.beginInsertRows(QtCore.QModelIndex(), index, index)
+        self.playlists.append(playlist)
+        self.endInsertRows()
 
 
 if __name__ == '__main__':
