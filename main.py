@@ -24,9 +24,9 @@ from PySide2 import QtCore, QtGui, QtMultimedia, QtWidgets
 class App(QtWidgets.QApplication):
     playlists: typing.List["Playlist"]
     player: QtMultimedia.QMediaPlayer
-    currentPlaylist: "Playlist"
+    currentPlaylist: typing.Optional["Playlist"]
     currentPlaybackMode: typing_extensions.Literal["LOOP", "RANDOM"]
-    frontPlaylist: "Playlist"
+    frontPlaylist: typing.Optional["Playlist"]
 
     @staticmethod
     def initLogging():
@@ -46,9 +46,11 @@ class App(QtWidgets.QApplication):
         self.positionLogger.setLevel(logging.INFO)
         self.setApplicationName("Ice Spring Music Player")
         self.setApplicationDisplayName(self.applicationName())
+        self.player = self.initPlayer()
+        self.playlists = list()
+        self.currentPlaylist = None
+        self.frontPlaylist = None
         self.mainWindow = MainWindow(self)
-        self.initPlayer()
-        self.initPlaylists()
 
     def exec_(self) -> int:
         self.mainWindow.resize(1280, 720)
@@ -72,18 +74,6 @@ class App(QtWidgets.QApplication):
         music.duration = info.length * 1000
         return music
 
-    def initPlaylists(self):
-        playlists: typing.List[Playlist] = [
-            Playlist("Playlist 1", self.currentPlaybackMode), Playlist("Playlist 2", self.currentPlaybackMode)]
-        paths = list(Path("~/Music").expanduser().glob("**/*.mp3"))[:200]
-        random.Random(0).shuffle(paths)
-        for index, path in enumerate(paths):
-            playlists[0 if index % 3 == 0 else 1].musics.append(self.parseMusic(str(path)))
-        self.mainWindow.setupPlaylists(playlists)
-        self.playlists = playlists
-        self.currentPlaylist = playlists[0]
-        self.frontPlaylist = self.currentPlaylist
-
     def setFrontPlaylist(self, playlist: "Playlist"):
         if playlist == self.frontPlaylist:
             return
@@ -101,7 +91,7 @@ class App(QtWidgets.QApplication):
         player.stateChanged.connect(self.onPlayerStateChanged)
         player.volumeChanged.connect(lambda x: logging.debug("Volume changed: %d", x))
         player.positionChanged.connect(self.onPlayerPositionChanged)
-        self.player = player
+        return player
 
     def parseLyrics(self, lyricsText: str) -> Dict[int, str]:
         lyricsLogger = self.lyricsLogger
@@ -165,17 +155,23 @@ class App(QtWidgets.QApplication):
 
     def playPrevious(self):
         self.logger.info(">>> Play previous")
+        if self.currentPlaylist is None:
+            self.logger.info("Current playlist is none, return")
+            return
         if not self.currentPlaylist.musics:
-            self.logger.info("No music to play.")
-        else:
-            self.playMusic(self.currentPlaylist.playPrevious(), dontFollow=self.currentPlaybackMode == "LOOP")
+            self.logger.info("Current playlist is empty, return")
+            return
+        self.playMusic(self.currentPlaylist.playPrevious(), dontFollow=self.currentPlaybackMode == "LOOP")
 
     def playNext(self):
         self.logger.info(">>> Play next")
+        if self.currentPlaylist is None:
+            self.logger.info("Current playlist is none, return")
+            return
         if not self.currentPlaylist.musics:
-            self.logger.info("No music to play.")
-        else:
-            self.playMusic(self.currentPlaylist.playNext(), dontFollow=self.currentPlaybackMode == "LOOP")
+            self.logger.info("Current playlist is empty, return")
+            return
+        self.playMusic(self.currentPlaylist.playNext(), dontFollow=self.currentPlaybackMode == "LOOP")
 
     def playMusic(self, music: "Music", dontFollow=False):
         self.logger.info(">>> Play music %s : %s", music.artist, music.title)
@@ -258,6 +254,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.initToolbar()
         self.initLayout()
         self.initStatusBar()
+        self.initPlaceholderPlaylistTable()
+        self.playlistsDialog = PlaylistsDialog(self.app.playlists, self)
+
+    def initPlaceholderPlaylistTable(self):
+        placeholderPlaylist = Playlist("Placeholder", self.app.currentPlaybackMode)
+        placeholderPlaylistTable = PlaylistTable(placeholderPlaylist, self)
+        self.playlistWidget.addWidget(placeholderPlaylistTable)
 
     def initStatusBar(self):
         statusLabel = QtWidgets.QLabel("", self.statusBar())
@@ -303,7 +306,18 @@ class MainWindow(QtWidgets.QMainWindow):
         fileMenu = self.menuBar().addMenu("File")
         fileMenu.addAction("Open", self.onOpenActionTriggered)
         viewMenu = self.menuBar().addMenu("View")
-        viewMenu.addAction("Playlist Manager", lambda: self.playlistsDialog.show())
+        viewMenu.addAction("Playlist Manager", lambda: PlaylistsDialog(self.app.playlists, self).show())
+
+    def createDefaultPlaylist(self):
+        self.logger.info("Create default playlist")
+        placeholderPlaylistTable: PlaylistTable = self.playlistWidget.widget(0)
+        playlist = placeholderPlaylistTable.playlist
+        playlist.name = "Playlist 1"
+        self.app.playlists.append(playlist)
+        self.playlistCombo.addItem(playlist.name)
+        if len(self.app.playlists) == 1:
+            self.app.currentPlaylist = playlist
+            self.app.frontPlaylist = playlist
 
     def onOpenActionTriggered(self):
         musicRoot = str(Path("~/Music").expanduser().absolute())
@@ -311,6 +325,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self, "Open music files", musicRoot, "Audio files (*.mp3 *.wma) ;; All files (*)")[0]
         self.logger.info("There are %d files to open", len(filenames))
         musics = [self.app.parseMusic(x) for x in filenames]
+        if not musics:
+            self.logger.info("No music file to open, return")
+            return
+        if not self.app.playlists:
+            self.logger.info("No playlist, create default one")
+            self.createDefaultPlaylist()
         beginRow, endRow = self.frontPlaylistTable.model().insertMusics(musics)
         self.frontPlaylistTable.selectRowRange(beginRow, endRow)
         self.frontPlaylistTable.repaint()
@@ -320,6 +340,7 @@ class MainWindow(QtWidgets.QMainWindow):
         toolbar = self.addToolBar("Toolbar")
         toolbar.setMovable(False)
         playlistCombo = QtWidgets.QComboBox(toolbar)
+        playlistCombo.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
         playlistCombo.activated.connect(lambda index: self.logger.info("On playlist combobox activated at: %d", index))
         playlistCombo.activated.connect(lambda index: self.app.setFrontPlaylistAtIndex(index))
         toolbar.addWidget(QtWidgets.QLabel("Playlist: ", toolbar))
@@ -431,14 +452,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.progressSlider = progressSlider
         self.progressLabel = progressLabel
 
-    def setupPlaylists(self, playlists):
-        for playlist in playlists:
-            self.addPlaylist(playlist)
-        self.playlistsDialog = PlaylistsDialog(playlists, self)
-
     def addPlaylist(self, playlist: "Playlist"):
+        self.logger.info("Add playlist: %s", playlist)
         self.playlistWidget.addWidget(PlaylistTable(playlist, self))
         self.playlistCombo.addItem(playlist.name)
+        if len(self.app.playlists) == 1:
+            self.app.currentPlaylist = playlist
+            self.app.frontPlaylist = playlist
+
+    def removePlaylistsAtIndexes(self, indexes: typing.List[int]):
+        for index in sorted(indexes, reverse=True):
+            self.playlistWidget.removeWidget(self.playlistWidget.widget(index))
+            self.playlistCombo.removeItem(index)
 
     def togglePlaybackMode(self):
         oldPlaybackMode = self.app.currentPlaybackMode
@@ -451,6 +476,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onPlayButtonClicked(self):
         logging.info("On play button clicked")
+        if self.app.currentPlaylist is None:
+            self.logger.info("Current playlist is none, return")
+            return
         if self.app.currentPlaylist.currentMusic is None:
             self.app.currentPlaylist = self.app.playlists[self.playlistWidget.currentIndex()]
             logging.info("Current music is none, play next at playlist %d", self.playlistWidget.currentIndex())
@@ -574,12 +602,15 @@ class PlaylistTable(IceTableView):
 
     def onRemove(self, indexes: typing.List[int]):
         self.logger.info("Removing musics at indexes: %s", indexes)
+        if not indexes:
+            self.logger.info("No music to remove, return.")
+            return
         if self.playlist == self.app.currentPlaylist and self.playlist.currentMusicIndex in indexes:
             self.logger.info("Stop playing music: %s", self.playlist.currentMusic)
             self.app.player.stop()
         self.playlist.resetHistory(
             keepCurrent=self.playlist == self.app.currentPlaylist and self.playlist.currentMusicIndex not in indexes)
-        self.model().removeMusicsByIndexes(indexes)
+        self.model().removeMusicsAtIndexes(indexes)
 
 
 class PlaylistModel(QtCore.QAbstractTableModel):
@@ -631,7 +662,7 @@ class PlaylistModel(QtCore.QAbstractTableModel):
         self.endInsertRows()
         return beginRow, endRow
 
-    def removeMusicsByIndexes(self, indexes: typing.List[int]) -> None:
+    def removeMusicsAtIndexes(self, indexes: typing.List[int]) -> None:
         for index in sorted(indexes, reverse=True):
             self.beginRemoveRows(QtCore.QModelIndex(), index, index)
             del self.playlist.musics[index]
@@ -647,6 +678,9 @@ class Playlist(object):
         self.historyPosition = -1
         self.lastMusic: typing.Optional[Music] = None
         self.random = random.Random(0)
+
+    def __repr__(self):
+        return "<Playlist:name={},size={}>".format(self.name, len(self.musics))
 
     def resetHistory(self, keepCurrent: bool) -> None:
         currentMusic = self.currentMusic
@@ -746,13 +780,17 @@ class NoFocusDelegate(QtWidgets.QStyledItemDelegate):
 
 
 class PlaylistsDialog(QtWidgets.QDialog):
+    playlistsTable: "PlaylistsTable"
+
     def __init__(self, playlists: typing.List[Playlist], parent: QtWidgets.QWidget):
         super().__init__(parent)
         self.playlists = playlists
         self.setWindowTitle("Playlist Manager")
         self.setLayout(QtWidgets.QGridLayout(self))
+        playlistsTable = PlaylistsTable(playlists, self)
         self.layout().addWidget(PlaylistsTable(playlists, self))
         self.resize(640, 360)
+        self.playlistsTable = playlistsTable
 
 
 class PlaylistsTable(IceTableView):
@@ -775,13 +813,36 @@ class PlaylistsTable(IceTableView):
     def contextMenuEvent(self, arg__1: PySide2.QtGui.QContextMenuEvent) -> None:
         menu = QtWidgets.QMenu(self)
         menu.addAction("Create", self.onCreatePlaylist)
+        menu.addAction("Remove", self.onRemovePlaylists)
         menu.exec_(QtGui.QCursor.pos())
 
     def onCreatePlaylist(self):
+        self.logger.debug("On create playlist")
+        if len(self.app.playlists) == 0:
+            self.logger.info("No playlist, create default one")
+            self.model().beginInsertRows(QtCore.QModelIndex(), 0, 0)
+            self.mainWindow.createDefaultPlaylist()
+            self.model().endInsertRows()
+            return
         name = "Playlist {}".format(len(self.app.playlists) + 1)
         playlist = Playlist(name, self.app.currentPlaybackMode)
         self.model().insertPlaylist(playlist)
         self.mainWindow.addPlaylist(playlist)
+
+    def onRemovePlaylists(self):
+        indexes = sorted({x.row() for x in self.selectedIndexes()})
+        self.logger.info("On remove playlists at indexes: %s", indexes)
+        if not indexes:
+            self.logger.info("No playlists to remove, return.")
+            return
+        if self.app.currentPlaylistIndex in indexes:
+            self.logger.info("Remove playing playlist, stop player first")
+            self.app.player.stop()
+        self.model().removePlaylistsAtIndexes(indexes)
+        self.mainWindow.removePlaylistsAtIndexes(indexes)
+        if not self.app.playlists:
+            self.logger.info("No playlist, create placeholder")
+            self.mainWindow.initPlaceholderPlaylistTable()
 
 
 class PlaylistsModel(QtCore.QAbstractTableModel):
@@ -813,6 +874,12 @@ class PlaylistsModel(QtCore.QAbstractTableModel):
         self.beginInsertRows(QtCore.QModelIndex(), index, index)
         self.playlists.append(playlist)
         self.endInsertRows()
+
+    def removePlaylistsAtIndexes(self, indexes: typing.List[int]):
+        for index in sorted(indexes, reverse=True):
+            self.beginRemoveRows(QtCore.QModelIndex(), index, index)
+            del self.playlists[index]
+        self.endRemoveRows()
 
 
 if __name__ == '__main__':
