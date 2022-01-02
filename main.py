@@ -1,4 +1,6 @@
 # Created by BaiJiFeiLong@gmail.com at 2021/12/6 12:52
+import PySide2
+
 __import__("os").environ.update(dict(
     QT_API="pyside2",
     QT_MULTIMEDIA_PREFERRED_PLUGINS='WindowsMediaFoundation'.lower()
@@ -72,7 +74,7 @@ class App(QtWidgets.QApplication):
 
     def initPlaylists(self):
         playlists: typing.List[Playlist] = [
-            Playlist("Alpha", self.currentPlaybackMode), Playlist("Beta", self.currentPlaybackMode)]
+            Playlist("Playlist 1", self.currentPlaybackMode), Playlist("Playlist 2", self.currentPlaybackMode)]
         paths = list(Path("~/Music").expanduser().glob("**/*.mp3"))[:200]
         random.Random(0).shuffle(paths)
         for index, path in enumerate(paths):
@@ -244,7 +246,8 @@ class MainWindow(QtWidgets.QMainWindow):
     progressSlider: QtWidgets.QSlider
     progressLabel: QtWidgets.QLabel
     statusLabel: QtWidgets.QLabel
-    playlistsCombo: QtWidgets.QComboBox
+    playlistCombo: QtWidgets.QComboBox
+    playlistsDialog: "PlaylistsDialog"
 
     def __init__(self, app: App):
         super().__init__()
@@ -293,8 +296,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def initMenu(self):
         fileMenu = self.menuBar().addMenu("File")
-        openAction = fileMenu.addAction("Open")
-        openAction.triggered.connect(self.onOpenActionTriggered)
+        fileMenu.addAction("Open", self.onOpenActionTriggered)
+        viewMenu = self.menuBar().addMenu("View")
+        viewMenu.addAction("Playlist Manager", lambda: self.playlistsDialog.show())
 
     def onOpenActionTriggered(self):
         musicRoot = str(Path("~/Music").expanduser().absolute())
@@ -310,13 +314,13 @@ class MainWindow(QtWidgets.QMainWindow):
     def initToolbar(self):
         toolbar = self.addToolBar("Toolbar")
         toolbar.setMovable(False)
-        playlistsCombo = QtWidgets.QComboBox(toolbar)
-        playlistsCombo.activated.connect(lambda index: self.logger.info("Active playlist: %d", index))
-        playlistsCombo.activated.connect(lambda index: self.app.setFrontPlaylistAtIndex(index))
+        playlistCombo = QtWidgets.QComboBox(toolbar)
+        playlistCombo.activated.connect(lambda index: self.logger.info("On playlist combobox activated at: %d", index))
+        playlistCombo.activated.connect(lambda index: self.app.setFrontPlaylistAtIndex(index))
         toolbar.addWidget(QtWidgets.QLabel("Playlist:", toolbar))
-        toolbar.addWidget(playlistsCombo)
+        toolbar.addWidget(playlistCombo)
         self.toolbar = toolbar
-        self.playlistsCombo = playlistsCombo
+        self.playlistCombo = playlistCombo
 
     def initLayout(self):
         mainWidget = QtWidgets.QWidget(self)
@@ -426,7 +430,8 @@ class MainWindow(QtWidgets.QMainWindow):
         for playlist in playlists:
             self.playlistWidget.addWidget(PlaylistTable(playlist, self))
         for playlist in playlists:
-            self.playlistsCombo.addItem(playlist.name)
+            self.playlistCombo.addItem(playlist.name)
+        self.playlistsDialog = PlaylistsDialog(playlists, self)
 
     def togglePlaybackMode(self):
         oldPlaybackMode = self.app.currentPlaybackMode
@@ -498,21 +503,12 @@ class MainWindow(QtWidgets.QMainWindow):
             ])()
 
 
-class PlaylistTable(QtWidgets.QTableView):
-    def __init__(self, playlist: "Playlist", mainWindow: "MainWindow") -> None:
-        super().__init__(mainWindow.playlistWidget)
-        self.logger = logging.getLogger("playlistTable")
-        self.playlist = playlist
-        self.mainWindow = mainWindow
-        self.app = self.mainWindow.app
-        self.setModel(PlaylistModel(playlist, mainWindow))
-        self.setColumnWidth(0, 35)
-        self.setColumnWidth(1, 200)
-        self.setColumnWidth(2, 300)
+class IceTableView(QtWidgets.QTableView):
+    def __init__(self, parent: typing.Optional[PySide2.QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
         self.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
         self.setEditTriggers(QtWidgets.QTableView.NoEditTriggers)
         self.horizontalHeader().setStretchLastSection(True)
-        self.doubleClicked.connect(lambda x: self.onDoubleClicked(x.row()))
         self.setAlternatingRowColors(True)
         self.setStyleSheet("alternate-background-color: rgb(245, 245, 245)")
         self.setFrameShape(QtWidgets.QFrame.NoFrame)
@@ -528,6 +524,19 @@ class PlaylistTable(QtWidgets.QTableView):
         tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.HighlightedText,
             tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.HighlightedText))
         self.setPalette(tablePalette)
+
+
+class PlaylistTable(IceTableView):
+    def __init__(self, playlist: "Playlist", mainWindow: "MainWindow") -> None:
+        super().__init__(mainWindow.playlistWidget)
+        self.logger = logging.getLogger("playlistTable")
+        self.playlist = playlist
+        self.mainWindow = mainWindow
+        self.app = self.mainWindow.app
+        self.setModel(PlaylistModel(playlist, mainWindow))
+        self.setColumnWidth(0, 35)
+        self.setColumnWidth(1, 200)
+        self.doubleClicked.connect(lambda x: self.onDoubleClicked(x.row()))
         self.setIconSize(QtCore.QSize(32, 32))
         self.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
         self.setSortingEnabled(True)
@@ -727,6 +736,55 @@ class NoFocusDelegate(QtWidgets.QStyledItemDelegate):
         if option.state & QtWidgets.QStyle.State_HasFocus:
             itemOption.state = itemOption.state ^ QtWidgets.QStyle.State_HasFocus
         super().paint(painter, itemOption, index)
+
+
+class PlaylistsDialog(QtWidgets.QDialog):
+    def __init__(self, playlists: typing.List[Playlist], parent: QtWidgets.QWidget):
+        super().__init__(parent)
+        self.playlists = playlists
+        self.setWindowTitle("Playlist Manager")
+        self.setLayout(QtWidgets.QGridLayout(self))
+        self.layout().addWidget(PlaylistsTable(playlists, self))
+        self.resize(640, 360)
+
+
+class PlaylistsTable(IceTableView):
+    def __init__(self, playlists: typing.List[Playlist], parent: QtWidgets.QWidget) -> None:
+        super().__init__(parent)
+        self.app: App = self.parent().parent().app
+        self.logger = logging.getLogger("playlistsTable")
+        self.setModel(PlaylistsModel(playlists, self))
+        self.setColumnWidth(0, 320)
+        self.doubleClicked.connect(lambda x: self.onDoubleClickedAtRow(x.row()))
+
+    def onDoubleClickedAtRow(self, row):
+        self.logger.info("On double clicked at row: %d", row)
+        self.app.setFrontPlaylistAtIndex(row)
+
+
+class PlaylistsModel(QtCore.QAbstractTableModel):
+    def __init__(self, playlists: typing.List[Playlist], parent: QtCore.QObject) -> None:
+        super().__init__(parent)
+        self.playlists = playlists
+
+    def rowCount(self, parent: QtCore.QModelIndex = ...) -> int:
+        return len(self.playlists)
+
+    def columnCount(self, parent: QtCore.QModelIndex = ...) -> int:
+        return 2
+
+    def data(self, index: QtCore.QModelIndex, role: int = ...) -> typing.Any:
+        playlist = self.playlists[index.row()]
+        if role == QtCore.Qt.DisplayRole:
+            if index.column() == 0:
+                return playlist.name
+            elif index.column() == 1:
+                return str(len(playlist.musics))
+
+    def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role: int = ...) -> typing.Any:
+        if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
+            return ["Name", "Items"][section]
+        return super().headerData(section, orientation, role)
 
 
 if __name__ == '__main__':
