@@ -4,7 +4,9 @@ __import__("os").environ.update(dict(
 ))
 
 from iceSpringMusicPlayer.app import App
+from iceSpringMusicPlayer.utils import LogUtils
 
 
 def run() -> None:
+    LogUtils.initLogging()
     App().exec_()

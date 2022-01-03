@@ -32,36 +32,36 @@ class Playlist(object):
             self.historyPosition = 0
 
     @property
-    def currentMusic(self) -> typing.Optional["Music"]:
+    def currentMusic(self) -> typing.Optional[Music]:
         return self.historyDict.get(self.historyPosition, None)
 
     @property
     def currentMusicIndex(self) -> int:
         return -1 if self.currentMusic is None else self.musics.index(self.currentMusic)
 
-    def playNext(self) -> "Music":
+    def playNext(self) -> Music:
         return self.playMusicAtRelativePosition(self.nextMusic(), 1)
 
-    def playPrevious(self) -> "Music":
+    def playPrevious(self) -> Music:
         return self.playMusicAtRelativePosition(self.previousMusic(), -1)
 
-    def playMusic(self, music: "Music") -> "Music":
+    def playMusic(self, music: Music) -> Music:
         return self.playMusicAtRelativePosition(music, 1)
 
-    def playMusicAtRelativePosition(self, music: "Music", relativePosition) -> "Music":
+    def playMusicAtRelativePosition(self, music: Music, relativePosition) -> Music:
         self.lastMusic = self.currentMusic
         self.historyPosition += relativePosition
         self.historyDict[self.historyPosition] = music
         return music
 
-    def nextMusic(self) -> "Music":
+    def nextMusic(self) -> Music:
         historyNextMusic = self.historyDict.get(self.historyPosition + 1, None)
         randomNextMusic = self.musics[self.memorizedNextRandomMusicIndex()]
         loopNextMusic = self.musics[0] if self.currentMusic is None \
             else self.musics[(self.currentMusicIndex + 1) % len(self.musics)]
         return loopNextMusic if self.playbackMode == "LOOP" else historyNextMusic or randomNextMusic
 
-    def previousMusic(self) -> "Music":
+    def previousMusic(self) -> Music:
         historyPreviousMusic = self.historyDict.get(self.historyPosition - 1, None)
         randomPreviousMusic = self.musics[self.memorizedPreviousRandomMusicIndex()]
         loopPreviousMusic = self.musics[-1] if self.currentMusic is None \

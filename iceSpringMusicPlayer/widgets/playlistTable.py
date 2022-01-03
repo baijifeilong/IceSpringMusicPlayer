@@ -86,6 +86,7 @@ class PlaylistModel(QtCore.QAbstractTableModel):
         elif role == QtCore.Qt.DecorationRole:
             if index.column() == 0 and index.row() == self.app.currentPlaylist.currentMusicIndex \
                     and self.app.currentPlaylistIndex == self.mainWindow.playlistWidget.currentIndex():
+                # noinspection PyTypeChecker
                 return [QtGui.QIcon(), qtawesome.icon("mdi.play"), qtawesome.icon("mdi.pause")][self.app.player.state()]
 
     def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role: int = ...) -> typing.Any:

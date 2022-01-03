@@ -5,9 +5,7 @@ import typing
 from pathlib import Path
 from typing import Dict
 
-import colorlog
 import qtawesome
-import taglib
 import typing_extensions
 from PySide2 import QtCore, QtMultimedia, QtWidgets
 
@@ -22,16 +20,8 @@ class App(QtWidgets.QApplication):
     currentPlaybackMode: typing_extensions.Literal["LOOP", "RANDOM"]
     frontPlaylist: typing.Optional[Playlist]
 
-    @staticmethod
-    def initLogging():
-        consoleLogPattern = "%(log_color)s%(asctime)s %(levelname)8s %(name)-16s %(message)s"
-        logging.getLogger().handlers = [logging.StreamHandler()]
-        logging.getLogger().handlers[0].setFormatter(colorlog.ColoredFormatter(consoleLogPattern))
-        logging.getLogger().setLevel(logging.DEBUG)
-
     def __init__(self):
         super().__init__()
-        self.initLogging()
         self.currentPlaybackMode = "LOOP"
         self.logger = logging.getLogger("app")
         self.lyricsLogger = logging.getLogger("lyrics")
@@ -50,23 +40,6 @@ class App(QtWidgets.QApplication):
         self.mainWindow.resize(1280, 720)
         self.mainWindow.show()
         return super().exec_()
-
-    @staticmethod
-    def parseMusic(filename) -> Music:
-        parts = [x.strip() for x in Path(filename).with_suffix("").name.rsplit("-", maxsplit=1)]
-        artist, title = parts if len(parts) == 2 else ["Unknown"] + parts
-        info = taglib.File(filename)
-        music = Music()
-        music.filename = filename
-        music.filesize = Path(filename).stat().st_size
-        music.album = info.tags.get("ALBUM", [""])[0]
-        music.title = info.tags.get("TITLE", [title])[0]
-        music.artist = info.tags.get("ARTIST", [artist])[0]
-        music.bitrate = info.bitrate
-        music.sampleRate = info.sampleRate
-        music.channels = info.channels
-        music.duration = info.length * 1000
-        return music
 
     def setFrontPlaylist(self, playlist: Playlist):
         if playlist == self.frontPlaylist:
@@ -111,6 +84,7 @@ class App(QtWidgets.QApplication):
                     millis += 1
                 lyricDict[millis] = content
         lyricsLogger.info("Total parsed lyric items: %d", len(lyricDict))
+        # noinspection PyTypeChecker
         return dict(sorted(lyricDict.items()))
 
     @staticmethod
@@ -144,6 +118,7 @@ class App(QtWidgets.QApplication):
     @staticmethod
     def clearLayout(layout: QtWidgets.QLayout):
         for i in reversed(range(layout.count())):
+            # noinspection PyTypeChecker
             layout.itemAt(i).widget().setParent(None) if layout.itemAt(i).widget() \
                 else layout.removeItem(layout.itemAt(i))
 
@@ -203,7 +178,9 @@ class App(QtWidgets.QApplication):
         position != 0 and self.mainWindow.refreshLyrics(math.ceil(position / self.currentBugRate))
 
     def onPlayerStateChanged(self, state):
+        # noinspection PyTypeChecker
         oldState = self.player.property("_state") or QtMultimedia.QMediaPlayer.StoppedState
+        # noinspection PyTypeChecker
         self.player.setProperty("_state", state)
         if oldState == QtMultimedia.QMediaPlayer.StoppedState and state == QtMultimedia.QMediaPlayer.PlayingState:
             self.mainWindow.setupLyrics()

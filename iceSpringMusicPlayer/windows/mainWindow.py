@@ -11,6 +11,7 @@ from iceSpringMusicPlayer.controls import FluentSlider, ClickableLabel
 from iceSpringMusicPlayer.domains import Playlist
 from iceSpringMusicPlayer.widgets import PlaylistTable, PlaylistModel
 from iceSpringMusicPlayer.windows import PlaylistsDialog
+from iceSpringMusicPlayer.utils import MusicUtils
 
 if typing.TYPE_CHECKING:
     from iceSpringMusicPlayer.app import App
@@ -110,7 +111,7 @@ class MainWindow(QtWidgets.QMainWindow):
         filenames = QtWidgets.QFileDialog.getOpenFileNames(
             self, "Open music files", musicRoot, "Audio files (*.mp3 *.wma) ;; All files (*)")[0]
         self.logger.info("There are %d files to open", len(filenames))
-        musics = [self.app.parseMusic(x) for x in filenames]
+        musics = [MusicUtils.parseMusic(x) for x in filenames]
         if not musics:
             self.logger.info("No music file to open, return")
             return
@@ -281,16 +282,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.app.player.stop()
 
     def setupLyrics(self):
+        # noinspection PyTypeChecker
         self.app.player.setProperty("previousLyricIndex", -1)
         lyricsPath = Path(self.app.currentPlaylist.currentMusic.filename).with_suffix(".lrc")
         lyricsText = lyricsPath.read_text()
         lyricDict = self.app.parseLyrics(lyricsText)
+        # noinspection PyTypeChecker
         self.app.player.setProperty("lyricDict", lyricDict)
         self.app.clearLayout(self.lyricsLayout)
         self.lyricsLayout.addSpacing(self.lyricsContainer.height() // 2)
         for position, lyric in list(lyricDict.items())[:]:
             lyricLabel = ClickableLabel(lyric, self.lyricsContainer)
             lyricLabel.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+            # noinspection PyShadowingNames
             lyricLabel.clicked.connect(
                 lambda _, position=position: self.app.player.setPosition(position * self.app.currentBugRate))
             font = lyricLabel.font()
@@ -304,11 +308,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.refreshLyrics(0)
 
     def refreshLyrics(self, position):
+        # noinspection PyTypeChecker
         lyricDict = self.app.player.property("lyricDict")
+        # noinspection PyTypeChecker
         previousLyricIndex = self.app.player.property("previousLyricIndex")
         lyricIndex = self.app.calcLyricIndexAtPosition(position, list(lyricDict.keys()))
         if lyricIndex == previousLyricIndex:
             return
+        # noinspection PyTypeChecker
         self.app.player.setProperty("previousLyricIndex", lyricIndex)
         for index in range(len(lyricDict)):
             lyricLabel: QtWidgets.QLabel = self.lyricsLayout.itemAt(index + 1).widget()
@@ -316,6 +323,7 @@ class MainWindow(QtWidgets.QMainWindow):
             originalValue = self.lyricsContainer.verticalScrollBar().value()
             targetValue = lyricLabel.pos().y() - self.lyricsContainer.height() // 2 + lyricLabel.height() // 2
             QtCore.QPropertyAnimation().start(QtCore.QPropertyAnimation.DeleteWhenStopped)
+            # noinspection PyTypeChecker
             index == lyricIndex and (lambda animation=QtCore.QPropertyAnimation(
                 self.lyricsContainer.verticalScrollBar(), b"value", self.lyricsContainer): [
                 animation.setStartValue(originalValue),
