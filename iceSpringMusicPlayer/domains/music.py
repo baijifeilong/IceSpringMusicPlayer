@@ -1,0 +1,10 @@
+class Music(object):
+    filename: str
+    filesize: int
+    album: str
+    artist: str
+    title: str
+    duration: int
+    bitrate: int
+    sampleRate: int
+    channels: int
