@@ -1,3 +1,5 @@
+# Created by BaiJiFeiLong@gmail.com at 2022-01-03 13:16:26
+
 from __future__ import annotations
 
 import hashlib

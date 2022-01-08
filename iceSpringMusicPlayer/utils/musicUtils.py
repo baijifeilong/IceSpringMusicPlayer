@@ -1,20 +1,10 @@
-import logging
-import typing
+# Created by BaiJiFeiLong@gmail.com at 2022-01-08 09:05:45
+
 from pathlib import Path
 
-import colorlog
 import taglib
 
 from iceSpringMusicPlayer.domains import Music
-
-
-class LogUtils(object):
-    @staticmethod
-    def initLogging():
-        consoleLogPattern = "%(log_color)s%(asctime)s %(levelname)8s %(name)-16s %(message)s"
-        logging.getLogger().handlers = [logging.StreamHandler()]
-        logging.getLogger().handlers[0].setFormatter(colorlog.ColoredFormatter(consoleLogPattern))
-        logging.getLogger().setLevel(logging.DEBUG)
 
 
 class MusicUtils(object):
@@ -34,9 +24,3 @@ class MusicUtils(object):
         music.channels = info.channels
         music.duration = info.length * 1000
         return music
-
-
-class TypeHintUtils(object):
-    @staticmethod
-    def gg(x) -> typing.Any:
-        return x
