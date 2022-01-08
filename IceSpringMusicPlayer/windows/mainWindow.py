@@ -12,6 +12,7 @@ from PySide2 import QtCore, QtGui, QtMultimedia, QtWidgets
 from IceSpringMusicPlayer.controls.clickableLabel import ClickableLabel
 from IceSpringMusicPlayer.controls.fluentSlider import FluentSlider
 from IceSpringMusicPlayer.domains.playlist import Playlist
+from IceSpringMusicPlayer.utils.lyricUtils import LyricUtils
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 from IceSpringMusicPlayer.utils.typeHintUtils import gg
 from IceSpringMusicPlayer.widgets.playlistTable import PlaylistModel
@@ -290,7 +291,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.app.player.setProperty("previousLyricIndex", -1)
         lyricsPath = Path(self.app.currentPlaylist.currentMusic.filename).with_suffix(".lrc")
         lyricsText = lyricsPath.read_text()
-        lyricDict = self.app.parseLyrics(lyricsText)
+        lyricDict = LyricUtils.parseLyrics(lyricsText)
         self.app.player.setProperty("lyricDict", lyricDict)
         self.app.clearLayout(self.lyricsLayout)
         self.lyricsLayout.addSpacing(self.lyricsContainer.height() // 2)
@@ -312,7 +313,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def refreshLyrics(self, position):
         lyricDict = self.app.player.property("lyricDict")
         previousLyricIndex = self.app.player.property("previousLyricIndex")
-        lyricIndex = self.app.calcLyricIndexAtPosition(position, list(lyricDict.keys()))
+        lyricIndex = LyricUtils.calcLyricIndexAtPosition(position, list(lyricDict.keys()))
         if lyricIndex == previousLyricIndex:
             return
         self.app.player.setProperty("previousLyricIndex", lyricIndex)
