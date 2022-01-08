@@ -7,12 +7,12 @@ import typing
 
 from PySide2 import QtCore, QtGui, QtWidgets
 
-from iceSpringMusicPlayer.controls import IceTableView
-from iceSpringMusicPlayer.domains import Playlist
+from IceSpringMusicPlayer.controls import IceTableView
+from IceSpringMusicPlayer.domains import Playlist
 
 if typing.TYPE_CHECKING:
-    from iceSpringMusicPlayer.app import App
-    from iceSpringMusicPlayer.windows import MainWindow
+    from IceSpringMusicPlayer.app import App
+    from IceSpringMusicPlayer.windows import MainWindow
 
 
 class PlaylistsTable(IceTableView):

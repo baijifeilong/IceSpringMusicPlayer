@@ -5,8 +5,8 @@ __import__("os").environ.update(dict(
     QT_MULTIMEDIA_PREFERRED_PLUGINS='WindowsMediaFoundation'.lower()
 ))
 
-from iceSpringMusicPlayer.app import App
-from iceSpringMusicPlayer.utils import LogUtils
+from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.utils import LogUtils
 
 
 def run() -> None:

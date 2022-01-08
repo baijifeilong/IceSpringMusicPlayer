@@ -9,14 +9,14 @@ from pathlib import Path
 import qtawesome
 from PySide2 import QtCore, QtGui, QtMultimedia, QtWidgets
 
-from iceSpringMusicPlayer.controls import FluentSlider, ClickableLabel
-from iceSpringMusicPlayer.domains import Playlist
-from iceSpringMusicPlayer.utils import MusicUtils, gg
-from iceSpringMusicPlayer.widgets import PlaylistTable, PlaylistModel
-from iceSpringMusicPlayer.windows import PlaylistsDialog
+from IceSpringMusicPlayer.controls import FluentSlider, ClickableLabel
+from IceSpringMusicPlayer.domains import Playlist
+from IceSpringMusicPlayer.utils import MusicUtils, gg
+from IceSpringMusicPlayer.widgets import PlaylistTable, PlaylistModel
+from IceSpringMusicPlayer.windows import PlaylistsDialog
 
 if typing.TYPE_CHECKING:
-    from iceSpringMusicPlayer.app import App
+    from IceSpringMusicPlayer.app import App
 
 
 class MainWindow(QtWidgets.QMainWindow):

@@ -8,12 +8,12 @@ import typing
 import qtawesome
 from PySide2 import QtCore, QtGui, QtWidgets
 
-from iceSpringMusicPlayer.controls import IceTableView
-from iceSpringMusicPlayer.utils import gg
+from IceSpringMusicPlayer.controls import IceTableView
+from IceSpringMusicPlayer.utils import gg
 
 if typing.TYPE_CHECKING:
-    from iceSpringMusicPlayer.domains import Playlist, Music
-    from iceSpringMusicPlayer.windows import MainWindow
+    from IceSpringMusicPlayer.domains import Playlist, Music
+    from IceSpringMusicPlayer.windows import MainWindow
 
 
 class PlaylistTable(IceTableView):

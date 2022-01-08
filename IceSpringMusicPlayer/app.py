@@ -11,8 +11,8 @@ import qtawesome
 import typing_extensions
 from PySide2 import QtCore, QtMultimedia, QtWidgets
 
-from iceSpringMusicPlayer.domains import Playlist, Music
-from iceSpringMusicPlayer.windows import MainWindow
+from IceSpringMusicPlayer.domains import Playlist, Music
+from IceSpringMusicPlayer.windows import MainWindow
 
 
 class App(QtWidgets.QApplication):

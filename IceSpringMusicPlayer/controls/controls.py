@@ -4,7 +4,7 @@ import typing
 
 from PySide2 import QtWidgets, QtGui, QtCore
 
-from iceSpringMusicPlayer.utils import gg
+from IceSpringMusicPlayer.utils import gg
 
 
 class IceTableView(QtWidgets.QTableView):
