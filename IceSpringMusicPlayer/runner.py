@@ -6,7 +6,7 @@ __import__("os").environ.update(dict(
 ))
 
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.utils import LogUtils
+from IceSpringMusicPlayer.utils.logUtils import LogUtils
 
 
 def run() -> None:

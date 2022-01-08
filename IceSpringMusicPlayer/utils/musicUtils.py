@@ -4,7 +4,7 @@ from pathlib import Path
 
 import taglib
 
-from IceSpringMusicPlayer.domains import Music
+from IceSpringMusicPlayer.domains.music import Music
 
 
 class MusicUtils(object):

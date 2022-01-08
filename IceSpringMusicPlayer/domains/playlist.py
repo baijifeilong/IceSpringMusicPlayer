@@ -9,7 +9,7 @@ import typing
 import typing_extensions
 
 if typing.TYPE_CHECKING:
-    from IceSpringMusicPlayer.domains import Music
+    from IceSpringMusicPlayer.domains.music import Music
 
 
 class Playlist(object):

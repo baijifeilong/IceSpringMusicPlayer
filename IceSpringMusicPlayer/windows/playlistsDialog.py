@@ -6,10 +6,10 @@ import typing
 
 from PySide2 import QtWidgets
 
-from IceSpringMusicPlayer.widgets import PlaylistsTable
+from IceSpringMusicPlayer.widgets.playlistsTable import PlaylistsTable
 
 if typing.TYPE_CHECKING:
-    from IceSpringMusicPlayer.domains import Playlist
+    from IceSpringMusicPlayer.domains.playlist import Playlist
 
 
 class PlaylistsDialog(QtWidgets.QDialog):

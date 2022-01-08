@@ -1,10 +1,11 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/8 22:55
+
 import typing
 
 from PySide2 import QtWidgets, QtGui
 
 from IceSpringMusicPlayer.controls.noFocusDelegate import NoFocusDelegate
-from IceSpringMusicPlayer.utils import gg
+from IceSpringMusicPlayer.utils.typeHintUtils import gg
 
 
 class IceTableView(QtWidgets.QTableView):
