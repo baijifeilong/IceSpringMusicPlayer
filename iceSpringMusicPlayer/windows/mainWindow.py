@@ -9,9 +9,9 @@ from PySide2 import QtCore, QtGui, QtMultimedia, QtWidgets
 
 from iceSpringMusicPlayer.controls import FluentSlider, ClickableLabel
 from iceSpringMusicPlayer.domains import Playlist
+from iceSpringMusicPlayer.utils import MusicUtils, gg
 from iceSpringMusicPlayer.widgets import PlaylistTable, PlaylistModel
 from iceSpringMusicPlayer.windows import PlaylistsDialog
-from iceSpringMusicPlayer.utils import MusicUtils
 
 if typing.TYPE_CHECKING:
     from iceSpringMusicPlayer.app import App
@@ -25,8 +25,8 @@ class MainWindow(QtWidgets.QMainWindow):
     playlistWidget: QtWidgets.QStackedWidget
     lyricsContainer: QtWidgets.QScrollArea
     lyricsLayout: QtWidgets.QVBoxLayout
-    playButton: QtWidgets.QPushButton
-    playbackButton: QtWidgets.QPushButton
+    playButton: QtWidgets.QToolButton
+    playbackButton: QtWidgets.QToolButton
     progressSlider: QtWidgets.QSlider
     progressLabel: QtWidgets.QLabel
     statusLabel: QtWidgets.QLabel
@@ -75,15 +75,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.playlistWidget.setCurrentIndex(self.app.currentPlaylistIndex)
         self.currentPlaylistTable.selectRow(self.app.currentPlaylist.currentMusicIndex)
         self.currentPlaylistTable.scrollTo(self.currentPlaylistModel.index(
-            self.app.currentPlaylist.currentMusicIndex, 0), QtWidgets.QTableView.PositionAtCenter)
+            self.app.currentPlaylist.currentMusicIndex, 0), QtWidgets.QTableView.ScrollHint.PositionAtCenter)
 
     @property
     def currentPlaylistTable(self) -> PlaylistTable:
-        return self.playlistWidget.widget(self.app.currentPlaylistIndex)
+        return gg(self.playlistWidget.widget(self.app.currentPlaylistIndex))
 
     @property
     def frontPlaylistTable(self) -> PlaylistTable:
-        return self.playlistWidget.widget(self.app.frontPlaylistIndex)
+        return gg(self.playlistWidget.widget(self.app.frontPlaylistIndex))
 
     @property
     def currentPlaylistModel(self) -> PlaylistModel:
@@ -97,7 +97,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def createDefaultPlaylist(self):
         self.logger.info("Create default playlist")
-        placeholderPlaylistTable: PlaylistTable = self.playlistWidget.widget(0)
+        placeholderPlaylistTable: PlaylistTable = gg(self.playlistWidget.widget(0))
         playlist = placeholderPlaylistTable.playlist
         playlist.name = "Playlist 1"
         self.app.playlists.append(playlist)
@@ -127,7 +127,7 @@ class MainWindow(QtWidgets.QMainWindow):
         toolbar = self.addToolBar("Toolbar")
         toolbar.setMovable(False)
         playlistCombo = QtWidgets.QComboBox(toolbar)
-        playlistCombo.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
+        playlistCombo.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents)
         playlistCombo.activated.connect(lambda index: self.logger.info("On playlist combobox activated at: %d", index))
         playlistCombo.activated.connect(lambda index: self.app.setFrontPlaylistAtIndex(index))
         toolbar.addWidget(QtWidgets.QLabel("Playlist: ", toolbar))
@@ -139,7 +139,7 @@ class MainWindow(QtWidgets.QMainWindow):
         mainWidget = QtWidgets.QWidget(self)
         mainWidget.setAutoFillBackground(True)
         palette = QtGui.QPalette()
-        palette.setColor(QtGui.QPalette.Window, QtGui.QColor("white"))
+        palette.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor("white"))
         mainWidget.setPalette(palette)
         self.setCentralWidget(mainWidget)
         self.initMainLayout()
@@ -149,8 +149,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def initMainLayout(self):
         lines = [QtWidgets.QFrame(self) for _ in range(2)]
         for line in lines:
-            line.setFrameShape(QtWidgets.QFrame.HLine)
-            line.setFrameShadow(QtWidgets.QFrame.Plain)
+            line.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+            line.setFrameShadow(QtWidgets.QFrame.Shadow.Plain)
             line.setStyleSheet("color: #D8D8D8")
         mainWidget = self.centralWidget()
         mainLayout = QtWidgets.QVBoxLayout(mainWidget)
@@ -178,7 +178,7 @@ class MainWindow(QtWidgets.QMainWindow):
         lyricsLayout.setSpacing(1)
         lyricsWidget.setLayout(lyricsLayout)
         lyricsContainer.setWidget(lyricsWidget)
-        lyricsContainer.setFrameShape(QtWidgets.QFrame.NoFrame)
+        lyricsContainer.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
         lyricsContainer.setWidgetResizable(True)
         lyricsContainer.resizeEvent = self.onLyricsContainerResize
         lyricsContainer.horizontalScrollBar().rangeChanged.connect(lambda *args, bar=lyricsContainer.
@@ -218,7 +218,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for button in playButton, stopButton, previousButton, nextButton, playbackButton:
             button.setIconSize(QtCore.QSize(50, 50))
             button.setAutoRaise(True)
-        progressSlider = FluentSlider(QtCore.Qt.Horizontal, mainWidget)
+        progressSlider = FluentSlider(QtCore.Qt.Orientation.Horizontal, mainWidget)
         progressSlider.setDisabled(True)
         progressSlider.valueChanged.connect(lambda x: self.app.player.setPosition(x))
         progressLabel = QtWidgets.QLabel("00:00/00:00", mainWidget)
@@ -282,21 +282,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.app.player.stop()
 
     def setupLyrics(self):
-        # noinspection PyTypeChecker
         self.app.player.setProperty("previousLyricIndex", -1)
         lyricsPath = Path(self.app.currentPlaylist.currentMusic.filename).with_suffix(".lrc")
         lyricsText = lyricsPath.read_text()
         lyricDict = self.app.parseLyrics(lyricsText)
-        # noinspection PyTypeChecker
         self.app.player.setProperty("lyricDict", lyricDict)
         self.app.clearLayout(self.lyricsLayout)
         self.lyricsLayout.addSpacing(self.lyricsContainer.height() // 2)
         for position, lyric in list(lyricDict.items())[:]:
             lyricLabel = ClickableLabel(lyric, self.lyricsContainer)
-            lyricLabel.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
-            # noinspection PyShadowingNames
+            lyricLabel.setAlignment(gg(QtCore.Qt.AlignmentFlag.AlignCenter) | QtCore.Qt.AlignmentFlag.AlignVCenter)
             lyricLabel.clicked.connect(
-                lambda _, position=position: self.app.player.setPosition(position * self.app.currentBugRate))
+                lambda _, pos=position: self.app.player.setPosition(pos * self.app.currentBugRate))
             font = lyricLabel.font()
             font.setFamily("等线")
             font.setPointSize(18)
@@ -308,21 +305,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.refreshLyrics(0)
 
     def refreshLyrics(self, position):
-        # noinspection PyTypeChecker
         lyricDict = self.app.player.property("lyricDict")
-        # noinspection PyTypeChecker
         previousLyricIndex = self.app.player.property("previousLyricIndex")
         lyricIndex = self.app.calcLyricIndexAtPosition(position, list(lyricDict.keys()))
         if lyricIndex == previousLyricIndex:
             return
-        # noinspection PyTypeChecker
         self.app.player.setProperty("previousLyricIndex", lyricIndex)
         for index in range(len(lyricDict)):
             lyricLabel: QtWidgets.QLabel = self.lyricsLayout.itemAt(index + 1).widget()
             lyricLabel.setStyleSheet("color:rgb(225,65,60)" if index == lyricIndex else "color:rgb(35,85,125)")
             originalValue = self.lyricsContainer.verticalScrollBar().value()
             targetValue = lyricLabel.pos().y() - self.lyricsContainer.height() // 2 + lyricLabel.height() // 2
-            QtCore.QPropertyAnimation().start(QtCore.QPropertyAnimation.DeleteWhenStopped)
+            QtCore.QPropertyAnimation().start(QtCore.QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
             # noinspection PyTypeChecker
             index == lyricIndex and (lambda animation=QtCore.QPropertyAnimation(
                 self.lyricsContainer.verticalScrollBar(), b"value", self.lyricsContainer): [

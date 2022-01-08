@@ -1,4 +1,5 @@
 import logging
+import typing
 from pathlib import Path
 
 import colorlog
@@ -33,3 +34,9 @@ class MusicUtils(object):
         music.channels = info.channels
         music.duration = info.length * 1000
         return music
+
+
+class TypeHintUtils(object):
+    @staticmethod
+    def gg(x) -> typing.Any:
+        return x

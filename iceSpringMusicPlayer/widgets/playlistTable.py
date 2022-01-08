@@ -7,6 +7,7 @@ import qtawesome
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from iceSpringMusicPlayer.controls import IceTableView
+from iceSpringMusicPlayer.utils import gg
 
 if typing.TYPE_CHECKING:
     from iceSpringMusicPlayer.domains import Playlist, Music
@@ -39,13 +40,13 @@ class PlaylistTable(IceTableView):
         self.app.playMusic(self.app.currentPlaylist.playMusic(self.app.currentPlaylist.musics[index]), True)
 
     def scrollToRow(self, index):
-        self.scrollTo(self.model().index(index, 0), QtWidgets.QTableView.PositionAtCenter)
+        self.scrollTo(self.model().index(index, 0), QtWidgets.QTableView.ScrollHint.PositionAtCenter)
 
     def selectRowRange(self, fromRow, toRow):
         self.clearSelection()
         self.selectionModel().select(
             QtCore.QItemSelection(self.model().index(fromRow, 0), self.model().index(toRow, 0)),
-            QtCore.QItemSelectionModel.Select | QtCore.QItemSelectionModel.Rows)
+            gg(QtCore.QItemSelectionModel.Select) | QtCore.QItemSelectionModel.Rows)
 
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         menu = QtWidgets.QMenu()

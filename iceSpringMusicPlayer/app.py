@@ -178,9 +178,7 @@ class App(QtWidgets.QApplication):
         position != 0 and self.mainWindow.refreshLyrics(math.ceil(position / self.currentBugRate))
 
     def onPlayerStateChanged(self, state):
-        # noinspection PyTypeChecker
         oldState = self.player.property("_state") or QtMultimedia.QMediaPlayer.StoppedState
-        # noinspection PyTypeChecker
         self.player.setProperty("_state", state)
         if oldState == QtMultimedia.QMediaPlayer.StoppedState and state == QtMultimedia.QMediaPlayer.PlayingState:
             self.mainWindow.setupLyrics()
