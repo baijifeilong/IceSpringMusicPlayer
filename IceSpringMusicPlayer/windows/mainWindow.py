@@ -3,19 +3,23 @@
 from __future__ import annotations
 
 import logging
+import math
 import typing
 from pathlib import Path
 
 import qtawesome
+from IceSpringRealOptional import Option
 from PySide2 import QtCore, QtGui, QtMultimedia, QtWidgets
 
 from IceSpringMusicPlayer.controls.clickableLabel import ClickableLabel
 from IceSpringMusicPlayer.controls.fluentSlider import FluentSlider
 from IceSpringMusicPlayer.domains.playlist import Playlist
+from IceSpringMusicPlayer.services.player import Player
+from IceSpringMusicPlayer.utils.layoutUtils import LayoutUtils
 from IceSpringMusicPlayer.utils.lyricUtils import LyricUtils
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
+from IceSpringMusicPlayer.utils.timeDeltaUtils import TimeDeltaUtils
 from IceSpringMusicPlayer.utils.typeHintUtils import gg
-from IceSpringMusicPlayer.widgets.playlistTable import PlaylistModel
 from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
 from IceSpringMusicPlayer.windows.playlistsDialog import PlaylistsDialog
 
@@ -38,20 +42,40 @@ class MainWindow(QtWidgets.QMainWindow):
     statusLabel: QtWidgets.QLabel
     playlistCombo: QtWidgets.QComboBox
     playlistsDialog: PlaylistsDialog
+    _frontPlaylistIndex: int
+    player: Player
 
-    def __init__(self, app: App):
+    def __init__(self, app: App, player: Player):
         super().__init__()
-        self.app = app
         self.logger = logging.getLogger("mainWindow")
+        self.app = app
+        self.lyricsLogger = logging.getLogger("lyrics")
+        self.lyricsLogger.setLevel(logging.INFO)
+        self.positionLogger = logging.getLogger("position")
+        self.positionLogger.setLevel(logging.INFO)
+        self.player = player
         self.initMenu()
         self.initToolbar()
         self.initLayout()
         self.initStatusBar()
         self.initPlaceholderPlaylistTable()
-        self.playlistsDialog = PlaylistsDialog(self.app.playlists, self)
+        playlistsDialog = PlaylistsDialog(self.player.fetchAllPlaylists(), self)
+        playlistsDialog.playlistsTable.model().playlistsRemoved.connect(self.onPlaylistsRemovedAtIndexes)
+        self.playlistsDialog = playlistsDialog
+        self._frontPlaylistIndex = -1
+        self.setupPlayer()
+
+    def setupPlayer(self):
+        player = self.player
+        player.durationChanged.connect(self.onPlayerDurationChanged)
+        player.stateChanged.connect(self.onPlayerStateChanged)
+        player.volumeChanged.connect(lambda x: logging.debug("Volume changed: %d", x))
+        player.positionChanged.connect(self.onPlayerPositionChanged)
+        player.playlistAdded.connect(self.onPlaylistAdded)
+        player.musicIndexChanged.connect(self.onMusicIndexChanged)
 
     def initPlaceholderPlaylistTable(self):
-        placeholderPlaylist = Playlist("Placeholder", self.app.currentPlaybackMode)
+        placeholderPlaylist = Playlist("Placeholder")
         placeholderPlaylistTable = PlaylistTable(placeholderPlaylist, self)
         self.playlistWidget.addWidget(placeholderPlaylistTable)
 
@@ -76,41 +100,59 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onStatusBarDoubleClicked(self):
         self.logger.info("On status bar double clocked")
-        if self.app.currentPlaylist.currentMusic is None:
+        if not self.player.fetchCurrentMusic().isPresent():
             return
-        self.playlistWidget.setCurrentIndex(self.app.currentPlaylistIndex)
-        self.currentPlaylistTable.selectRow(self.app.currentPlaylist.currentMusicIndex)
-        self.currentPlaylistTable.scrollTo(self.currentPlaylistModel.index(
-            self.app.currentPlaylist.currentMusicIndex, 0), QtWidgets.QTableView.ScrollHint.PositionAtCenter)
+        currentPlaylistIndex = self.player.fetchCurrentPlaylistIndex()
+        currentMusicIndex = self.player.fetchCurrentMusicIndex()
+        currentPlaylistTable = self.fetchCurrentPlaylistTable().orElseThrow(AssertionError)
+        self.playlistWidget.setCurrentIndex(currentPlaylistIndex)
+        currentPlaylistTable.selectRow(currentMusicIndex)
+        currentPlaylistTable.scrollToRowAtCenter(currentMusicIndex)
 
-    @property
-    def currentPlaylistTable(self) -> PlaylistTable:
-        return gg(self.playlistWidget.widget(self.app.currentPlaylistIndex))
+    def fetchCurrentPlaylistTable(self) -> Option[PlaylistTable]:
+        if not self.player.fetchCurrentPlaylist().isPresent():
+            return Option.empty()
+        currentPlaylistIndex = self.player.fetchCurrentPlaylistIndex()
+        currentPlaylistTable = self.playlistWidget.widget(currentPlaylistIndex)
+        return Option.of(gg(currentPlaylistTable, _type=PlaylistTable))
 
-    @property
-    def frontPlaylistTable(self) -> PlaylistTable:
-        return gg(self.playlistWidget.widget(self.app.frontPlaylistIndex))
+    def fetchFrontPlaylistTable(self) -> Option[PlaylistTable]:
+        if self._frontPlaylistIndex < 0:
+            return Option.empty()
+        frontPlaylistTable = self.playlistWidget.widget(self._frontPlaylistIndex)
+        return Option.of(gg(frontPlaylistTable, _type=PlaylistTable))
 
-    @property
-    def currentPlaylistModel(self) -> PlaylistModel:
-        return self.currentPlaylistTable.model()
+    def fetchFrontPlaylistIndex(self) -> int:
+        return self._frontPlaylistIndex
+
+    def fetchFrontPlaylist(self) -> Option[Playlist]:
+        if self._frontPlaylistIndex < 0:
+            return Option.empty()
+        return Option.of(self.player.fetchAllPlaylists()[self._frontPlaylistIndex])
 
     def initMenu(self):
         fileMenu = self.menuBar().addMenu("File")
         fileMenu.addAction("Open", self.onOpenActionTriggered)
         viewMenu = self.menuBar().addMenu("View")
-        viewMenu.addAction("Playlist Manager", lambda: PlaylistsDialog(self.app.playlists, self).show())
+        viewMenu.addAction("Playlist Manager", lambda: PlaylistsDialog(self.player.fetchAllPlaylists(), self).show())
 
-    def createDefaultPlaylist(self):
+    def setFrontPlaylistAtIndex(self, index: int) -> None:
+        assert index >= 0
+        self._frontPlaylistIndex = index
+        self.playlistCombo.setCurrentIndex(index)
+        self.playlistWidget.setCurrentIndex(index)
+
+    def onCurrentPlaylistIndexChanged(self, oldIndex: int, newIndex: int) -> None:
+        if oldIndex == -1:
+            assert newIndex >= 0
+            self.setFrontPlaylistAtIndex(newIndex)
+
+    def createAndAppendDefaultPlaylist(self):
         self.logger.info("Create default playlist")
-        placeholderPlaylistTable: PlaylistTable = gg(self.playlistWidget.widget(0))
+        placeholderPlaylistTable: PlaylistTable = gg(self.playlistWidget.widget(0), _type=PlaylistTable)
         playlist = placeholderPlaylistTable.playlist
         playlist.name = "Playlist 1"
-        self.app.playlists.append(playlist)
-        self.playlistCombo.addItem(playlist.name)
-        if len(self.app.playlists) == 1:
-            self.app.currentPlaylist = playlist
-            self.app.frontPlaylist = playlist
+        self.player.addPlaylist(playlist)
 
     def onOpenActionTriggered(self):
         musicRoot = str(Path("~/Music").expanduser().absolute())
@@ -121,21 +163,21 @@ class MainWindow(QtWidgets.QMainWindow):
         if not musics:
             self.logger.info("No music file to open, return")
             return
-        if not self.app.playlists:
+        if len(self.player.fetchAllPlaylists()) <= 0:
             self.logger.info("No playlist, create default one")
-            self.createDefaultPlaylist()
-        beginRow, endRow = self.frontPlaylistTable.model().insertMusics(musics)
-        self.frontPlaylistTable.selectRowRange(beginRow, endRow)
-        self.frontPlaylistTable.repaint()
-        self.frontPlaylistTable.scrollToRow(beginRow)
+            self.createAndAppendDefaultPlaylist()
+        playlistTable = self.fetchFrontPlaylistTable().orElseThrow(AssertionError)
+        beginRow, endRow = playlistTable.model().insertMusics(musics)
+        playlistTable.selectRowRange(beginRow, endRow)
+        playlistTable.repaint()
+        playlistTable.scrollToRowAtCenter(beginRow)
 
     def initToolbar(self):
         toolbar = self.addToolBar("Toolbar")
         toolbar.setMovable(False)
         playlistCombo = QtWidgets.QComboBox(toolbar)
         playlistCombo.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents)
-        playlistCombo.activated.connect(lambda index: self.logger.info("On playlist combobox activated at: %d", index))
-        playlistCombo.activated.connect(lambda index: self.app.setFrontPlaylistAtIndex(index))
+        playlistCombo.activated.connect(self.setFrontPlaylistAtIndex)
         toolbar.addWidget(QtWidgets.QLabel("Playlist: ", toolbar))
         toolbar.addWidget(playlistCombo)
         self.toolbar = toolbar
@@ -214,10 +256,10 @@ class MainWindow(QtWidgets.QMainWindow):
         stopButton.clicked.connect(self.onStopButtonClicked)
         previousButton = QtWidgets.QToolButton(mainWidget)
         previousButton.setIcon(qtawesome.icon("mdi.step-backward"))
-        previousButton.clicked.connect(lambda: self.app.playPrevious())
+        previousButton.clicked.connect(self.player.playPrevious)
         nextButton = QtWidgets.QToolButton(mainWidget)
         nextButton.setIcon(qtawesome.icon("mdi.step-forward"))
-        nextButton.clicked.connect(lambda: self.app.playNext())
+        nextButton.clicked.connect(self.player.playNext)
         playbackButton = QtWidgets.QToolButton(mainWidget)
         playbackButton.setIcon(qtawesome.icon("mdi.repeat"))
         playbackButton.clicked.connect(self.togglePlaybackMode)
@@ -226,12 +268,12 @@ class MainWindow(QtWidgets.QMainWindow):
             button.setAutoRaise(True)
         progressSlider = FluentSlider(QtCore.Qt.Orientation.Horizontal, mainWidget)
         progressSlider.setDisabled(True)
-        progressSlider.valueChanged.connect(lambda x: self.app.player.setPosition(x))
+        progressSlider.valueChanged.connect(self.player.setPosition)
         progressLabel = QtWidgets.QLabel("00:00/00:00", mainWidget)
         volumeDial = QtWidgets.QDial(mainWidget)
         volumeDial.setFixedSize(50, 50)
         volumeDial.setValue(50)
-        volumeDial.valueChanged.connect(lambda x: self.app.player.setVolume(x))
+        volumeDial.valueChanged.connect(self.player.setVolume)
         controlsLayout.addWidget(playButton)
         controlsLayout.addWidget(stopButton)
         controlsLayout.addWidget(previousButton)
@@ -245,60 +287,131 @@ class MainWindow(QtWidgets.QMainWindow):
         self.progressSlider = progressSlider
         self.progressLabel = progressLabel
 
-    def addPlaylist(self, playlist: Playlist):
-        self.logger.info("Add playlist: %s", playlist)
-        self.playlistWidget.addWidget(PlaylistTable(playlist, self))
+    def onPlaylistAdded(self, playlist: Playlist) -> None:
+        self.logger.info("On playlist added: %s", playlist.name)
         self.playlistCombo.addItem(playlist.name)
-        if len(self.app.playlists) == 1:
-            self.app.currentPlaylist = playlist
-            self.app.frontPlaylist = playlist
+        playlistTable = PlaylistTable(playlist, self)
+        playlistTable.model().beforeMusicsRemove.connect(self.doBeforeMusicsRemove)
+        self.playlistWidget.addWidget(playlistTable)
+        if self._frontPlaylistIndex == -1:
+            self.setFrontPlaylistAtIndex(0)
 
-    def removePlaylistsAtIndexes(self, indexes: typing.List[int]):
+    def doBeforeMusicsRemove(self, indexes: typing.List[int]):
+        currentPlaylistIndex = self.player.fetchCurrentPlaylistIndex()
+        currentMusicIndex = self.player.fetchCurrentMusicIndex()
+        currentMusic = self.player.fetchCurrentMusic().orElseThrow(AssertionError)
+        frontPlaylistIndex = self.fetchFrontPlaylistIndex()
+        if frontPlaylistIndex != currentPlaylistIndex:
+            return
+        if currentMusicIndex in indexes:
+            self.logger.info("Stop playing music: %s", currentMusic.filename)
+            self.player.stop()
+            self.player.resetHistories(keepCurrent=False)
+        else:
+            self.player.resetHistories(keepCurrent=True)
+
+    def onPlaylistsRemovedAtIndexes(self, indexes: typing.List[int]):
         for index in sorted(indexes, reverse=True):
             self.playlistWidget.removeWidget(self.playlistWidget.widget(index))
             self.playlistCombo.removeItem(index)
+        if len(self.player.fetchAllPlaylists()) <= 0:
+            self.initPlaceholderPlaylistTable()
 
     def togglePlaybackMode(self):
-        newPlaybackMode = self.app.currentPlaybackMode.next()
-        self.app.currentPlaybackMode = newPlaybackMode
-        for playlist in self.app.playlists:
-            playlist.playbackMode = newPlaybackMode
+        self.player.setCurrentPlaybackMode(self.player.fetchCurrentPlaybackMode().next())
+        newPlaybackMode = self.player.fetchCurrentPlaybackMode()
         newIconName = dict(LOOP="mdi.repeat", RANDOM="mdi.shuffle")[newPlaybackMode.name]
         self.playbackButton.setIcon(qtawesome.icon(newIconName))
 
     def onPlayButtonClicked(self):
         logging.info("On play button clicked")
-        if self.app.currentPlaylist is None:
+        if not self.player.fetchCurrentPlaylist().isPresent():
             self.logger.info("Current playlist is none, return")
             return
-        if self.app.currentPlaylist.currentMusic is None:
-            self.app.currentPlaylist = self.app.playlists[self.playlistWidget.currentIndex()]
+        if not self.player.fetchCurrentMusic().isPresent():
             logging.info("Current music is none, play next at playlist %d", self.playlistWidget.currentIndex())
-            self.app.playNext()
-        elif self.app.player.state() == QtMultimedia.QMediaPlayer.PlayingState:
+            self.player.playNext()
+        elif self.player.state() == QtMultimedia.QMediaPlayer.PlayingState:
             logging.info("Player is playing, pause it")
-            self.app.player.pause()
+            self.player.pause()
         else:
             logging.info("Player is not playing, play it")
-            self.app.player.play()
+            self.player.play()
 
     def onStopButtonClicked(self):
         logging.info("On stop button clicked")
-        self.app.player.stop()
+        self.player.stop()
+
+    def onMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
+        music = self.player.fetchCurrentPlaylist().orElseThrow(AssertionError).musics[newIndex]
+        currentPlaylistTable = self.fetchCurrentPlaylistTable().orElseThrow(AssertionError)
+
+        self.setWindowTitle(Path(music.filename).with_suffix("").name)
+        currentPlaylistTable.model().refreshRow(oldIndex)
+        currentPlaylistTable.model().refreshRow(newIndex)
+        currentPlaylistTable.selectRow(newIndex)
+
+    def onPlayerDurationChanged(self, duration):
+        currentMusic = self.player.fetchCurrentMusic().orElseThrow(AssertionError)
+        playerDurationText = TimeDeltaUtils.formatDelta(self.player.duration())
+        realDurationText = TimeDeltaUtils.formatDelta(currentMusic.duration)
+        logging.info("Player duration changed: %d (%s / %s)",
+            self.player.duration(), playerDurationText, realDurationText)
+        self.progressSlider.setMaximum(duration)
+
+    def onPlayerPositionChanged(self, position):
+        self.positionLogger.debug("Position changed: %d", position)
+        self.progressSlider.blockSignals(True)
+        self.progressSlider.setValue(position)
+        self.progressSlider.blockSignals(False)
+        duration = 0 if self.player.state() == QtMultimedia.QMediaPlayer.StoppedState else self.player.duration()
+        progressText = f"{TimeDeltaUtils.formatDelta(position / self.player.fetchCurrentBugRate())}" \
+                       f"/{TimeDeltaUtils.formatDelta(duration / self.player.fetchCurrentBugRate())}"
+        self.progressLabel.setText(progressText)
+        suffix = Path(self.player.currentMedia().canonicalUrl().toLocalFile()).suffix
+        currentMusic = self.player.fetchCurrentMusic().orElseThrow(AssertionError)
+        self.player.state() != QtMultimedia.QMediaPlayer.StoppedState and self.statusBar().showMessage(
+            "{} | {} kbps | {} Hz | {} channels | {}".format(suffix[1:].upper(), currentMusic.bitrate,
+                currentMusic.sampleRate, currentMusic.channels, progressText.replace("/", " / ")))
+        position != 0 and self.refreshLyrics(math.ceil(position / self.player.fetchCurrentBugRate()))
+
+    def onPlayerStateChanged(self, state):
+        oldState = self.player.property("_state") or QtMultimedia.QMediaPlayer.StoppedState
+        self.player.setProperty("_state", state)
+        if oldState == QtMultimedia.QMediaPlayer.StoppedState and state == QtMultimedia.QMediaPlayer.PlayingState:
+            self.setupLyrics()
+        logging.info("Player state changed: %s [%d/%d]", state, self.player.position(), self.player.duration())
+        self.playButton.setIcon(qtawesome.icon(["mdi.play", "mdi.pause", "mdi.play"][state]))
+        currentMusic = self.player.fetchCurrentMusic().orElseThrow(AssertionError)
+        self.statusLabel.setText("{} - {}".format(currentMusic.artist,
+            currentMusic.title) if state == QtMultimedia.QMediaPlayer.StoppedState else "")
+        self.statusLabel.setText("" if state == QtMultimedia.QMediaPlayer.StoppedState else "{} - {}".
+            format(currentMusic.artist, currentMusic.title))
+        self.progressSlider.setDisabled(state == QtMultimedia.QMediaPlayer.StoppedState)
+        if state == QtMultimedia.QMediaPlayer.StoppedState:
+            if self.player.position() == self.player.duration():
+                self.player.playNext()
+            else:
+                self.statusBar().showMessage("Stopped.")
+                LayoutUtils.clearLayout(self.lyricsLayout)
+        playlistModel = self.fetchCurrentPlaylistTable().orElseThrow(AssertionError).model()
+        playlistModel.refreshRow(self.player.fetchCurrentMusicIndex())
 
     def setupLyrics(self):
-        self.app.player.setProperty("previousLyricIndex", -1)
-        lyricsPath = Path(self.app.currentPlaylist.currentMusic.filename).with_suffix(".lrc")
+        self.player.setProperty("previousLyricIndex", -1)
+        currentMusic = self.player.fetchCurrentMusic().orElseThrow(AssertionError)
+        lyricsPath = Path(currentMusic.filename).with_suffix(".lrc")
         lyricsText = lyricsPath.read_text()
         lyricDict = LyricUtils.parseLyrics(lyricsText)
-        self.app.player.setProperty("lyricDict", lyricDict)
-        self.app.clearLayout(self.lyricsLayout)
+        self.player.setProperty("lyricDict", lyricDict)
+        LayoutUtils.clearLayout(self.lyricsLayout)
         self.lyricsLayout.addSpacing(self.lyricsContainer.height() // 2)
         for position, lyric in list(lyricDict.items())[:]:
             lyricLabel = ClickableLabel(lyric, self.lyricsContainer)
-            lyricLabel.setAlignment(gg(QtCore.Qt.AlignmentFlag.AlignCenter) | QtCore.Qt.AlignmentFlag.AlignVCenter)
+            lyricLabel.setAlignment(
+                gg(QtCore.Qt.AlignmentFlag.AlignCenter, typing.Any) | QtCore.Qt.AlignmentFlag.AlignVCenter)
             lyricLabel.clicked.connect(
-                lambda _, pos=position: self.app.player.setPosition(pos * self.app.currentBugRate))
+                lambda _, pos=position: self.player.setPosition(pos * self.player.fetchCurrentBugRate()))
             font = lyricLabel.font()
             font.setFamily("等线")
             font.setPointSize(18)
@@ -310,12 +423,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.refreshLyrics(0)
 
     def refreshLyrics(self, position):
-        lyricDict = self.app.player.property("lyricDict")
-        previousLyricIndex = self.app.player.property("previousLyricIndex")
+        lyricDict = self.player.property("lyricDict")
+        previousLyricIndex = self.player.property("previousLyricIndex")
         lyricIndex = LyricUtils.calcLyricIndexAtPosition(position, list(lyricDict.keys()))
         if lyricIndex == previousLyricIndex:
             return
-        self.app.player.setProperty("previousLyricIndex", lyricIndex)
+        self.player.setProperty("previousLyricIndex", lyricIndex)
         for index in range(len(lyricDict)):
             lyricLabel: QtWidgets.QLabel = self.lyricsLayout.itemAt(index + 1).widget()
             lyricLabel.setStyleSheet("color:rgb(225,65,60)" if index == lyricIndex else "color:rgb(35,85,125)")

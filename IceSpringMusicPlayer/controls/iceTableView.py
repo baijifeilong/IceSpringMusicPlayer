@@ -12,7 +12,8 @@ class IceTableView(QtWidgets.QTableView):
     def __init__(self, parent: typing.Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setSelectionBehavior(QtWidgets.QTableView.SelectionBehavior.SelectRows)
-        self.setEditTriggers(gg(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers))
+        self.setEditTriggers(gg(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers,
+            QtWidgets.QAbstractItemView.EditTriggers))
         self.horizontalHeader().setStretchLastSection(True)
         self.setAlternatingRowColors(True)
         self.setStyleSheet("alternate-background-color: rgb(245, 245, 245)")

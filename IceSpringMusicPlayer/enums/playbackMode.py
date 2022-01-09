@@ -11,3 +11,9 @@ class PlaybackMode(enum.Enum):
 
     def next(self) -> PlaybackMode:
         return dict(zip(PlaybackMode, list(PlaybackMode)[1:] + list(PlaybackMode)[:1]))[self]
+
+    def isLoop(self) -> bool:
+        return self == self.__class__.LOOP
+
+    def isRandom(self) -> bool:
+        return self == self.__class__.RANDOM

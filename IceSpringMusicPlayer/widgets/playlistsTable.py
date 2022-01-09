@@ -20,6 +20,8 @@ class PlaylistsTable(IceTableView):
         super().__init__(parent)
         self.mainWindow: MainWindow = self.parent().parent()
         self.app: App = self.mainWindow.app
+        self.player = self.app.player
+        self.playlists = playlists
         self.logger = logging.getLogger("playlistsTable")
         self.setModel(PlaylistsModel(playlists, self))
         self.setColumnWidth(0, 320)
@@ -30,7 +32,7 @@ class PlaylistsTable(IceTableView):
 
     def onDoubleClickedAtRow(self, row):
         self.logger.info("On double clicked at row: %d", row)
-        self.app.setFrontPlaylistAtIndex(row)
+        self.mainWindow.setFrontPlaylistAtIndex(row)
 
     def contextMenuEvent(self, arg__1: QtGui.QContextMenuEvent) -> None:
         menu = QtWidgets.QMenu(self)
@@ -40,16 +42,16 @@ class PlaylistsTable(IceTableView):
 
     def onCreatePlaylist(self):
         self.logger.debug("On create playlist")
-        if len(self.app.playlists) == 0:
+        if len(self.playlists) == 0:
             self.logger.info("No playlist, create default one")
             self.model().beginInsertRows(QtCore.QModelIndex(), 0, 0)
-            self.mainWindow.createDefaultPlaylist()
+            self.mainWindow.createAndAppendDefaultPlaylist()
             self.model().endInsertRows()
             return
-        name = "Playlist {}".format(len(self.app.playlists) + 1)
-        playlist = Playlist(name, self.app.currentPlaybackMode)
+        name = "Playlist {}".format(len(self.playlists) + 1)
+        playlist = Playlist(name)
         self.model().insertPlaylist(playlist)
-        self.mainWindow.addPlaylist(playlist)
+        self.player.addPlaylist(playlist)
 
     def onRemovePlaylists(self):
         indexes = sorted({x.row() for x in self.selectedIndexes()})
@@ -57,17 +59,16 @@ class PlaylistsTable(IceTableView):
         if not indexes:
             self.logger.info("No playlists to remove, return.")
             return
-        if self.app.currentPlaylistIndex in indexes:
+
+        if self.player.fetchCurrentPlaylistIndex() in indexes:
             self.logger.info("Remove playing playlist, stop player first")
-            self.app.player.stop()
+            self.player.stop()
         self.model().removePlaylistsAtIndexes(indexes)
-        self.mainWindow.removePlaylistsAtIndexes(indexes)
-        if not self.app.playlists:
-            self.logger.info("No playlist, create placeholder")
-            self.mainWindow.initPlaceholderPlaylistTable()
 
 
 class PlaylistsModel(QtCore.QAbstractTableModel):
+    playlistsRemoved: QtCore.SignalInstance = QtCore.Signal(list)
+
     def __init__(self, playlists: typing.List[Playlist], parent: QtCore.QObject) -> None:
         super().__init__(parent)
         self.playlists = playlists
@@ -102,3 +103,4 @@ class PlaylistsModel(QtCore.QAbstractTableModel):
             self.beginRemoveRows(QtCore.QModelIndex(), index, index)
             del self.playlists[index]
         self.endRemoveRows()
+        self.playlistsRemoved.emit(indexes)

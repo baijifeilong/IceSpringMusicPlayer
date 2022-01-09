@@ -24,7 +24,9 @@ class PlaylistTable(IceTableView):
         self.playlist = playlist
         self.mainWindow = mainWindow
         self.app = self.mainWindow.app
-        self.setModel(PlaylistModel(playlist, mainWindow))
+        self.player = self.app.player
+        model = PlaylistModel(playlist, mainWindow)
+        self.setModel(model)
         self.setColumnWidth(0, 35)
         self.setColumnWidth(1, 200)
         self.doubleClicked.connect(lambda x: self.onDoubleClicked(x.row()))
@@ -38,18 +40,18 @@ class PlaylistTable(IceTableView):
 
     def onDoubleClicked(self, index):
         self.logger.info(">>> On playlist table double clicked at %d", index)
-        self.app.currentPlaylist = self.app.playlists[self.mainWindow.playlistWidget.currentIndex()]
-        self.logger.info("Play music at index %d", index)
-        self.app.playMusic(self.app.currentPlaylist.playMusic(self.app.currentPlaylist.musics[index]), True)
+        self.player.playMusicAtIndex(index)
+        self.player.setCurrentPlaylistAtIndex(self.mainWindow.fetchFrontPlaylistIndex())
+        self.player.playMusicAtIndex(index)
 
-    def scrollToRow(self, index):
+    def scrollToRowAtCenter(self, index):
         self.scrollTo(self.model().index(index, 0), QtWidgets.QTableView.ScrollHint.PositionAtCenter)
 
     def selectRowRange(self, fromRow, toRow):
         self.clearSelection()
         self.selectionModel().select(
             QtCore.QItemSelection(self.model().index(fromRow, 0), self.model().index(toRow, 0)),
-            gg(QtCore.QItemSelectionModel.Select) | QtCore.QItemSelectionModel.Rows)
+            gg(QtCore.QItemSelectionModel.Select, typing.Any) | QtCore.QItemSelectionModel.Rows)
 
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         menu = QtWidgets.QMenu()
@@ -61,21 +63,20 @@ class PlaylistTable(IceTableView):
         if not indexes:
             self.logger.info("No music to remove, return.")
             return
-        if self.playlist == self.app.currentPlaylist and self.playlist.currentMusicIndex in indexes:
-            self.logger.info("Stop playing music: %s", self.playlist.currentMusic)
-            self.app.player.stop()
-        self.playlist.resetHistory(
-            keepCurrent=self.playlist == self.app.currentPlaylist and self.playlist.currentMusicIndex not in indexes)
         self.model().removeMusicsAtIndexes(indexes)
 
 
 class PlaylistModel(QtCore.QAbstractTableModel):
+    beforeMusicsRemove: QtCore.SignalInstance = QtCore.Signal(list)
+    musicsRemoved: QtCore.SignalInstance = QtCore.Signal(list)
+
     def __init__(self, playlist: Playlist, mainWindow: MainWindow,
             parent: typing.Optional[QtCore.QObject] = None) -> None:
         super().__init__(parent)
         self.playlist = playlist
         self.mainWindow = mainWindow
-        self.app = self.mainWindow.app
+        self.app = mainWindow.app
+        self.player = mainWindow.player
 
     def rowCount(self, parent: QtCore.QModelIndex = ...) -> int:
         return len(self.playlist.musics)
@@ -85,13 +86,15 @@ class PlaylistModel(QtCore.QAbstractTableModel):
 
     def data(self, index: QtCore.QModelIndex, role: int = ...) -> typing.Any:
         music = self.playlist.musics[index.row()]
+        currentPlaylistIndex = self.player.fetchCurrentPlaylistIndex()
+        frontPlaylistIndex = self.mainWindow.fetchFrontPlaylistIndex()
+        currentMusicIndex = self.player.fetchCurrentMusicIndex()
         if role == QtCore.Qt.DisplayRole:
             return ["", music.artist, music.title][index.column()]
         elif role == QtCore.Qt.DecorationRole:
-            if index.column() == 0 and index.row() == self.app.currentPlaylist.currentMusicIndex \
-                    and self.app.currentPlaylistIndex == self.mainWindow.playlistWidget.currentIndex():
-                # noinspection PyTypeChecker
-                return [QtGui.QIcon(), qtawesome.icon("mdi.play"), qtawesome.icon("mdi.pause")][self.app.player.state()]
+            if index.column() == 0 and index.row() == currentMusicIndex and currentPlaylistIndex == frontPlaylistIndex:
+                return [QtGui.QIcon(), qtawesome.icon("mdi.play"), qtawesome.icon("mdi.pause")][
+                    gg(self.app.player.state(), int)]
 
     def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role: int = ...) -> typing.Any:
         if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
@@ -103,11 +106,7 @@ class PlaylistModel(QtCore.QAbstractTableModel):
             return
         self.playlist.musics = sorted(self.playlist.musics,
             key=lambda x: x.artist if column == 1 else x.title, reverse=order == QtCore.Qt.DescendingOrder)
-        if self.playlist.currentMusic is not None:
-            self.mainWindow.currentPlaylistTable.selectRow(self.playlist.currentMusicIndex)
-            self.mainWindow.currentPlaylistTable.scrollToRow(self.playlist.currentMusicIndex)
-        else:
-            self.endResetModel()
+        self.endResetModel()
 
     def refreshRow(self, row):
         self.dataChanged.emit(self.index(row, 0), self.index(row, 0))
@@ -120,7 +119,9 @@ class PlaylistModel(QtCore.QAbstractTableModel):
         return beginRow, endRow
 
     def removeMusicsAtIndexes(self, indexes: typing.List[int]) -> None:
+        self.beforeMusicsRemove.emit(indexes)
         for index in sorted(indexes, reverse=True):
             self.beginRemoveRows(QtCore.QModelIndex(), index, index)
             del self.playlist.musics[index]
         self.endRemoveRows()
+        self.musicsRemoved.emit(indexes)
