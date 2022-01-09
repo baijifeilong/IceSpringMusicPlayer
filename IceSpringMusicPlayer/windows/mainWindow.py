@@ -259,12 +259,11 @@ class MainWindow(QtWidgets.QMainWindow):
             self.playlistCombo.removeItem(index)
 
     def togglePlaybackMode(self):
-        oldPlaybackMode = self.app.currentPlaybackMode
-        newPlaybackMode = dict(LOOP="RANDOM", RANDOM="LOOP")[oldPlaybackMode]
+        newPlaybackMode = self.app.currentPlaybackMode.next()
         self.app.currentPlaybackMode = newPlaybackMode
         for playlist in self.app.playlists:
             playlist.playbackMode = newPlaybackMode
-        newIconName = dict(LOOP="mdi.repeat", RANDOM="mdi.shuffle")[newPlaybackMode]
+        newIconName = dict(LOOP="mdi.repeat", RANDOM="mdi.shuffle")[newPlaybackMode.name]
         self.playbackButton.setIcon(qtawesome.icon(newIconName))
 
     def onPlayButtonClicked(self):

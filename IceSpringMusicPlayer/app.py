@@ -11,6 +11,7 @@ from PySide2 import QtCore, QtMultimedia, QtWidgets
 
 from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.domains.playlist import Playlist
+from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 from IceSpringMusicPlayer.windows.mainWindow import MainWindow
 
 
@@ -18,12 +19,12 @@ class App(QtWidgets.QApplication):
     playlists: typing.List[Playlist]
     player: QtMultimedia.QMediaPlayer
     currentPlaylist: typing.Optional[Playlist]
-    currentPlaybackMode: typing_extensions.Literal["LOOP", "RANDOM"]
+    currentPlaybackMode: PlaybackMode
     frontPlaylist: typing.Optional[Playlist]
 
     def __init__(self):
         super().__init__()
-        self.currentPlaybackMode = "LOOP"
+        self.currentPlaybackMode = PlaybackMode.LOOP
         self.logger = logging.getLogger("app")
         self.lyricsLogger = logging.getLogger("lyrics")
         self.lyricsLogger.setLevel(logging.INFO)
@@ -97,7 +98,7 @@ class App(QtWidgets.QApplication):
         if not self.currentPlaylist.musics:
             self.logger.info("Current playlist is empty, return")
             return
-        self.playMusic(self.currentPlaylist.playPrevious(), dontFollow=self.currentPlaybackMode == "LOOP")
+        self.playMusic(self.currentPlaylist.playPrevious(), dontFollow=self.currentPlaybackMode == PlaybackMode.LOOP)
 
     def playNext(self):
         self.logger.info(">>> Play next")
@@ -107,7 +108,7 @@ class App(QtWidgets.QApplication):
         if not self.currentPlaylist.musics:
             self.logger.info("Current playlist is empty, return")
             return
-        self.playMusic(self.currentPlaylist.playNext(), dontFollow=self.currentPlaybackMode == "LOOP")
+        self.playMusic(self.currentPlaylist.playNext(), dontFollow=self.currentPlaybackMode == PlaybackMode.LOOP)
 
     def playMusic(self, music: Music, dontFollow=False):
         self.logger.info(">>> Play music %s : %s", music.artist, music.title)

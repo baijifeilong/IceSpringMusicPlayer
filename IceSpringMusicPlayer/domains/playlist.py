@@ -8,12 +8,14 @@ import typing
 
 import typing_extensions
 
+from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
+
 if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.domains.music import Music
 
 
 class Playlist(object):
-    def __init__(self, name: str, playbackMode: typing_extensions.Literal["LOOP", "RANDOM"]):
+    def __init__(self, name: str, playbackMode: PlaybackMode):
         self.name = name
         self.playbackMode = playbackMode
         self.musics: typing.List[Music] = []
@@ -61,14 +63,14 @@ class Playlist(object):
         randomNextMusic = self.musics[self.memorizedNextRandomMusicIndex()]
         loopNextMusic = self.musics[0] if self.currentMusic is None \
             else self.musics[(self.currentMusicIndex + 1) % len(self.musics)]
-        return loopNextMusic if self.playbackMode == "LOOP" else historyNextMusic or randomNextMusic
+        return loopNextMusic if self.playbackMode == PlaybackMode.LOOP else historyNextMusic or randomNextMusic
 
     def previousMusic(self) -> Music:
         historyPreviousMusic = self.historyDict.get(self.historyPosition - 1, None)
         randomPreviousMusic = self.musics[self.memorizedPreviousRandomMusicIndex()]
         loopPreviousMusic = self.musics[-1] if self.currentMusic is None \
             else self.musics[(self.currentMusicIndex - 1) % len(self.musics)]
-        return loopPreviousMusic if self.playbackMode == "LOOP" else historyPreviousMusic or randomPreviousMusic
+        return loopPreviousMusic if self.playbackMode == PlaybackMode.LOOP else historyPreviousMusic or randomPreviousMusic
 
     def memorizedNextRandomValue(self) -> float:
         oldMemoryFlag = getattr(Playlist.memorizedNextRandomValue, "flag", "-1/-1")
