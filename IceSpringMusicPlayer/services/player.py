@@ -7,7 +7,7 @@ import random
 from typing import *
 
 import PySide2.QtCore
-from IceSpringRealOptional import Option
+from IceSpringRealOptional.maybe import Maybe
 from PySide2 import QtMultimedia, QtCore
 
 from IceSpringMusicPlayer.domains.music import Music
@@ -80,22 +80,22 @@ class Player(QtMultimedia.QMediaPlayer):
     def fetchCurrentPlaylistIndex(self) -> int:
         return self._currentPlaylistIndex
 
-    def fetchCurrentPlaylist(self) -> Option[Playlist]:
+    def fetchCurrentPlaylist(self) -> Maybe[Playlist]:
         if self._currentPlaylistIndex < 0:
-            return Option.empty()
+            return Maybe.empty()
         currentPlaylist = self._playlists[self._currentPlaylistIndex]
-        return Option.of(currentPlaylist)
+        return Maybe.of(currentPlaylist)
 
     def fetchCurrentMusicIndex(self) -> int:
         return self._currentMusicIndex
 
-    def fetchCurrentMusic(self) -> Option[Music]:
+    def fetchCurrentMusic(self) -> Maybe[Music]:
         if not self.fetchCurrentPlaylist().isPresent():
-            return Option.empty()
+            return Maybe.empty()
         if self._currentMusicIndex < 0:
-            return Option.empty()
+            return Maybe.empty()
         playlist = self.fetchCurrentPlaylist().orElseThrow(AssertionError)
-        return Option.of(playlist.musics[self._currentMusicIndex])
+        return Maybe.of(playlist.musics[self._currentMusicIndex])
 
     def _doPlayMusicAtIndex(self, musicIndex: int) -> None:
         assert musicIndex >= 0

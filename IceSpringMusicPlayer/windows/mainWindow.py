@@ -8,7 +8,7 @@ import typing
 from pathlib import Path
 
 import qtawesome
-from IceSpringRealOptional import Option
+from IceSpringRealOptional.maybe import Maybe
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtGui, QtMultimedia, QtWidgets
 
@@ -109,26 +109,26 @@ class MainWindow(QtWidgets.QMainWindow):
         currentPlaylistTable.selectRow(currentMusicIndex)
         currentPlaylistTable.scrollToRowAtCenter(currentMusicIndex)
 
-    def fetchCurrentPlaylistTable(self) -> Option[PlaylistTable]:
+    def fetchCurrentPlaylistTable(self) -> Maybe[PlaylistTable]:
         if not self.player.fetchCurrentPlaylist().isPresent():
-            return Option.empty()
+            return Maybe.empty()
         currentPlaylistIndex = self.player.fetchCurrentPlaylistIndex()
         currentPlaylistTable = self.playlistWidget.widget(currentPlaylistIndex)
-        return Option.of(gg(currentPlaylistTable, _type=PlaylistTable))
+        return Maybe.of(gg(currentPlaylistTable, _type=PlaylistTable))
 
-    def fetchFrontPlaylistTable(self) -> Option[PlaylistTable]:
+    def fetchFrontPlaylistTable(self) -> Maybe[PlaylistTable]:
         if self._frontPlaylistIndex < 0:
-            return Option.empty()
+            return Maybe.empty()
         frontPlaylistTable = self.playlistWidget.widget(self._frontPlaylistIndex)
-        return Option.of(gg(frontPlaylistTable, _type=PlaylistTable))
+        return Maybe.of(gg(frontPlaylistTable, _type=PlaylistTable))
 
     def fetchFrontPlaylistIndex(self) -> int:
         return self._frontPlaylistIndex
 
-    def fetchFrontPlaylist(self) -> Option[Playlist]:
+    def fetchFrontPlaylist(self) -> Maybe[Playlist]:
         if self._frontPlaylistIndex < 0:
-            return Option.empty()
-        return Option.of(self.player.fetchAllPlaylists()[self._frontPlaylistIndex])
+            return Maybe.empty()
+        return Maybe.of(self.player.fetchAllPlaylists()[self._frontPlaylistIndex])
 
     def initMenu(self):
         fileMenu = self.menuBar().addMenu("File")
