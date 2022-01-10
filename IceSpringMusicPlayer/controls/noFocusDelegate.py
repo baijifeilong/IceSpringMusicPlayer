@@ -1,9 +1,9 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/8 22:57
+
 import typing
 
+from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtGui, QtCore
-
-from IceSpringMusicPlayer.utils.typeHintUtils import gg
 
 
 class NoFocusDelegate(QtWidgets.QStyledItemDelegate):

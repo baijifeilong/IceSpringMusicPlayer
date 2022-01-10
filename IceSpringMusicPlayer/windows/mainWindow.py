@@ -9,6 +9,7 @@ from pathlib import Path
 
 import qtawesome
 from IceSpringRealOptional import Option
+from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtGui, QtMultimedia, QtWidgets
 
 from IceSpringMusicPlayer.controls.clickableLabel import ClickableLabel
@@ -19,7 +20,6 @@ from IceSpringMusicPlayer.utils.layoutUtils import LayoutUtils
 from IceSpringMusicPlayer.utils.lyricUtils import LyricUtils
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 from IceSpringMusicPlayer.utils.timeDeltaUtils import TimeDeltaUtils
-from IceSpringMusicPlayer.utils.typeHintUtils import gg
 from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
 from IceSpringMusicPlayer.windows.playlistsDialog import PlaylistsDialog
 

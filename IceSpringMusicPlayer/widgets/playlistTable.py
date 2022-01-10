@@ -6,10 +6,10 @@ import logging
 import typing
 
 import qtawesome
+from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
-from IceSpringMusicPlayer.utils.typeHintUtils import gg
 
 if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.domains.music import Music

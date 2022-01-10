@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
+from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore
-
-from IceSpringMusicPlayer.utils.typeHintUtils import gg
 
 
 class LayoutUtils(object):
