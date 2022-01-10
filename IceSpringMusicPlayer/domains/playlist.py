@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import typing
 
+from IceSpringRealOptional.vector import Vector
+
 if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.domains.music import Music
 
@@ -11,7 +13,7 @@ if typing.TYPE_CHECKING:
 class Playlist(object):
     def __init__(self, name: str):
         self.name = name
-        self.musics: typing.List[Music] = []
+        self.musics: Vector[Music] = Vector()
 
     def __repr__(self):
         return "<Playlist:name={},size={}>".format(self.name, len(self.musics))

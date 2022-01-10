@@ -4,15 +4,20 @@ from __future__ import annotations
 
 import logging
 import random
-from typing import *
+import typing
 
 import PySide2.QtCore
 from IceSpringRealOptional.maybe import Maybe
+from IceSpringRealOptional.typingUtils import gg
+from IceSpringRealOptional.vector import Vector
 from PySide2 import QtMultimedia, QtCore
 
 from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.domains.playlist import Playlist
 from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
+
+if typing.TYPE_CHECKING:
+    from typing import Dict, Optional
 
 
 class Player(QtMultimedia.QMediaPlayer):
@@ -21,7 +26,7 @@ class Player(QtMultimedia.QMediaPlayer):
     playlistAdded: QtCore.SignalInstance = QtCore.Signal(Playlist)
 
     _playbackMode: PlaybackMode
-    _playlists: List[Playlist]
+    _playlists: Vector[Playlist]
     _currentPlaylistIndex: int
     _histories: Dict[int, int]
     _historyPosition: int
@@ -33,7 +38,7 @@ class Player(QtMultimedia.QMediaPlayer):
         super().__init__(parent)
         self._logger = logging.getLogger("player")
         self._playbackMode = PlaybackMode.LOOP
-        self._playlists = []
+        self._playlists = Vector()
         self._currentPlaylistIndex = -1
         self._histories = dict()
         self._historyPosition = -1
@@ -59,7 +64,7 @@ class Player(QtMultimedia.QMediaPlayer):
         self._playbackMode = mode
         self._updatePlaybackMusicIndexes()
 
-    def fetchAllPlaylists(self) -> List[Playlist]:
+    def fetchAllPlaylists(self) -> Vector[Playlist]:
         return self._playlists[:]
 
     def addPlaylist(self, playlist: Playlist) -> None:
@@ -81,21 +86,13 @@ class Player(QtMultimedia.QMediaPlayer):
         return self._currentPlaylistIndex
 
     def fetchCurrentPlaylist(self) -> Maybe[Playlist]:
-        if self._currentPlaylistIndex < 0:
-            return Maybe.empty()
-        currentPlaylist = self._playlists[self._currentPlaylistIndex]
-        return Maybe.of(currentPlaylist)
+        return self._playlists.get(self._currentPlaylistIndex)
 
     def fetchCurrentMusicIndex(self) -> int:
         return self._currentMusicIndex
 
     def fetchCurrentMusic(self) -> Maybe[Music]:
-        if not self.fetchCurrentPlaylist().isPresent():
-            return Maybe.empty()
-        if self._currentMusicIndex < 0:
-            return Maybe.empty()
-        playlist = self.fetchCurrentPlaylist().orElseThrow(AssertionError)
-        return Maybe.of(playlist.musics[self._currentMusicIndex])
+        return self.fetchCurrentPlaylist().flatMap(lambda x: gg(x, Playlist).musics.get(self._currentPlaylistIndex))
 
     def _doPlayMusicAtIndex(self, musicIndex: int) -> None:
         assert musicIndex >= 0
