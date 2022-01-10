@@ -8,7 +8,7 @@ import colorlog
 class LogUtils(object):
     @staticmethod
     def initLogging():
-        consoleLogPattern = "%(log_color)s%(asctime)s %(levelname)8s %(name)-16s %(message)s"
+        pattern = "%(log_color)s%(asctime)s %(levelname)8s %(name)16s:%(lineno)-5d %(message)s"
         logging.getLogger().handlers = [logging.StreamHandler()]
-        logging.getLogger().handlers[0].setFormatter(colorlog.ColoredFormatter(consoleLogPattern))
+        logging.getLogger().handlers[0].setFormatter(colorlog.ColoredFormatter(pattern))
         logging.getLogger().setLevel(logging.DEBUG)

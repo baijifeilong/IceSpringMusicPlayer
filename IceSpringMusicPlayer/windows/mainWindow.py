@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 import logging
-import math
 import typing
 from pathlib import Path
 
 import qtawesome
 from IceSpringRealOptional.maybe import Maybe
 from IceSpringRealOptional.typingUtils import gg
-from PySide2 import QtCore, QtGui, QtMultimedia, QtWidgets
+from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.controls.clickableLabel import ClickableLabel
 from IceSpringMusicPlayer.controls.fluentSlider import FluentSlider
 from IceSpringMusicPlayer.domains.playlist import Playlist
+from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.layoutUtils import LayoutUtils
 from IceSpringMusicPlayer.utils.lyricUtils import LyricUtils
@@ -67,9 +67,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def setupPlayer(self):
         player = self.player
-        player.durationChanged.connect(self.onPlayerDurationChanged)
         player.stateChanged.connect(self.onPlayerStateChanged)
-        player.volumeChanged.connect(lambda x: logging.debug("Volume changed: %d", x))
         player.positionChanged.connect(self.onPlayerPositionChanged)
         player.playlistAdded.connect(self.onPlaylistAdded)
         player.musicIndexChanged.connect(self.onMusicIndexChanged)
@@ -159,6 +157,9 @@ class MainWindow(QtWidgets.QMainWindow):
         filenames = QtWidgets.QFileDialog.getOpenFileNames(
             self, "Open music files", musicRoot, "Audio files (*.mp3 *.wma) ;; All files (*)")[0]
         self.logger.info("There are %d files to open", len(filenames))
+        self.addMusicsByFilenames(filenames)
+
+    def addMusicsByFilenames(self, filenames: typing.List[str]):
         musics = [MusicUtils.parseMusic(x) for x in filenames]
         if not musics:
             self.logger.info("No music file to open, return")
@@ -331,7 +332,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self.player.fetchCurrentMusic().isPresent():
             logging.info("Current music is none, play next at playlist %d", self.playlistWidget.currentIndex())
             self.player.playNext()
-        elif self.player.state() == QtMultimedia.QMediaPlayer.PlayingState:
+        elif self.player.fetchState().isPlaying():
             logging.info("Player is playing, pause it")
             self.player.pause()
         else:
@@ -343,66 +344,50 @@ class MainWindow(QtWidgets.QMainWindow):
         self.player.stop()
 
     def onMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
-        music = self.player.fetchCurrentPlaylist().orElseThrow(AssertionError).musics[newIndex]
+        self.logger.info("Music index changed: %d => %d", oldIndex, newIndex)
+        currentMusic = self.player.fetchCurrentPlaylist().orElseThrow(AssertionError).musics[newIndex]
+        self.setWindowTitle(Path(currentMusic.filename).with_suffix("").name)
         currentPlaylistTable = self.fetchCurrentPlaylistTable().orElseThrow(AssertionError)
-
-        self.setWindowTitle(Path(music.filename).with_suffix("").name)
-        currentPlaylistTable.model().refreshRow(oldIndex)
-        currentPlaylistTable.model().refreshRow(newIndex)
+        currentPlaylistTable.model().notifyDataChangedAtRow(oldIndex)
+        currentPlaylistTable.model().notifyDataChangedAtRow(newIndex)
         currentPlaylistTable.selectRow(newIndex)
-
-    def onPlayerDurationChanged(self, duration):
-        currentMusic = self.player.fetchCurrentMusic().orElseThrow(AssertionError)
-        playerDurationText = TimeDeltaUtils.formatDelta(self.player.duration())
-        realDurationText = TimeDeltaUtils.formatDelta(currentMusic.duration)
-        logging.info("Player duration changed: %d (%s / %s)",
-            self.player.duration(), playerDurationText, realDurationText)
-        self.progressSlider.setMaximum(duration)
+        self.setupLyrics()
+        self.progressSlider.setMaximum(self.player.fetchDuration())
 
     def onPlayerPositionChanged(self, position):
-        self.positionLogger.debug("Position changed: %d", position)
+        self.positionLogger.debug("Player position changed: %d / %d", position, self.player.fetchDuration())
         self.progressSlider.blockSignals(True)
         self.progressSlider.setValue(position)
         self.progressSlider.blockSignals(False)
-        duration = 0 if self.player.state() == QtMultimedia.QMediaPlayer.StoppedState else self.player.duration()
-        progressText = f"{TimeDeltaUtils.formatDelta(position / self.player.fetchCurrentBugRate())}" \
-                       f"/{TimeDeltaUtils.formatDelta(duration / self.player.fetchCurrentBugRate())}"
+        duration = self.player.fetchDuration()
+        progressText = f"{TimeDeltaUtils.formatDelta(position)}/{TimeDeltaUtils.formatDelta(duration)}"
         self.progressLabel.setText(progressText)
-        suffix = Path(self.player.currentMedia().canonicalUrl().toLocalFile()).suffix
         currentMusic = self.player.fetchCurrentMusic().orElseThrow(AssertionError)
-        self.player.state() != QtMultimedia.QMediaPlayer.StoppedState and self.statusBar().showMessage(
-            "{} | {} kbps | {} Hz | {} channels | {}".format(suffix[1:].upper(), currentMusic.bitrate,
+        not self.player.fetchState().isStopped() and self.statusBar().showMessage(
+            "{} | {} kbps | {} Hz | {} channels | {}".format(currentMusic.format, currentMusic.bitrate,
                 currentMusic.sampleRate, currentMusic.channels, progressText.replace("/", " / ")))
-        position != 0 and self.refreshLyrics(math.ceil(position / self.player.fetchCurrentBugRate()))
+        position != 0 and self.refreshLyrics(position)
 
-    def onPlayerStateChanged(self, state):
-        oldState = self.player.property("_state") or QtMultimedia.QMediaPlayer.StoppedState
-        self.player.setProperty("_state", state)
-        if oldState == QtMultimedia.QMediaPlayer.StoppedState and state == QtMultimedia.QMediaPlayer.PlayingState:
-            self.setupLyrics()
-        logging.info("Player state changed: %s [%d/%d]", state, self.player.position(), self.player.duration())
-        self.playButton.setIcon(qtawesome.icon(["mdi.play", "mdi.pause", "mdi.play"][state]))
+    def onPlayerStateChanged(self, state: PlayerState):
+        logging.info("Player state changed: %s ", state)
+        self.playButton.setIcon(qtawesome.icon("mdi.pause" if state.isPlaying() else "mdi.play"))
         currentMusic = self.player.fetchCurrentMusic().orElseThrow(AssertionError)
-        self.statusLabel.setText("{} - {}".format(currentMusic.artist,
-            currentMusic.title) if state == QtMultimedia.QMediaPlayer.StoppedState else "")
-        self.statusLabel.setText("" if state == QtMultimedia.QMediaPlayer.StoppedState else "{} - {}".
-            format(currentMusic.artist, currentMusic.title))
-        self.progressSlider.setDisabled(state == QtMultimedia.QMediaPlayer.StoppedState)
-        if state == QtMultimedia.QMediaPlayer.StoppedState:
-            if self.player.position() == self.player.duration():
-                self.player.playNext()
-            else:
-                self.statusBar().showMessage("Stopped.")
-                LayoutUtils.clearLayout(self.lyricsLayout)
+        statusText = "" if state.isStopped() else "{} - {}".format(currentMusic.artist, currentMusic.title)
+        self.statusLabel.setText(statusText)
+        self.progressSlider.setDisabled(state.isStopped())
+        self.statusBar().showMessage("Stopped.")
         playlistModel = self.fetchCurrentPlaylistTable().orElseThrow(AssertionError).model()
-        playlistModel.refreshRow(self.player.fetchCurrentMusicIndex())
+        playlistModel.notifyDataChangedAtRow(self.player.fetchCurrentMusicIndex())
 
     def setupLyrics(self):
+        self.lyricsLogger.info(">> Setting up lyrics...")
         self.player.setProperty("previousLyricIndex", -1)
         currentMusic = self.player.fetchCurrentMusic().orElseThrow(AssertionError)
         lyricsPath = Path(currentMusic.filename).with_suffix(".lrc")
         lyricsText = lyricsPath.read_text()
+        self.lyricsLogger.info("Parsing lyrics")
         lyricDict = LyricUtils.parseLyrics(lyricsText)
+        self.lyricsLogger.info("Lyrics count: %d", len(lyricDict))
         self.player.setProperty("lyricDict", lyricDict)
         LayoutUtils.clearLayout(self.lyricsLayout)
         self.lyricsLayout.addSpacing(self.lyricsContainer.height() // 2)
@@ -411,7 +396,7 @@ class MainWindow(QtWidgets.QMainWindow):
             lyricLabel.setAlignment(
                 gg(QtCore.Qt.AlignmentFlag.AlignCenter, typing.Any) | QtCore.Qt.AlignmentFlag.AlignVCenter)
             lyricLabel.clicked.connect(
-                lambda _, pos=position: self.player.setPosition(pos * self.player.fetchCurrentBugRate()))
+                lambda _, position=position: self.player.setPosition(position))
             font = lyricLabel.font()
             font.setFamily("等线")
             font.setPointSize(18)
@@ -419,15 +404,22 @@ class MainWindow(QtWidgets.QMainWindow):
             lyricLabel.setMargin(2)
             self.lyricsLayout.addWidget(lyricLabel)
         self.lyricsLayout.addSpacing(self.lyricsContainer.height() // 2)
+        self.lyricsLogger.info("Lyrics layout has children: %d", self.lyricsLayout.count())
         self.lyricsContainer.verticalScrollBar().setValue(0)
+        self.lyricsLogger.info("<< Lyrics set up")
         self.refreshLyrics(0)
 
     def refreshLyrics(self, position):
+        self.lyricsLogger.debug("Refreshing lyrics at position: %d", position)
         lyricDict = self.player.property("lyricDict")
         previousLyricIndex = self.player.property("previousLyricIndex")
         lyricIndex = LyricUtils.calcLyricIndexAtPosition(position, list(lyricDict.keys()))
+        self.lyricsLogger.debug("Lyric index: %d => %d", previousLyricIndex, lyricIndex)
         if lyricIndex == previousLyricIndex:
+            self.lyricsLogger.debug("Lyric index no changed, skip refresh")
             return
+        else:
+            self.lyricsLogger.debug("Lyric index changed: %d => %d, refreshing...", previousLyricIndex, lyricIndex)
         self.player.setProperty("previousLyricIndex", lyricIndex)
         for index in range(len(lyricDict)):
             lyricLabel: QtWidgets.QLabel = self.lyricsLayout.itemAt(index + 1).widget()
@@ -442,3 +434,4 @@ class MainWindow(QtWidgets.QMainWindow):
                 animation.setEndValue(targetValue),
                 animation.start(QtCore.QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
             ])()
+        self.lyricsLogger.debug("Lyrics refreshed")

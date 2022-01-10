@@ -23,4 +23,5 @@ class MusicUtils(object):
         music.sampleRate = info.sampleRate
         music.channels = info.channels
         music.duration = info.length * 1000
+        music.format = Path(filename).suffix.strip(".").upper()
         return music

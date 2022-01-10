@@ -6,6 +6,7 @@ import logging
 import typing
 
 import qtawesome
+from IceSpringPathLib import Path
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtGui, QtWidgets
 
@@ -40,9 +41,8 @@ class PlaylistTable(IceTableView):
 
     def onDoubleClicked(self, index):
         self.logger.info(">>> On playlist table double clicked at %d", index)
-        self.player.playMusicAtIndex(index)
-        self.player.setCurrentPlaylistAtIndex(self.mainWindow.fetchFrontPlaylistIndex())
-        self.player.playMusicAtIndex(index)
+        frontPlaylistIndex = self.mainWindow.fetchFrontPlaylistIndex()
+        self.player.playMusicAtPlaylistAndIndex(frontPlaylistIndex, index)
 
     def scrollToRowAtCenter(self, index):
         self.scrollTo(self.model().index(index, 0), QtWidgets.QTableView.ScrollHint.PositionAtCenter)
@@ -55,8 +55,14 @@ class PlaylistTable(IceTableView):
 
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         menu = QtWidgets.QMenu()
-        menu.addAction(f"Remove", lambda: self.onRemove(sorted({x.row() for x in self.selectedIndexes()})))
+        menu.addAction("Remove", lambda: self.onRemove(sorted({x.row() for x in self.selectedIndexes()})))
+        menu.addAction("Add", self.mainWindow.onOpenActionTriggered)
+        menu.addAction("Rapid Add", self.rapidAdd)
         menu.exec_(QtGui.QCursor.pos())
+
+    def rapidAdd(self):
+        paths = Path("~/Music").expanduser().glob("**/*.mp3")
+        self.mainWindow.addMusicsByFilenames([str(x) for x in paths])
 
     def onRemove(self, indexes: typing.List[int]):
         self.logger.info("Removing musics at indexes: %s", indexes)
@@ -93,8 +99,9 @@ class PlaylistModel(QtCore.QAbstractTableModel):
             return ["", music.artist, music.title][index.column()]
         elif role == QtCore.Qt.DecorationRole:
             if index.column() == 0 and index.row() == currentMusicIndex and currentPlaylistIndex == frontPlaylistIndex:
-                return [QtGui.QIcon(), qtawesome.icon("mdi.play"), qtawesome.icon("mdi.pause")][
-                    gg(self.app.player.state(), int)]
+                playerState = self.app.player.fetchState()
+                return qtawesome.icon("mdi.play") if playerState.isPlaying() else qtawesome.icon(
+                    "mdi.pause") if playerState.isPaused() else qtawesome.icon()
 
     def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role: int = ...) -> typing.Any:
         if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
@@ -104,11 +111,11 @@ class PlaylistModel(QtCore.QAbstractTableModel):
     def sort(self, column: int, order: QtCore.Qt.SortOrder = ...) -> None:
         if column == 0:
             return
-        self.playlist.musics = sorted(self.playlist.musics,
-            key=lambda x: x.artist if column == 1 else x.title, reverse=order == QtCore.Qt.DescendingOrder)
+        self.playlist.musics.sort(key=lambda x: x.artist if column == 1 else x.title,
+            reverse=order == QtCore.Qt.DescendingOrder)
         self.endResetModel()
 
-    def refreshRow(self, row):
+    def notifyDataChangedAtRow(self, row):
         self.dataChanged.emit(self.index(row, 0), self.index(row, 0))
 
     def insertMusics(self, musics: typing.List[Music]) -> (int, int):

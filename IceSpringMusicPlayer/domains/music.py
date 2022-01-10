@@ -10,3 +10,4 @@ class Music(object):
     bitrate: int
     sampleRate: int
     channels: int
+    format: str
