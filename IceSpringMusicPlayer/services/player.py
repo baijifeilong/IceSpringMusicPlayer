@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import random
 import typing
@@ -39,6 +40,7 @@ class Player(QtCore.QObject):
     _previousMusicIndex: int
     _nextMusicIndex: int
     _proxy: QtMultimedia.QMediaPlayer
+    _playedCount: int
 
     def __init__(self, parent: PySide2.QtCore.QObject):
         super().__init__(parent)
@@ -52,6 +54,7 @@ class Player(QtCore.QObject):
         self._previousMusicIndex = -1
         self._currentMusicIndex = -1
         self._nextMusicIndex = -1
+        self._playedCount = 0
         self._proxy = QtMultimedia.QMediaPlayer(self)
         self._proxy.setVolume(50)
         self._proxy.stateChanged.connect(self.onProxyStateChanged)
@@ -194,6 +197,8 @@ class Player(QtCore.QObject):
         self._logger.info("Now start to play music...")
         self._proxy.play()
         self._logger.info("Music play started.")
+        self._playedCount += 1
+        self._logger.info("Played count now: %d", self._playedCount)
 
     def playMusicAtIndex(self, musicIndex: int) -> None:
         self._logger.info("Play music at index: %d", musicIndex)
@@ -208,7 +213,7 @@ class Player(QtCore.QObject):
     def playPrevious(self):
         self._logger.info("Play previous")
         assert self._previousMusicIndex >= 0
-        self._updatePlayHistoryAtRelativePosition(self._previousMusicIndex, 1)
+        self._updatePlayHistoryAtRelativePosition(self._previousMusicIndex, -1)
         self._doPlayMusicAtIndex(self._previousMusicIndex)
 
     def playNext(self):
@@ -251,13 +256,15 @@ class Player(QtCore.QObject):
         loopNextMusicIndex = 0 if self._currentMusicIndex == -1 \
             else (self._currentMusicIndex + 1) % len(playlist.musics)
         historyNextMusicIndex = self._histories.get(self._historyPosition + 1, -1)
-        randomNextMusicIndex = self._calcRandomMusicIndex()
+        randomNextMusicIndex = self._calcRandomMusicIndex("NEXT")
         nonLoopNextMusicIndex = historyNextMusicIndex if historyNextMusicIndex != -1 else randomNextMusicIndex
         return loopNextMusicIndex if self._playbackMode.isLoop() else nonLoopNextMusicIndex
 
-    def _calcRandomMusicIndex(self) -> int:
+    def _calcRandomMusicIndex(self, direction: str) -> int:
+        assert direction in ["PREVIOUS", "NEXT"]
         playlist = self.fetchCurrentPlaylist().orElseThrow(AssertionError)
-        randomMusicIndex = self._random.randint(0, len(playlist.musics) - 1)
+        digest = hashlib.md5(f"{direction}:{self._playedCount}".encode()).hexdigest()
+        randomMusicIndex = int(digest, 16) % playlist.musics.size()
         return randomMusicIndex if randomMusicIndex != self._currentMusicIndex \
             else (randomMusicIndex + 1) % len(playlist.musics)
 
@@ -270,7 +277,7 @@ class Player(QtCore.QObject):
         loopPreviousMusicIndex = len(playlist.musics) - 1 if self._currentMusicIndex == -1 \
             else (self._currentMusicIndex - 1) % len(playlist.musics)
         historyPreviousMusicIndex = self._histories.get(self._historyPosition - 1, -1)
-        randomPreviousMusicIndex = self._calcRandomMusicIndex()
+        randomPreviousMusicIndex = self._calcRandomMusicIndex("PREVIOUS")
         nonLoopPreviousMusicIndex = historyPreviousMusicIndex if historyPreviousMusicIndex != -1 \
             else randomPreviousMusicIndex
         return loopPreviousMusicIndex if self._playbackMode.isLoop() else nonLoopPreviousMusicIndex

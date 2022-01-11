@@ -50,9 +50,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.logger = logging.getLogger("mainWindow")
         self.app = app
         self.lyricsLogger = logging.getLogger("lyrics")
-        self.lyricsLogger.setLevel(logging.DEBUG)
+        self.lyricsLogger.setLevel(logging.INFO)
         self.positionLogger = logging.getLogger("position")
-        self.positionLogger.setLevel(logging.DEBUG)
+        self.positionLogger.setLevel(logging.INFO)
         self.player = player
         self.initMenu()
         self.initToolbar()
@@ -401,6 +401,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.progressSlider.setDisabled(True)
             self.logger.info("Reset progress label")
             self.progressLabel.setText("00:00/00:00")
+            self.logger.info("Clear lyrics layout")
+            LayoutUtils.clearLayout(self.lyricsLayout)
             return
         if oldIndex == -1 and newIndex != -1:
             self.logger.info("Player resumed from stopped state.")
