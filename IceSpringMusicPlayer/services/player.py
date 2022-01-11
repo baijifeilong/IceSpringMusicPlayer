@@ -9,6 +9,7 @@ import typing
 import PySide2.QtCore
 from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.maybe import Maybe
+from IceSpringRealOptional.typingUtils import unused
 from IceSpringRealOptional.vector import Vector
 from PySide2 import QtMultimedia, QtCore
 
@@ -92,24 +93,32 @@ class Player(QtCore.QObject):
         self._proxy.setVolume(volume)
 
     def play(self) -> None:
+        self._logger.info("Playing proxy...")
         self._proxy.play()
+        self._logger.info("Proxy played.")
 
     def pause(self) -> None:
+        self._logger.info("Pausing proxy...")
         self._proxy.pause()
+        self._logger.info("Proxy paused.")
 
     def stop(self) -> None:
+        self._logger.info("Stopping proxy...")
         self._proxy.stop()
+        self._logger.info("Proxy stopped.")
+        self._currentMusicIndex = -1
+        self._logger.info("Current music index set to -1")
 
-    def resetHistories(self, keepCurrent: bool):
-        if keepCurrent:
-            currentMusicIndex: int = self._histories.get(self._historyPosition, -1)
-            assert currentMusicIndex != -1
-            self._histories = {0: currentMusicIndex}
+    def resetHistories(self):
+        self._logger.info("Resetting histories...")
+        if self._currentMusicIndex != -1:
+            self._histories = {0: self._currentMusicIndex}
             self._historyPosition = 0
         else:
             self._histories = dict()
             self._historyPosition = -1
         self._updatePlaybackMusicIndexes()
+        self._logger.info("Histories reset")
 
     def fetchCurrentPlaybackMode(self) -> PlaybackMode:
         return self._playbackMode
@@ -119,13 +128,21 @@ class Player(QtCore.QObject):
         self._updatePlaybackMusicIndexes()
 
     def fetchAllPlaylists(self) -> Vector[Playlist]:
-        return self._playlists[:]
+        return self._playlists
+
+    def calcPlaylistIndex(self, playlist: Playlist) -> int:
+        return self._playlists.index(playlist)
 
     def addPlaylist(self, playlist: Playlist) -> None:
+        self._logger.info("Adding playlist: %s ...", playlist.name)
         self._playlists.append(playlist)
+        self._logger.info("> Signal playlistAdded emitting...")
         self.playlistAdded.emit(playlist)
-        if len(self._playlists) == 1:
+        self._logger.info("< Signal playlistAdded emitted.")
+        if self._currentPlaylistIndex == -1:
+            self._logger.info("Current playlist index is -1, set to 0")
             self.setCurrentPlaylistAtIndex(0)
+        self._logger.info("Playlist added.")
 
     def setCurrentPlaylistAtIndex(self, index: int) -> None:
         assert 0 <= index < len(self._playlists)
@@ -134,8 +151,11 @@ class Player(QtCore.QObject):
             return
         self._logger.info("Update current playlist index: %d => %d", oldPlaylistIndex, index)
         self._currentPlaylistIndex = index
-        self.resetHistories(keepCurrent=False)
+        self._logger.info("Reset histories")
+        self.resetHistories()
+        self._logger.info("> Signal playlistIndexChanged emitting...")
         self.playlistIndexChanged.emit(oldPlaylistIndex, index)
+        self._logger.info("< Signal playlistIndexChanged emitted...")
 
     def fetchCurrentPlaylistIndex(self) -> int:
         return self._currentPlaylistIndex
@@ -257,3 +277,28 @@ class Player(QtCore.QObject):
             return 1
         currentMusic = self.fetchCurrentMusic().orElseThrow(AssertionError)
         return self._proxy.duration() / currentMusic.duration
+
+    def doBeforeRemoveMusics(self, playlistIndex: int, indexes: typing.List[int]):
+        self._logger.info("Do before musics remove")
+        currentPlaylistIndex = self.fetchCurrentPlaylistIndex()
+        currentMusicIndex = self.fetchCurrentMusicIndex()
+        if playlistIndex != currentPlaylistIndex:
+            self._logger.info("Removed musics not in current playlist, skip")
+            return
+        if currentMusicIndex in indexes:
+            self._logger.info("Playing music in removed musics, stop it")
+            self.stop()
+        self._logger.info("Reset playlist histories")
+        self.resetHistories()
+
+    def onMusicsInserted(self, playlistIndex: int, indexes: typing.List[int]):
+        self._logger.info("On musics inserted.")
+        unused(playlistIndex, indexes)
+        self.resetHistories()
+        self._logger.info("On musics inserted done.")
+
+    def onMusicsRemoved(self, playlistIndex: int, indexes: typing.List[int]):
+        self._logger.info("On musics removed.")
+        unused(playlistIndex, indexes)
+        self.resetHistories()
+        self._logger.info("On musics removed done.")

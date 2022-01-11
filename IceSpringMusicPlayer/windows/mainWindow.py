@@ -58,7 +58,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.initToolbar()
         self.initLayout()
         self.initStatusBar()
-        self.initPlaceholderPlaylistTable()
+        self.insertPlaceholderTableIfNecessary()
         playlistsDialog = PlaylistsDialog(self.player.fetchAllPlaylists(), self)
         playlistsDialog.playlistsTable.model().playlistsRemoved.connect(self.onPlaylistsRemovedAtIndexes)
         self.playlistsDialog = playlistsDialog
@@ -71,11 +71,6 @@ class MainWindow(QtWidgets.QMainWindow):
         player.positionChanged.connect(self.onPlayerPositionChanged)
         player.playlistAdded.connect(self.onPlaylistAdded)
         player.musicIndexChanged.connect(self.onMusicIndexChanged)
-
-    def initPlaceholderPlaylistTable(self):
-        placeholderPlaylist = Playlist("Placeholder")
-        placeholderPlaylistTable = PlaylistTable(placeholderPlaylist, self)
-        self.playlistWidget.addWidget(placeholderPlaylistTable)
 
     def initStatusBar(self):
         statusLabel = QtWidgets.QLabel("", self.statusBar())
@@ -135,10 +130,14 @@ class MainWindow(QtWidgets.QMainWindow):
         viewMenu.addAction("Playlist Manager", lambda: PlaylistsDialog(self.player.fetchAllPlaylists(), self).show())
 
     def setFrontPlaylistAtIndex(self, index: int) -> None:
+        self.logger.info("Setting front playlist at index %d", index)
         assert index >= 0
         self._frontPlaylistIndex = index
+        self.logger.info("Updating playlist combo")
         self.playlistCombo.setCurrentIndex(index)
+        self.logger.info("Updating playlist widget")
         self.playlistWidget.setCurrentIndex(index)
+        self.logger.info("Front playlist set to index %d", index)
 
     def onCurrentPlaylistIndexChanged(self, oldIndex: int, newIndex: int) -> None:
         if oldIndex == -1:
@@ -292,35 +291,44 @@ class MainWindow(QtWidgets.QMainWindow):
         self.progressSlider = progressSlider
         self.progressLabel = progressLabel
 
+    def insertPlaceholderTableIfNecessary(self):
+        self.logger.info("Insert placeholder table if necessary")
+        if self.player.fetchAllPlaylists().isEmpty():
+            assert self.playlistWidget.count() == 0
+            self.logger.info("No playlist now, insert placeholder table")
+            self.playlistWidget.addWidget(PlaylistTable(Playlist("Placeholder"), self))
+
+    def removePlaceholderTableIfExists(self) -> None:
+        self.logger.info("Remove placeholder table if exists")
+        if self.player.fetchAllPlaylists().size() == 1:
+            assert self.playlistWidget.count() == 1
+            self.logger.info("No playlist before, remove placeholder table")
+            self.playlistWidget.removeWidget(self.playlistWidget.widget(0))
+            self.logger.info("Placeholder table removed")
+
     def onPlaylistAdded(self, playlist: Playlist) -> None:
         self.logger.info("On playlist added: %s", playlist.name)
-        self.playlistCombo.addItem(playlist.name)
+        self.removePlaceholderTableIfExists()
+        self.logger.info("Creating playlist table...")
         playlistTable = PlaylistTable(playlist, self)
-        playlistTable.model().beforeMusicsRemove.connect(self.doBeforeMusicsRemove)
+        playlistTable.model().beforeRemoveMusics.connect(self.player.doBeforeRemoveMusics)
+        playlistTable.model().musicsInserted.connect(self.player.onMusicsInserted)
+        playlistTable.model().musicsRemoved.connect(self.player.onMusicsRemoved)
+        self.logger.info("Playlist table created.")
+        self.playlistCombo.addItem(playlist.name)
         self.playlistWidget.addWidget(playlistTable)
+        assert self.playlistWidget.count() == self.player.fetchAllPlaylists().size()
+        self.logger.info("Playlist table added.")
         if self._frontPlaylistIndex == -1:
+            self.logger.info("Front playlist index is -1, setting to 0...")
             self.setFrontPlaylistAtIndex(0)
 
-    def doBeforeMusicsRemove(self, indexes: typing.List[int]):
-        currentPlaylistIndex = self.player.fetchCurrentPlaylistIndex()
-        currentMusicIndex = self.player.fetchCurrentMusicIndex()
-        currentMusic = self.player.fetchCurrentMusic().orElseThrow(AssertionError)
-        frontPlaylistIndex = self.fetchFrontPlaylistIndex()
-        if frontPlaylistIndex != currentPlaylistIndex:
-            return
-        if currentMusicIndex in indexes:
-            self.logger.info("Stop playing music: %s", currentMusic.filename)
-            self.player.stop()
-            self.player.resetHistories(keepCurrent=False)
-        else:
-            self.player.resetHistories(keepCurrent=True)
-
     def onPlaylistsRemovedAtIndexes(self, indexes: typing.List[int]):
+        self.logger.info("On playlist removed: %s", indexes)
         for index in sorted(indexes, reverse=True):
             self.playlistWidget.removeWidget(self.playlistWidget.widget(index))
             self.playlistCombo.removeItem(index)
-        if len(self.player.fetchAllPlaylists()) <= 0:
-            self.initPlaceholderPlaylistTable()
+        self.insertPlaceholderTableIfNecessary()
 
     def togglePlaybackMode(self):
         self.player.setCurrentPlaybackMode(self.player.fetchCurrentPlaybackMode().next())

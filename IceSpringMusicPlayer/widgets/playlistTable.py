@@ -78,9 +78,9 @@ class PlaylistTable(IceTableView):
 
 
 class PlaylistModel(QtCore.QAbstractTableModel):
-    beforeMusicsRemove: QtCore.SignalInstance = QtCore.Signal(list)
-    musicsInserted: QtCore.SignalInstance = QtCore.Signal(list)
-    musicsRemoved: QtCore.SignalInstance = QtCore.Signal(list)
+    beforeRemoveMusics: QtCore.SignalInstance = QtCore.Signal(int, list)
+    musicsInserted: QtCore.SignalInstance = QtCore.Signal(int, list)
+    musicsRemoved: QtCore.SignalInstance = QtCore.Signal(int, list)
 
     def __init__(self, playlist: Playlist, mainWindow: MainWindow,
             parent: typing.Optional[QtCore.QObject] = None) -> None:
@@ -133,14 +133,14 @@ class PlaylistModel(QtCore.QAbstractTableModel):
         self.endInsertRows()
         self._logger.info("Musics inserted")
         self._logger.info("> musicsInserted signal emitting...")
-        self.musicsInserted.emit(musics)
+        self.musicsInserted.emit(self.player.calcPlaylistIndex(self.playlist), [])
         self._logger.info("< musicsInserted signal emitted...")
         return beginRow, endRow
 
     def removeMusicsAtIndexes(self, indexes: typing.List[int]) -> None:
-        self.beforeMusicsRemove.emit(indexes)
+        self.beforeRemoveMusics.emit(self.player.calcPlaylistIndex(self.playlist), indexes)
         for index in sorted(indexes, reverse=True):
             self.beginRemoveRows(QtCore.QModelIndex(), index, index)
             del self.playlist.musics[index]
         self.endRemoveRows()
-        self.musicsRemoved.emit(indexes)
+        self.musicsRemoved.emit(self.player.calcPlaylistIndex(self.playlist), indexes)
