@@ -28,10 +28,10 @@ class PlaylistTable(IceTableView):
         self.player = self.app.player
         model = PlaylistModel(playlist, mainWindow)
         self.setModel(model)
-        self.setColumnWidth(0, 35)
-        self.setColumnWidth(1, 200)
+        self.setColumnWidth(0, int(35 * self.app.zoom))
+        self.setColumnWidth(1, int(150 * self.app.zoom))
         self.doubleClicked.connect(lambda x: self.onDoubleClicked(x.row()))
-        self.setIconSize(QtCore.QSize(32, 32))
+        self.setIconSize(QtCore.QSize(32, 32) * self.app.zoom)
         self.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
         self.setSortingEnabled(True)
         self.viewport().installEventFilter(mainWindow)
