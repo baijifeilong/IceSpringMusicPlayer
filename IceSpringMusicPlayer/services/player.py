@@ -289,8 +289,12 @@ class Player(QtCore.QObject):
         self.resetHistories()
         self._logger.info("On musics inserted done.")
 
-    def onMusicsRemoved(self, playlistIndex: int, indexes: typing.List[int]):
+    def onMusicsRemoved(self, playlistIndex: int, indexes: typing.List[int], indexMap: typing.Dict[int, int]):
         self._logger.info("On musics removed.")
         unused(playlistIndex, indexes)
+        self._logger.info("Current music index: %d", self._currentMusicIndex)
+        refreshedMusicIndex = indexMap.get(self._currentMusicIndex)
+        self._logger.info("Refreshed music index: %d", refreshedMusicIndex)
+        self._currentMusicIndex = refreshedMusicIndex
         self.resetHistories()
         self._logger.info("On musics removed done.")
