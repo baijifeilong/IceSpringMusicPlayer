@@ -7,7 +7,9 @@ import typing
 
 import qtawesome
 from IceSpringPathLib import Path
+from IceSpringRealOptional.maybe import Maybe
 from IceSpringRealOptional.typingUtils import gg
+from IceSpringRealOptional.vector import Vector
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
@@ -71,14 +73,19 @@ class PlaylistTable(IceTableView):
             return
         self.model().removeMusicsAtIndexes(indexes)
 
+    def fetchFirstSelectedRow(self) -> Maybe[int]:
+        return Vector(self.selectedIndexes()).get(0).map(lambda x: x.row())
+
 
 class PlaylistModel(QtCore.QAbstractTableModel):
     beforeMusicsRemove: QtCore.SignalInstance = QtCore.Signal(list)
+    musicsInserted: QtCore.SignalInstance = QtCore.Signal(list)
     musicsRemoved: QtCore.SignalInstance = QtCore.Signal(list)
 
     def __init__(self, playlist: Playlist, mainWindow: MainWindow,
             parent: typing.Optional[QtCore.QObject] = None) -> None:
         super().__init__(parent)
+        self._logger = logging.getLogger("playlistModel")
         self.playlist = playlist
         self.mainWindow = mainWindow
         self.app = mainWindow.app
@@ -119,10 +126,15 @@ class PlaylistModel(QtCore.QAbstractTableModel):
         self.dataChanged.emit(self.index(row, 0), self.index(row, 0))
 
     def insertMusics(self, musics: typing.List[Music]) -> (int, int):
+        self._logger.info("Inserting musics with count %d", len(musics))
         beginRow, endRow = len(self.playlist.musics), len(self.playlist.musics) + len(musics) - 1
         self.beginInsertRows(QtCore.QModelIndex(), beginRow, endRow)
         self.playlist.musics.extend(musics)
         self.endInsertRows()
+        self._logger.info("Musics inserted")
+        self._logger.info("> musicsInserted signal emitting...")
+        self.musicsInserted.emit(musics)
+        self._logger.info("< musicsInserted signal emitted...")
         return beginRow, endRow
 
     def removeMusicsAtIndexes(self, indexes: typing.List[int]) -> None:

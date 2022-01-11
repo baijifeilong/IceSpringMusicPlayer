@@ -13,7 +13,8 @@ if typing.TYPE_CHECKING:
 class LyricUtils(object):
     @staticmethod
     def parseLyrics(lyricsText: str) -> Dict[int, str]:
-        lyricsLogger = logging.getLogger("lyrics")
+        lyricsLogger = logging.getLogger("lyricUtils")
+        lyricsLogger.setLevel(logging.INFO)
         lyricsLogger.info("Parsing lyrics ...")
         lyricRegex = re.compile(r"^((?:\[\d+:[\d.]+])+)(.*)$")
         lyricDict: typing.Dict[int, str] = dict()

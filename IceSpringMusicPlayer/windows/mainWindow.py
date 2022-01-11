@@ -160,12 +160,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.addMusicsByFilenames(filenames)
 
     def addMusicsByFilenames(self, filenames: typing.List[str]):
+        self.logger.info(">> Add musics with count %d", len(filenames))
         musics = [MusicUtils.parseMusic(x) for x in filenames]
         if not musics:
             self.logger.info("No music file to open, return")
             return
         if len(self.player.fetchAllPlaylists()) <= 0:
-            self.logger.info("No playlist, create default one")
+            self.logger.info("No playlist, create one")
             self.createAndAppendDefaultPlaylist()
         playlistTable = self.fetchFrontPlaylistTable().orElseThrow(AssertionError)
         beginRow, endRow = playlistTable.model().insertMusics(musics)
@@ -173,6 +174,7 @@ class MainWindow(QtWidgets.QMainWindow):
         playlistTable.resizeRowsToContents()
         # playlistTable.repaint()
         playlistTable.scrollToRowAtCenter(beginRow)
+        self.logger.info("<< Musics added")
 
     def initToolbar(self):
         toolbar = self.addToolBar("Toolbar")
@@ -258,10 +260,10 @@ class MainWindow(QtWidgets.QMainWindow):
         stopButton.clicked.connect(self.onStopButtonClicked)
         previousButton = QtWidgets.QToolButton(mainWidget)
         previousButton.setIcon(qtawesome.icon("mdi.step-backward"))
-        previousButton.clicked.connect(self.player.playPrevious)
+        previousButton.clicked.connect(self.onPlayPreviousButtonClicked)
         nextButton = QtWidgets.QToolButton(mainWidget)
         nextButton.setIcon(qtawesome.icon("mdi.step-forward"))
-        nextButton.clicked.connect(self.player.playNext)
+        nextButton.clicked.connect(self.onPlayNextButtonClicked)
         playbackButton = QtWidgets.QToolButton(mainWidget)
         playbackButton.setIcon(qtawesome.icon("mdi.repeat"))
         playbackButton.clicked.connect(self.togglePlaybackMode)
@@ -326,24 +328,53 @@ class MainWindow(QtWidgets.QMainWindow):
         newIconName = dict(LOOP="mdi.repeat", RANDOM="mdi.shuffle")[newPlaybackMode.name]
         self.playbackButton.setIcon(qtawesome.icon(newIconName))
 
+    def onPlayNextButtonClicked(self) -> None:
+        self.logger.info("On play next button clicked")
+        if self.fetchFrontPlaylist().isAbsent():
+            self.logger.info("No playlist to play")
+        elif self.fetchFrontPlaylist().get().musics.isEmpty():
+            self.logger.info("No music to play")
+        else:
+            self.logger.info("Play next at front playlist")
+            self.player.playNextAtPlaylist(self._frontPlaylistIndex)
+
+    def onPlayPreviousButtonClicked(self) -> None:
+        self.logger.info("On play previous button clicked")
+        if self.fetchFrontPlaylist().isAbsent():
+            self.logger.info("No playlist to play")
+        elif self.fetchFrontPlaylist().get().musics.isEmpty():
+            self.logger.info("No music to play")
+        else:
+            self.logger.info("Play previous at front playlist")
+            self.player.playPreviousAtPlaylist(self._frontPlaylistIndex)
+
     def onPlayButtonClicked(self):
         logging.info("On play button clicked")
-        if not self.player.fetchCurrentPlaylist().isPresent():
-            self.logger.info("Current playlist is none, return")
-            return
-        if not self.player.fetchCurrentMusic().isPresent():
-            logging.info("Current music is none, play next at playlist %d", self.playlistWidget.currentIndex())
-            self.player.playNext()
-        elif self.player.fetchState().isPlaying():
+        selectedMaybe: Maybe[int] = self.fetchFrontPlaylistTable().flatMap(lambda x: x.fetchFirstSelectedRow())
+        if self.player.fetchState().isPlaying():
             logging.info("Player is playing, pause it")
             self.player.pause()
-        else:
-            logging.info("Player is not playing, play it")
+        elif self.player.fetchState().isPaused():
+            logging.info("Player is paused, play it")
             self.player.play()
+        elif self.fetchFrontPlaylist().isAbsent():
+            self.logger.info("No playlist to play")
+        elif self.fetchFrontPlaylist().get().musics.isEmpty():
+            self.logger.info("No music to play")
+        elif selectedMaybe.isPresent():
+            self.logger.info("Play selected music")
+            self.player.playMusicAtPlaylistAndIndex(self._frontPlaylistIndex, selectedMaybe.get())
+        else:
+            self.logger.info("Play next music")
+            self.player.playNextAtPlaylist(self._frontPlaylistIndex)
 
     def onStopButtonClicked(self):
-        logging.info("On stop button clicked")
-        self.player.stop()
+        self.logger.info("On stop button clicked")
+        if self.player.fetchState().isStopped():
+            self.logger.info("Already stopped")
+        else:
+            self.logger.info("Stop playing")
+            self.player.stop()
 
     def onMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
         self.logger.info("Music index changed: %d => %d", oldIndex, newIndex)

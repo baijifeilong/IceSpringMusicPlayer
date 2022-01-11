@@ -132,6 +132,7 @@ class Player(QtCore.QObject):
         oldPlaylistIndex = self._currentPlaylistIndex
         if index == oldPlaylistIndex:
             return
+        self._logger.info("Update current playlist index: %d => %d", oldPlaylistIndex, index)
         self._currentPlaylistIndex = index
         self.resetHistories(keepCurrent=False)
         self.playlistIndexChanged.emit(oldPlaylistIndex, index)
@@ -155,6 +156,10 @@ class Player(QtCore.QObject):
         playlist = self.fetchCurrentPlaylist().orElseThrow(AssertionError)
         music = playlist.musics[musicIndex]
         self._logger.info("Prepare to play music %s : %s", music.artist, music.title)
+        self._logger.info("Stop current playing if exist")
+        self._proxy.stop()
+        self._logger.info("Current playing stopped")
+        self._logger.info("Set music content: %s", music.filename)
         self._proxy.blockSignals(True)
         self._proxy.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(music.filename)))
         self._proxy.blockSignals(False)
@@ -188,6 +193,16 @@ class Player(QtCore.QObject):
         assert self._nextMusicIndex >= 0
         self._updatePlayHistoryAtRelativePosition(self._nextMusicIndex, 1)
         self._doPlayMusicAtIndex(self._nextMusicIndex)
+
+    def playNextAtPlaylist(self, playlistIndex: int) -> None:
+        self._logger.info("Play next at playlist: %d", playlistIndex)
+        self.setCurrentPlaylistAtIndex(playlistIndex)
+        self.playNext()
+
+    def playPreviousAtPlaylist(self, playlistIndex: int) -> None:
+        self._logger.info("Play previous at playlist: %d", playlistIndex)
+        self.setCurrentPlaylistAtIndex(playlistIndex)
+        self.playPrevious()
 
     def _updatePlayHistoryAtRelativePosition(self, musicIndex: int, relativePosition: int) -> None:
         self._historyPosition += relativePosition
