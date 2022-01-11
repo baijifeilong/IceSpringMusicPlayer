@@ -55,6 +55,7 @@ class Player(QtCore.QObject):
         self._proxy = QtMultimedia.QMediaPlayer(self)
         self._proxy.setVolume(50)
         self._proxy.stateChanged.connect(self.onProxyStateChanged)
+        self._proxy.durationChanged.connect(self.onProxyDurationChanged)
         self._proxy.positionChanged.connect(self.onProxyPositionChanged)
 
     def onProxyStateChanged(self, qtState):
@@ -70,7 +71,7 @@ class Player(QtCore.QObject):
 
     def onProxyDurationChanged(self, duration):
         self._logger.info("Proxy duration changed: %d", duration)
-        self.durationChanged.emit(duration)
+        self.durationChanged.emit(duration // self._fetchBugRateOrOne())
 
     def onProxyPositionChanged(self, position):
         self._logger.debug("Proxy position changed: %d / %d", position, self._proxy.duration())
@@ -106,7 +107,9 @@ class Player(QtCore.QObject):
         self._logger.info("Stopping proxy...")
         self._proxy.stop()
         self._logger.info("Proxy stopped.")
+        oldMusicIndex = self._currentMusicIndex
         self._currentMusicIndex = -1
+        self.musicIndexChanged.emit(oldMusicIndex, -1)
         self._logger.info("Current music index set to -1")
 
     def resetHistories(self):

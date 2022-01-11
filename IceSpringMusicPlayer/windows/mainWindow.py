@@ -50,9 +50,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.logger = logging.getLogger("mainWindow")
         self.app = app
         self.lyricsLogger = logging.getLogger("lyrics")
-        self.lyricsLogger.setLevel(logging.INFO)
+        self.lyricsLogger.setLevel(logging.DEBUG)
         self.positionLogger = logging.getLogger("position")
-        self.positionLogger.setLevel(logging.INFO)
+        self.positionLogger.setLevel(logging.DEBUG)
         self.player = player
         self.initMenu()
         self.initToolbar()
@@ -68,6 +68,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def setupPlayer(self):
         player = self.player
         player.stateChanged.connect(self.onPlayerStateChanged)
+        player.durationChanged.connect(self.onPlayerDurationChanged)
         player.positionChanged.connect(self.onPlayerPositionChanged)
         player.playlistAdded.connect(self.onPlaylistAdded)
         player.musicIndexChanged.connect(self.onMusicIndexChanged)
@@ -170,7 +171,7 @@ class MainWindow(QtWidgets.QMainWindow):
         playlistTable = self.fetchFrontPlaylistTable().orElseThrow(AssertionError)
         beginRow, endRow = playlistTable.model().insertMusics(musics)
         playlistTable.selectRowRange(beginRow, endRow)
-        playlistTable.resizeRowsToContents()
+        # playlistTable.resizeRowsToContents()
         # playlistTable.repaint()
         playlistTable.scrollToRowAtCenter(beginRow)
         self.logger.info("<< Musics added")
@@ -272,7 +273,7 @@ class MainWindow(QtWidgets.QMainWindow):
             button.setAutoRaise(True)
         progressSlider = FluentSlider(QtCore.Qt.Orientation.Horizontal, mainWidget)
         progressSlider.setDisabled(True)
-        progressSlider.valueChanged.connect(self.player.setPosition)
+        progressSlider.valueChanged.connect(self.onProgressSliderValueChanged)
         progressLabel = QtWidgets.QLabel("00:00/00:00", mainWidget)
         volumeDial = QtWidgets.QDial(mainWidget)
         volumeDial.setFixedSize(iconSize)
@@ -290,6 +291,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.playbackButton = playbackButton
         self.progressSlider = progressSlider
         self.progressLabel = progressLabel
+
+    def onProgressSliderValueChanged(self, value: int) -> None:
+        self.logger.info("On progress slider value changed: %d", value)
+        self.player.setPosition(value)
 
     def insertPlaceholderTableIfNecessary(self):
         self.logger.info("Insert placeholder table if necessary")
@@ -386,39 +391,68 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
         self.logger.info("Music index changed: %d => %d", oldIndex, newIndex)
+        if newIndex == -1:
+            self.logger.info("Music index set to -1, player stopped.")
+            self.logger.info("Clear status label")
+            self.statusLabel.setText("")
+            self.logger.info("Notify stopped on status bar")
+            self.statusBar().showMessage("Stopped.")
+            self.logger.info("Disable progress slider")
+            self.progressSlider.setDisabled(True)
+            self.logger.info("Reset progress label")
+            self.progressLabel.setText("00:00/00:00")
+            return
+        if oldIndex == -1 and newIndex != -1:
+            self.logger.info("Player resumed from stopped state.")
+            self.logger.info("Enable progress slider")
+            self.progressSlider.setDisabled(False)
         currentMusic = self.player.fetchCurrentPlaylist().orElseThrow(AssertionError).musics[newIndex]
+        self.logger.info("Current music: %s", currentMusic)
+        self.logger.info("Update window title")
         self.setWindowTitle(Path(currentMusic.filename).with_suffix("").name)
+        self.logger.info("Refresh playlist table")
         currentPlaylistTable = self.fetchCurrentPlaylistTable().orElseThrow(AssertionError)
         currentPlaylistTable.model().notifyDataChangedAtRow(oldIndex)
         currentPlaylistTable.model().notifyDataChangedAtRow(newIndex)
+        self.logger.info("Select played item in playlist table")
         currentPlaylistTable.selectRow(newIndex)
+        self.logger.info("Setup lyrics")
         self.setupLyrics()
-        self.progressSlider.setMaximum(self.player.fetchDuration())
+        self.logger.info("Update status label")
+        self.statusLabel.setText("{} - {}".format(currentMusic.artist, currentMusic.title))
+
+    def onPlayerDurationChanged(self, duration: int) -> None:
+        self.logger.info("Player duration changed: %d", duration)
+        self.logger.info("Update progress slider max value")
+        self.progressSlider.setMaximum(duration)
 
     def onPlayerPositionChanged(self, position):
         self.positionLogger.debug("Player position changed: %d / %d", position, self.player.fetchDuration())
+        if self.player.fetchState().isStopped():
+            self.logger.info("Player has been stopped, skip")
+            return
         self.progressSlider.blockSignals(True)
         self.progressSlider.setValue(position)
         self.progressSlider.blockSignals(False)
         duration = self.player.fetchDuration()
         progressText = f"{TimeDeltaUtils.formatDelta(position)}/{TimeDeltaUtils.formatDelta(duration)}"
+        self.positionLogger.debug("Update progress label")
         self.progressLabel.setText(progressText)
         currentMusic = self.player.fetchCurrentMusic().orElseThrow(AssertionError)
-        not self.player.fetchState().isStopped() and self.statusBar().showMessage(
+        self.positionLogger.debug("Update status bar")
+        self.statusBar().showMessage(
             "{} | {} kbps | {} Hz | {} channels | {}".format(currentMusic.format, currentMusic.bitrate,
                 currentMusic.sampleRate, currentMusic.channels, progressText.replace("/", " / ")))
-        position != 0 and self.refreshLyrics(position)
+        self.positionLogger.debug("Position not zero, try to refresh lyrics")
+        self.refreshLyrics(position)
 
     def onPlayerStateChanged(self, state: PlayerState):
-        logging.info("Player state changed: %s ", state)
+        self.logger.info("Player state changed: %s ", state)
+        self.logger.info("Update play button icon")
         self.playButton.setIcon(qtawesome.icon("mdi.pause" if state.isPlaying() else "mdi.play"))
-        currentMusic = self.player.fetchCurrentMusic().orElseThrow(AssertionError)
-        statusText = "" if state.isStopped() else "{} - {}".format(currentMusic.artist, currentMusic.title)
-        self.statusLabel.setText(statusText)
-        self.progressSlider.setDisabled(state.isStopped())
-        self.statusBar().showMessage("Stopped.")
-        playlistModel = self.fetchCurrentPlaylistTable().orElseThrow(AssertionError).model()
-        playlistModel.notifyDataChangedAtRow(self.player.fetchCurrentMusicIndex())
+        self.logger.info("Update playlist table icon")
+        self.fetchCurrentPlaylistTable().orElseThrow(AssertionError).model().notifyDataChangedAtRow(
+            self.player.fetchCurrentMusicIndex())
 
     def setupLyrics(self):
         self.lyricsLogger.info(">> Setting up lyrics...")
@@ -440,7 +474,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 lambda _, position=position: self.player.setPosition(position))
             font = lyricLabel.font()
             font.setFamily("等线")
-            font.setPointSize(12 * self.app.zoom)
+            font.setPointSize(16 * self.app.zoom)
             lyricLabel.setFont(font)
             lyricLabel.setMargin(int(2 * self.app.zoom))
             self.lyricsLayout.addWidget(lyricLabel)
@@ -448,7 +482,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lyricsLogger.info("Lyrics layout has children: %d", self.lyricsLayout.count())
         self.lyricsContainer.verticalScrollBar().setValue(0)
         self.lyricsLogger.info("<< Lyrics set up")
-        self.refreshLyrics(0)
 
     def refreshLyrics(self, position):
         self.lyricsLogger.debug("Refreshing lyrics at position: %d", position)
@@ -467,7 +500,6 @@ class MainWindow(QtWidgets.QMainWindow):
             lyricLabel.setStyleSheet("color:rgb(225,65,60)" if index == lyricIndex else "color:rgb(35,85,125)")
             originalValue = self.lyricsContainer.verticalScrollBar().value()
             targetValue = lyricLabel.pos().y() - self.lyricsContainer.height() // 2 + lyricLabel.height() // 2
-            QtCore.QPropertyAnimation().start(QtCore.QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
             # noinspection PyTypeChecker
             index == lyricIndex and (lambda animation=QtCore.QPropertyAnimation(
                 self.lyricsContainer.verticalScrollBar(), b"value", self.lyricsContainer): [

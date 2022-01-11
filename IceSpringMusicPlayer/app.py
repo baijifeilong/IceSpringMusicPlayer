@@ -15,7 +15,7 @@ class App(QtWidgets.QApplication):
 
     def __init__(self):
         super().__init__()
-        self.zoom = 0.5
+        self.zoom = 1
         self.setApplicationName("Ice Spring Music Player")
         self.setApplicationDisplayName(self.applicationName())
         self.player = Player(self)
@@ -23,9 +23,9 @@ class App(QtWidgets.QApplication):
 
     def exec_(self) -> int:
         self.setFont(Just.of(self.font()).apply(lambda x: x.setPointSize(x.pointSize() * self.zoom)).value())
-        self.mainWindow.resize(QtCore.QSize(1280, 720) * self.zoom)
+        self.mainWindow.resize(QtCore.QSize(1280, 720))
         diff = self.primaryScreen().availableSize() - self.mainWindow.size()
         titleBarHeight = self.style().pixelMetric(QtWidgets.QStyle.PixelMetric.PM_TitleBarHeight)
-        self.mainWindow.move(diff.width() - 5, diff.height() - titleBarHeight - 10)
+        # self.mainWindow.move(diff.width() - 5, diff.height() - titleBarHeight - 10)
         self.mainWindow.show()
         return super().exec_()
