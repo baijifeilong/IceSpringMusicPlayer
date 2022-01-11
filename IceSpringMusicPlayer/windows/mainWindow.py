@@ -446,7 +446,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "{} | {} kbps | {} Hz | {} channels | {}".format(currentMusic.format, currentMusic.bitrate,
                 currentMusic.sampleRate, currentMusic.channels, progressText.replace("/", " / ")))
         self.positionLogger.debug("Position not zero, try to refresh lyrics")
-        self.refreshLyrics(position)
+        self.refreshLyrics(position + 2)  # 1 milli for bug rate, 1 milli for double language lyrics
 
     def onPlayerStateChanged(self, state: PlayerState):
         self.logger.info("Player state changed: %s ", state)

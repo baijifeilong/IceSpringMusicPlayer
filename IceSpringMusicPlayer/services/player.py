@@ -68,23 +68,24 @@ class Player(QtCore.QObject):
 
     def onProxyDurationChanged(self, duration):
         self._logger.info("Proxy duration changed: %d", duration)
-        self.durationChanged.emit(duration // self._fetchBugRateOrOne())
+        self.durationChanged.emit(int(duration / self._fetchBugRateOrOne()))
 
     def onProxyPositionChanged(self, position):
         self._logger.debug("Proxy position changed: %d / %d", position, self._proxy.duration())
-        self.positionChanged.emit(position // self._fetchBugRateOrOne())
+        self.positionChanged.emit(int(position / self._fetchBugRateOrOne()))
 
     def fetchDuration(self) -> int:
-        return self._proxy.duration() // self._fetchBugRateOrOne()
+        return int(self._proxy.duration() // self._fetchBugRateOrOne())
 
     def fetchPosition(self) -> int:
-        return self._proxy.position() // self._fetchBugRateOrOne()
+        return int(self._proxy.position() // self._fetchBugRateOrOne())
 
     def fetchState(self) -> PlayerState:
         return Just.of(self._proxy.state()).map(PlayerState.fromQt).value()
 
     def setPosition(self, position: int) -> None:
-        qtPosition = position * self._fetchBugRateOrOne()
+        qtPosition = int(position * self._fetchBugRateOrOne())
+        self._logger.info("Setting position: %d (qt=%d)", position, qtPosition)
         self._proxy.setPosition(qtPosition)
 
     def setVolume(self, volume: int) -> None:
