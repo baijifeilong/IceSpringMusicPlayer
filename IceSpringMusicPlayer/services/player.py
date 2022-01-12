@@ -162,6 +162,9 @@ class Player(QtCore.QObject):
 
     def removePlaylistsAtIndexes(self, indexes: typing.List[int]) -> None:
         self._logger.info("Removing playlists at indexes: %s", indexes)
+        if len(indexes) <= 0:
+            self._logger.info("No playlist to remove, return")
+            return
         if self.getCurrentPlaylistIndex() in indexes and self.getState().isPlaying():
             self._logger.info("Current playlist in removing list, and player is playing, stop it")
             self.stop()
@@ -190,7 +193,7 @@ class Player(QtCore.QObject):
             return
         self._frontPlaylistIndex = index
         self._logger.info("> Signal frontPlaylistIndexChanged emitting...")
-        self.currentPlaylistIndexChanged.emit(oldFrontPlaylistIndex, index)
+        self.frontPlaylistIndexChanged.emit(oldFrontPlaylistIndex, index)
         self._logger.info("< Signal frontPlaylistIndexChanged emitted...")
 
     def setCurrentPlaylistIndex(self, index: int) -> None:

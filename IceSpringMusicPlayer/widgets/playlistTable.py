@@ -34,6 +34,7 @@ class PlaylistTable(IceTableView):
         self.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
         self.setSortingEnabled(True)
         self._player.stateChanged.connect(self._onPlayerStateChanged)
+        self._player.frontPlaylistIndexChanged.connect(self._onFrontPlaylistIndexChanged)
         self._player.currentMusicIndexChanged.connect(self._onMusicIndexChanged)
         self._player.musicsInserted.connect(self._onMusicsInserted)
 
@@ -65,6 +66,12 @@ class PlaylistTable(IceTableView):
         menu.addAction("Add", self.actionAddTriggered.emit)
         menu.addAction("Rapid Add", self.actionOneKeyAddTriggered.emit)
         menu.exec_(QtGui.QCursor.pos())
+
+    def _onFrontPlaylistIndexChanged(self, oldIndex: int, newIndex: int) -> None:
+        self._logger.info("On front playlist index changed: %d => %d", oldIndex, newIndex)
+        self._logger.info("Reset model")
+        self.model().endResetModel()
+        self._logger.info("Model reset")
 
     def _onRemove(self):
         indexes = sorted(set(x.row() for x in self.selectedIndexes()))

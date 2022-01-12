@@ -56,9 +56,9 @@ class PlaylistManagerTable(IceTableView):
     def _onRemovePlaylists(self):
         indexes = sorted({x.row() for x in self.selectedIndexes()})
         self._logger.info("On remove playlists")
-        self._logger.info(">> Removing playlists at indexes: %s", indexes)
+        self._logger.info(">> Remove playlists at indexes: %s", indexes)
         self._player.removePlaylistsAtIndexes(indexes)
-        self._logger.info("<< Playlists removed")
+        self._logger.info("<< Remove playlists done")
 
 
 class PlaylistManagerModel(QtCore.QAbstractTableModel):

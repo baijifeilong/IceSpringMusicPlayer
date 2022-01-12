@@ -41,6 +41,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _setupPlayer(self):
         player = self._player
+        player.frontPlaylistIndexChanged.connect(self._onFrontPlaylistChangedAtIndex)
         player.positionChanged.connect(self._onPlayerPositionChanged)
         player.playlistInserted.connect(self._onPlaylistInserted)
         player.currentMusicIndexChanged.connect(self._onMusicIndexChanged)
