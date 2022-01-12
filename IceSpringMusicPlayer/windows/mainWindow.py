@@ -7,7 +7,6 @@ import typing
 from pathlib import Path
 
 import qtawesome
-from IceSpringMusicPlayer.windows.playlistsDialog import PlaylistManagerDialog
 from IceSpringRealOptional.maybe import Maybe
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtGui, QtWidgets

@@ -24,7 +24,7 @@ class App(QtWidgets.QApplication):
 
     def exec_(self) -> int:
         self.setFont(Just.of(self.font()).apply(lambda x: x.setPointSize(x.pointSize() * self.zoom)).value())
-        self.mainWindow.resize(QtCore.QSize(320, 180) if self.miniMode else QtCore.QSize(1280, 720))
+        self.mainWindow.resize(QtCore.QSize(640, 360) if self.miniMode else QtCore.QSize(1280, 720))
         diff = self.primaryScreen().availableSize() - self.mainWindow.size()
         titleBarHeight = self.style().pixelMetric(QtWidgets.QStyle.PixelMetric.PM_TitleBarHeight)
         self.miniMode and self.mainWindow.move(diff.width() - 5, diff.height() - titleBarHeight - 10)
