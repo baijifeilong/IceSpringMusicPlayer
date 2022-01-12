@@ -9,7 +9,6 @@ import typing
 import PySide2.QtCore
 from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.maybe import Maybe
-from IceSpringRealOptional.typingUtils import unused
 from IceSpringRealOptional.vector import Vector
 from PySide2 import QtMultimedia, QtCore
 
@@ -17,6 +16,7 @@ from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.domains.playlist import Playlist
 from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 from IceSpringMusicPlayer.enums.playerState import PlayerState
+from IceSpringMusicPlayer.utils.listUtils import ListUtils
 
 if typing.TYPE_CHECKING:
     from typing import Dict
@@ -27,6 +27,9 @@ class Player(QtCore.QObject):
     currentPlaylistIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
     currentMusicIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
     playlistAdded: QtCore.SignalInstance = QtCore.Signal(Playlist)
+    musicsInserted: QtCore.SignalInstance = QtCore.Signal(list, dict)
+    musicsAboutToBeRemoved: QtCore.SignalInstance = QtCore.Signal(list)
+    musicsRemoved: QtCore.SignalInstance = QtCore.Signal(list, dict)
     stateChanged: QtCore.SignalInstance = QtCore.Signal(PlayerState)
     durationChanged: QtCore.SignalInstance = QtCore.Signal(int)
     positionChanged: QtCore.SignalInstance = QtCore.Signal(int)
@@ -313,31 +316,51 @@ class Player(QtCore.QObject):
             self._logger.info("Playing music in removed musics, stop it")
             self.stop()
 
-    def onMusicsInserted(self, indexes: typing.List[int], indexMap: typing.Dict[int, int]):
-        self._logger.info("On musics inserted.")
-        unused(indexes)
+    def insertMusics(self, musics: typing.List[Music]) -> None:
+        playlist = self.getFrontPlaylist().orElseThrow(AssertionError)
+        oldCount = playlist.musics.size()
+        oldMusics = playlist.musics[:]
+        indexMap = ListUtils.calcIndexMap(oldMusics, playlist.musics)
+        self._logger.info("Inserting musics with count %d", len(musics))
+        self._logger.info("Inserting...")
+        playlist.musics.extend(musics)
+        self._logger.info("Inserted")
+        self._logger.info("Refresh indexes")
+        self.refreshMusicIndexes(indexMap)
         if self._frontPlaylistIndex != self._currentPlaylistIndex:
-            self._logger.info("Insertion not in current playlist, skip")
+            self._logger.info("Insertion not in current playlist, skip resetting")
         else:
             self._logger.info("Reset histories")
             self.resetHistories()
-            self._logger.info("Refresh indexes")
-            self.refreshMusicIndexes(indexMap)
-        self._logger.info("On musics inserted done.")
+        self._logger.info("> musicsInserted signal emitting...")
+        insertedIndexes = [x + oldCount for x in range(len(musics))]
+        self.musicsInserted.emit(insertedIndexes, ListUtils.calcIndexMap(oldMusics, playlist.musics))
+        self._logger.info("< musicsInserted signal emitted...")
 
-    def onMusicsRemoved(self, indexes: typing.List[int], indexMap: typing.Dict[int, int]):
-        self._logger.info("On musics removed.")
-        unused(indexes)
+    def removeMusicsAtIndexes(self, indexes: typing.List[int]) -> None:
+        playlist = self.getFrontPlaylist().orElseThrow(AssertionError)
+        oldMusics = playlist.musics[:]
+        indexMap = ListUtils.calcIndexMap(oldMusics, playlist.musics)
+        self._logger.info("Removing musics at indexes: %s", indexes)
+        self._logger.info("> Signal musicsAboutToBeRemoved emitting...")
+        self.musicsAboutToBeRemoved.emit(indexes)
+        self._logger.info("< Signal musicsAboutToBeRemoved emitted.")
+        self._logger.info("Removing...")
+        for index in sorted(indexes, reverse=True):
+            del playlist.musics[index]
+        self._logger.info("Removed")
+        self._logger.info("Refresh indexes")
+        self.refreshMusicIndexes(indexMap)
         if self._frontPlaylistIndex != self._currentPlaylistIndex:
-            self._logger.info("Deletion not in current playlist, skip")
+            self._logger.info("Deletion not in current playlist, skip resetting")
         else:
             self._logger.info("Reset histories")
             self.resetHistories()
-            self._logger.info("Refresh indexes")
-            self.refreshMusicIndexes(indexMap)
-        self._logger.info("On musics removed done.")
+        self._logger.info("> Signal musicsRemoved emitting...")
+        self.musicsRemoved.emit(indexes, ListUtils.calcIndexMap(oldMusics, playlist.musics))
+        self._logger.info("< Signal musicsRemoved emitted.")
 
-    def refreshMusicIndexes(self, indexMap: typing.Dict[int, int]) -> None:
+    def refreshMusicIndexes(self, indexMap: typing.Mapping[int, int]) -> None:
         self._logger.info("Refreshing indexes")
         refreshedMusicIndex = indexMap.get(self._currentMusicIndex, -1)
         self._logger.info("Refreshed music index: %d", refreshedMusicIndex)

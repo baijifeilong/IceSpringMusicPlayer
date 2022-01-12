@@ -70,6 +70,7 @@ class MainWindow(QtWidgets.QMainWindow):
         player.positionChanged.connect(self.onPlayerPositionChanged)
         player.playlistAdded.connect(self.onPlaylistAdded)
         player.currentMusicIndexChanged.connect(self.onMusicIndexChanged)
+        player.musicsInserted.connect(self.onMusicsInserted)
 
     def initStatusBar(self):
         statusLabel = QtWidgets.QLabel("", self.statusBar())
@@ -139,18 +140,20 @@ class MainWindow(QtWidgets.QMainWindow):
             self.logger.info("Main window refreshed")
 
     def createAndAppendDefaultPlaylist(self):
-        self.logger.info("Create default playlist")
-        placeholderPlaylistTable: PlaylistTable = gg(self.playlistWidget.widget(0), _type=PlaylistTable)
-        playlist = placeholderPlaylistTable.playlist
-        playlist.name = "Playlist 1"
-        self.player.insertPlaylist(playlist)
+        self.player.insertPlaylist(Playlist("Playlist 1"))
 
     def onOpenActionTriggered(self):
+        self.logger.info("On open action triggered")
         musicRoot = str(Path("~/Music").expanduser().absolute())
         filenames = QtWidgets.QFileDialog.getOpenFileNames(
             self, "Open music files", musicRoot, "Audio files (*.mp3 *.wma) ;; All files (*)")[0]
         self.logger.info("There are %d files to open", len(filenames))
         self.addMusicsByFilenames(filenames)
+
+    def onOneKeyAddActionTriggered(self):
+        self.logger.info("On one key add action triggered")
+        paths = Path("~/Music").expanduser().glob("**/*.mp3")
+        self.addMusicsByFilenames([str(x) for x in paths])
 
     def addMusicsByFilenames(self, filenames: typing.List[str]):
         self.logger.info(">> Add musics with count %d", len(filenames))
@@ -161,12 +164,22 @@ class MainWindow(QtWidgets.QMainWindow):
         if len(self.player.getPlaylists()) <= 0:
             self.logger.info("No playlist, create one")
             self.createAndAppendDefaultPlaylist()
-        playlistTable = self.fetchFrontPlaylistTable().orElseThrow(AssertionError)
-        beginRow, endRow = playlistTable.model().insertMusics(musics)
-        playlistTable.selectRowRange(beginRow, endRow)
-        self.app.miniMode and playlistTable.resizeRowsToContents()
-        playlistTable.scrollToRowAtCenter(beginRow)
+        self.logger.info("Inserting musics...")
+        self.player.insertMusics(musics)
+        self.logger.info("Musics inserted.")
         self.logger.info("<< Musics added")
+
+    def onMusicsInserted(self, indexes: typing.List[int]):
+        self.logger.info("On musics inserted with count %d", len(indexes))
+        playlistTable = self.fetchFrontPlaylistTable().orElseThrow(AssertionError)
+        self.logger.info("Notify table new data inserted")
+        playlistTable.model().beginInsertRows(QtCore.QModelIndex(), indexes[0], indexes[-1])
+        playlistTable.model().endInsertRows()
+        self.logger.info("Select inserted rows")
+        playlistTable.selectRowRange(indexes[0], indexes[-1])
+        self.app.miniMode and playlistTable.resizeRowsToContents()
+        self.logger.info("Scroll first inserted row to center")
+        playlistTable.scrollToRowAtCenter(indexes[0])
 
     def initToolbar(self):
         toolbar = self.addToolBar("Toolbar")
@@ -293,7 +306,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.player.getPlaylists().isEmpty():
             assert self.playlistWidget.count() == 0
             self.logger.info("No playlist now, insert placeholder table")
-            self.playlistWidget.addWidget(PlaylistTable(Playlist("Placeholder"), self))
+            placeholderTable = PlaylistTable(self.player, self)
+            placeholderTable.actionAddTriggered.connect(self.onOpenActionTriggered)
+            placeholderTable.actionOneKeyAddTriggered.connect(self.onOneKeyAddActionTriggered)
+            self.playlistWidget.addWidget(placeholderTable)
 
     def removePlaceholderTableIfExists(self) -> None:
         self.logger.info("Remove placeholder table if exists")
@@ -307,13 +323,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.logger.info("On playlist added: %s", playlist.name)
         self.removePlaceholderTableIfExists()
         self.logger.info("Creating playlist table...")
-        playlistTable = PlaylistTable(playlist, self)
-        playlistTable.model().beforeRemoveMusics.connect(self.player.doBeforeRemoveMusics)
-        playlistTable.model().musicsInserted.connect(self.player.onMusicsInserted)
-        playlistTable.model().musicsRemoved.connect(self.player.onMusicsRemoved)
+        playlistTable = PlaylistTable(self.player, self)
+        playlistTable.actionAddTriggered.connect(self.onOpenActionTriggered)
+        playlistTable.actionOneKeyAddTriggered.connect(self.onOneKeyAddActionTriggered)
         self.logger.info("Playlist table created.")
         self.playlistCombo.addItem(playlist.name)
         self.playlistWidget.addWidget(playlistTable)
+        self.logger.warning("%d %d", self.playlistWidget.count(), self.player.getPlaylists().size())
         assert self.playlistWidget.count() == self.player.getPlaylists().size()
         self.logger.info("Playlist table added.")
 

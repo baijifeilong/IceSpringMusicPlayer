@@ -6,45 +6,38 @@ import logging
 import typing
 
 import qtawesome
-from IceSpringPathLib import Path
 from IceSpringRealOptional.maybe import Maybe
 from IceSpringRealOptional.typingUtils import gg
 from IceSpringRealOptional.vector import Vector
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
-from IceSpringMusicPlayer.utils.listUtils import ListUtils
-
-if typing.TYPE_CHECKING:
-    from IceSpringMusicPlayer.domains.music import Music
-    from IceSpringMusicPlayer.domains.playlist import Playlist
-    from IceSpringMusicPlayer.windows.mainWindow import MainWindow
+from IceSpringMusicPlayer.services.player import Player
 
 
 class PlaylistTable(IceTableView):
-    def __init__(self, playlist: Playlist, mainWindow: MainWindow) -> None:
-        super().__init__(mainWindow.playlistWidget)
+    actionAddTriggered: QtCore.SignalInstance = QtCore.Signal()
+    actionOneKeyAddTriggered: QtCore.SignalInstance = QtCore.Signal()
+
+    def __init__(self, player: Player, parent: QtWidgets.QWidget, zoom=1) -> None:
+        super().__init__(parent)
         self.logger = logging.getLogger("playlistTable")
-        self.playlist = playlist
-        self.mainWindow = mainWindow
-        self.app = self.mainWindow.app
-        self.player = self.app.player
-        model = PlaylistModel(playlist, mainWindow)
+        self.player = player
+        model = PlaylistModel(player, self)
         self.setModel(model)
-        self.setColumnWidth(0, int(35 * self.app.zoom))
-        self.setColumnWidth(1, int(150 * self.app.zoom))
-        self.doubleClicked.connect(lambda x: self.onDoubleClicked(x.row()))
-        self.setIconSize(QtCore.QSize(32, 32) * self.app.zoom)
+        self.setColumnWidth(0, int(35 * zoom))
+        self.setColumnWidth(1, int(150 * zoom))
+        self.doubleClicked.connect(self.onDoubleClicked)
+        self.setIconSize(QtCore.QSize(32, 32) * zoom)
         self.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
         self.setSortingEnabled(True)
-        self.viewport().installEventFilter(mainWindow)
 
     def model(self) -> "PlaylistModel":
         return super().model()
 
-    def onDoubleClicked(self, index):
-        self.logger.info(">>> On playlist table double clicked at %d", index)
-        self.player.playMusicAtIndex(index)
+    def onDoubleClicked(self, modelIndex: QtCore.QModelIndex):
+        self.logger.info(">>> On playlist table double clicked at %d", modelIndex.row())
+        self.player.playMusicAtIndex(modelIndex.row())
 
     def scrollToRowAtCenter(self, index):
         self.scrollTo(self.model().index(index, 0), QtWidgets.QTableView.ScrollHint.PositionAtCenter)
@@ -58,47 +51,35 @@ class PlaylistTable(IceTableView):
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         menu = QtWidgets.QMenu()
         menu.addAction("Remove", lambda: self.onRemove(sorted({x.row() for x in self.selectedIndexes()})))
-        menu.addAction("Add", self.mainWindow.onOpenActionTriggered)
-        menu.addAction("Rapid Add", self.rapidAdd)
+        menu.addAction("Add", self.actionAddTriggered.emit)
+        menu.addAction("Rapid Add", self.actionOneKeyAddTriggered.emit)
         menu.exec_(QtGui.QCursor.pos())
-
-    def rapidAdd(self):
-        paths = Path("~/Music").expanduser().glob("**/*.mp3")
-        self.mainWindow.addMusicsByFilenames([str(x) for x in paths])
 
     def onRemove(self, indexes: typing.List[int]):
         self.logger.info("Removing musics at indexes: %s", indexes)
         if not indexes:
             self.logger.info("No music to remove, return.")
             return
-        self.model().removeMusicsAtIndexes(indexes)
+        self.player.removeMusicsAtIndexes(indexes)
 
     def fetchFirstSelectedRow(self) -> Maybe[int]:
         return Vector(self.selectedIndexes()).get(0).map(lambda x: x.row())
 
 
 class PlaylistModel(QtCore.QAbstractTableModel):
-    beforeRemoveMusics: QtCore.SignalInstance = QtCore.Signal(list)
-    musicsInserted: QtCore.SignalInstance = QtCore.Signal(list, dict)
-    musicsRemoved: QtCore.SignalInstance = QtCore.Signal(list, dict)
-
-    def __init__(self, playlist: Playlist, mainWindow: MainWindow,
-            parent: typing.Optional[QtCore.QObject] = None) -> None:
+    def __init__(self, player: Player, parent: QtCore.QObject) -> None:
         super().__init__(parent)
         self._logger = logging.getLogger("playlistModel")
-        self.playlist = playlist
-        self.mainWindow = mainWindow
-        self.app = mainWindow.app
-        self.player = mainWindow.player
+        self.player = player
 
     def rowCount(self, parent: QtCore.QModelIndex = ...) -> int:
-        return len(self.playlist.musics)
+        return self.player.getFrontPlaylist().map(lambda x: x.musics.size()).orElse(0)
 
     def columnCount(self, parent: QtCore.QModelIndex = ...) -> int:
         return 3
 
     def data(self, index: QtCore.QModelIndex, role: int = ...) -> typing.Any:
-        music = self.playlist.musics[index.row()]
+        music = self.player.getFrontPlaylist().orElseThrow(AssertionError).musics[index.row()]
         currentPlaylistIndex = self.player.getCurrentPlaylistIndex()
         frontPlaylistIndex = self.player.getFrontPlaylistIndex()
         currentMusicIndex = self.player.getCurrentMusicIndex()
@@ -106,7 +87,7 @@ class PlaylistModel(QtCore.QAbstractTableModel):
             return ["", music.artist, music.title][index.column()]
         elif role == QtCore.Qt.DecorationRole:
             if index.column() == 0 and index.row() == currentMusicIndex and currentPlaylistIndex == frontPlaylistIndex:
-                playerState = self.app.player.getState()
+                playerState = self.player.getState()
                 return qtawesome.icon("mdi.play") if playerState.isPlaying() else qtawesome.icon(
                     "mdi.pause") if playerState.isPaused() else qtawesome.icon()
 
@@ -116,35 +97,16 @@ class PlaylistModel(QtCore.QAbstractTableModel):
         return super().headerData(section, orientation, role)
 
     def sort(self, column: int, order: QtCore.Qt.SortOrder = ...) -> None:
+        self._logger.info("Sorting...")
         if column == 0:
+            self._logger.info("Column is zero, skip")
             return
-        self.playlist.musics.sort(key=lambda x: x.artist if column == 1 else x.title,
-            reverse=order == QtCore.Qt.DescendingOrder)
+        if self.player.getFrontPlaylist().isAbsent():
+            self._logger.info("No playlist, skip")
+            return
+        self.player.getFrontPlaylist().orElseThrow(AssertionError).musics.sort(
+            key=lambda x: x.artist if column == 1 else x.title, reverse=order == QtCore.Qt.DescendingOrder)
         self.endResetModel()
 
     def notifyDataChangedAtRow(self, row):
         self.dataChanged.emit(self.index(row, 0), self.index(row, 0))
-
-    def insertMusics(self, musics: typing.List[Music]) -> (int, int):
-        oldCount = self.playlist.musics.size()
-        oldMusics = self.playlist.musics[:]
-        self._logger.info("Inserting musics with count %d", len(musics))
-        beginRow, endRow = len(self.playlist.musics), len(self.playlist.musics) + len(musics) - 1
-        self.beginInsertRows(QtCore.QModelIndex(), beginRow, endRow)
-        self.playlist.musics.extend(musics)
-        self.endInsertRows()
-        self._logger.info("Musics inserted")
-        self._logger.info("> musicsInserted signal emitting...")
-        insertedIndexes = [x + oldCount for x in range(len(musics))]
-        self.musicsInserted.emit(insertedIndexes, ListUtils.calcIndexMap(oldMusics, self.playlist.musics))
-        self._logger.info("< musicsInserted signal emitted...")
-        return beginRow, endRow
-
-    def removeMusicsAtIndexes(self, indexes: typing.List[int]) -> None:
-        oldMusics = self.playlist.musics[:]
-        self.beforeRemoveMusics.emit(indexes)
-        for index in sorted(indexes, reverse=True):
-            self.beginRemoveRows(QtCore.QModelIndex(), index, index)
-            del self.playlist.musics[index]
-        self.endRemoveRows()
-        self.musicsRemoved.emit(indexes, ListUtils.calcIndexMap(oldMusics, self.playlist.musics))
