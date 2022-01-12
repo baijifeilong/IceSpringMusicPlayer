@@ -8,7 +8,6 @@ from pathlib import Path
 
 from PySide2 import QtCore, QtGui, QtWidgets
 
-from IceSpringMusicPlayer.domains.playlist import Playlist
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
@@ -25,7 +24,6 @@ class MainWindow(QtWidgets.QMainWindow):
     _playlistTable: PlaylistTable
     _statusLabel: QtWidgets.QLabel
     _playlistCombo: QtWidgets.QComboBox
-    _playlistManagerDialog: PlaylistManagerDialog
     _player: Player
 
     def __init__(self, app: App, player: Player):
@@ -39,18 +37,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._initToolbar()
         self._initLayout()
         self._initStatusBar()
-        self._initPlaylistManagerDialog()
         self._setupPlayer()
-
-    def _initPlaylistManagerDialog(self):
-        playlistsManagerDialog = PlaylistManagerDialog(self._player.getPlaylists(), self)
-        playlistsManagerDialog.playlistManagerTable.model().playlistsRemoved.connect(self._onPlaylistsRemovedAtIndexes)
-        self._playlistManagerDialog = playlistsManagerDialog
 
     def _setupPlayer(self):
         player = self._player
         player.positionChanged.connect(self._onPlayerPositionChanged)
-        player.playlistAdded.connect(self._onPlaylistAdded)
+        player.playlistInserted.connect(self._onPlaylistInserted)
         player.currentMusicIndexChanged.connect(self._onMusicIndexChanged)
 
     def _initStatusBar(self):
@@ -79,8 +71,7 @@ class MainWindow(QtWidgets.QMainWindow):
         fileMenu = self.menuBar().addMenu("File")
         fileMenu.addAction("Open", self._onOpenActionTriggered)
         viewMenu = self.menuBar().addMenu("View")
-        viewMenu.addAction("Playlist Manager",
-            lambda: PlaylistManagerDialog(self._player.getPlaylists(), self).show())
+        viewMenu.addAction("Playlist Manager", lambda: PlaylistManagerDialog(self._player, self).show())
 
     def _onPlaylistComboActivated(self, index: int) -> None:
         self._logger.info("On playlist combo activated at index %d", index)
@@ -95,9 +86,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self._logger.info("Updating playlist combo")
             self._playlistCombo.setCurrentIndex(newIndex)
             self._logger.info("Main window refreshed")
-
-    def createAndAppendDefaultPlaylist(self):
-        self._player.insertPlaylist(Playlist("Playlist 1"))
 
     def _onOpenActionTriggered(self):
         self._logger.info("On open action triggered")
@@ -164,8 +152,9 @@ class MainWindow(QtWidgets.QMainWindow):
         mainSplitter.setSizes([2 ** 31 - 1, 2 ** 31 - 1])
         self._playlistTable = playlistTable
 
-    def _onPlaylistAdded(self, playlist: Playlist) -> None:
-        self._logger.info("On playlist added: %s", playlist.name)
+    def _onPlaylistInserted(self, index: int) -> None:
+        playlist = self._player.getPlaylists()[index]
+        self._logger.info("On playlist inserted: %s", playlist.name)
         self._playlistCombo.addItem(playlist.name)
 
     def _onPlaylistsRemovedAtIndexes(self, indexes: typing.List[int]):

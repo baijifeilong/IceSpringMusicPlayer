@@ -26,7 +26,8 @@ class Player(QtCore.QObject):
     frontPlaylistIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
     currentPlaylistIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
     currentMusicIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
-    playlistAdded: QtCore.SignalInstance = QtCore.Signal(Playlist)
+    playlistInserted: QtCore.SignalInstance = QtCore.Signal(int)
+    playlistsRemoved: QtCore.SignalInstance = QtCore.Signal(list)
     musicsInserted: QtCore.SignalInstance = QtCore.Signal(list, dict)
     musicsAboutToBeRemoved: QtCore.SignalInstance = QtCore.Signal(list)
     musicsRemoved: QtCore.SignalInstance = QtCore.Signal(list, dict)
@@ -143,12 +144,13 @@ class Player(QtCore.QObject):
     def getPlaylists(self) -> Vector[Playlist]:
         return self._playlists
 
-    def insertPlaylist(self, playlist: Playlist) -> None:
+    def insertPlaylist(self) -> int:
+        playlist = Playlist("Playlist {}".format(self._playlists.size() + 1))
         self._logger.info("Adding playlist: %s ...", playlist.name)
         self._playlists.append(playlist)
-        self._logger.info("> Signal playlistAdded emitting...")
-        self.playlistAdded.emit(playlist)
-        self._logger.info("< Signal playlistAdded emitted.")
+        self._logger.info("> Signal playlistInserted emitting...")
+        self.playlistInserted.emit(self._playlists.size() - 1)
+        self._logger.info("< Signal playlistInserted emitted.")
         if self._frontPlaylistIndex == -1:
             self._logger.info("Front playlist index is -1, set to 0")
             self.setFrontPlaylistIndex(0)
@@ -156,6 +158,20 @@ class Player(QtCore.QObject):
             self._logger.info("Current playlist index is -1, set to 0")
             self.setCurrentPlaylistIndex(0)
         self._logger.info("Playlist added.")
+        return self._playlists.size() - 1
+
+    def removePlaylistsAtIndexes(self, indexes: typing.List[int]) -> None:
+        self._logger.info("Removing playlists at indexes: %s", indexes)
+        if self.getCurrentPlaylistIndex() in indexes and self.getState().isPlaying():
+            self._logger.info("Current playlist in removing list, and player is playing, stop it")
+            self.stop()
+        self._logger.info("Removing...")
+        for index in sorted(set(indexes), reverse=True):
+            del self._playlists[index]
+        self._logger.info("Removed.")
+        self._logger.info("> Signal playlistsRemoved emitting...")
+        self.playlistsRemoved.emit(indexes)
+        self._logger.info("< Signal playlistsRemoved emitted.")
 
     def getFrontPlaylistIndex(self) -> int:
         return self._frontPlaylistIndex
@@ -328,7 +344,7 @@ class Player(QtCore.QObject):
         self._logger.info("Inserting musics with count %d", len(musics))
         if self._playlists.isEmpty():
             self._logger.info("No playlist, create one")
-            self.insertPlaylist(Playlist("Playlist One"))
+            self.insertPlaylist()
             self._logger.info("Playlist inserted")
         playlist = self.getFrontPlaylist().orElseThrow(AssertionError)
         oldCount = playlist.musics.size()

@@ -5,82 +5,77 @@ from __future__ import annotations
 import logging
 import typing
 
-from PySide2 import QtCore, QtGui, QtWidgets
+from IceSpringRealOptional.typingUtils import unused
+from PySide2 import QtCore, QtWidgets, QtGui
 
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
-from IceSpringMusicPlayer.domains.playlist import Playlist
-
-if typing.TYPE_CHECKING:
-    from IceSpringMusicPlayer.app import App
-    from IceSpringMusicPlayer.windows.mainWindow import MainWindow
+from IceSpringMusicPlayer.services.player import Player
 
 
 class PlaylistManagerTable(IceTableView):
-    def __init__(self, playlists: typing.List[Playlist], parent: QtWidgets.QWidget) -> None:
+    _logger: logging.Logger
+    _player: Player
+
+    def __init__(self, player: Player, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
-        self.mainWindow: MainWindow = self.parent().parent()
-        self.app: App = self.mainWindow.app
-        self.player = self.app.player
-        self.playlists = playlists
-        self.logger = logging.getLogger("playlistsTable")
-        self.setModel(PlaylistManagerModel(playlists, self))
+        self._logger = logging.getLogger("playlistsTable")
+        self._player = player
+        self.setModel(PlaylistManagerModel(player, self))
         self.setColumnWidth(0, 320)
-        self.doubleClicked.connect(lambda x: self.onDoubleClickedAtRow(x.row()))
+        self.doubleClicked.connect(self._onDoubleClicked)
+        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
+        self._player.playlistInserted.connect(self._onPlaylistInserted)
 
     def model(self) -> PlaylistManagerModel:
         return super().model()
 
-    def onDoubleClickedAtRow(self, row):
-        self.logger.info("On double clicked at row: %d", row)
-        self.player.setFrontPlaylistIndex(row)
+    def _onDoubleClicked(self, modelIndex: QtCore.QModelIndex) -> None:
+        index = modelIndex.row()
+        self._logger.info("On double clicked at row: %d", index)
+        self._player.setFrontPlaylistIndex(index)
 
-    def contextMenuEvent(self, arg__1: QtGui.QContextMenuEvent) -> None:
+    def _onCustomContextMenuRequested(self, position: QtCore.QPoint) -> None:
+        unused(position)
         menu = QtWidgets.QMenu(self)
-        menu.addAction("Create", self.onCreatePlaylist)
-        menu.addAction("Remove", self.onRemovePlaylists)
+        menu.addAction("Create", self._onCreatePlaylist)
+        menu.addAction("Remove", self._onRemovePlaylists)
         menu.exec_(QtGui.QCursor.pos())
 
-    def onCreatePlaylist(self):
-        self.logger.debug("On create playlist")
-        if len(self.playlists) == 0:
-            self.logger.info("No playlist, create default one")
-            self.model().beginInsertRows(QtCore.QModelIndex(), 0, 0)
-            self.mainWindow.createAndAppendDefaultPlaylist()
-            self.model().endInsertRows()
-            return
-        name = "Playlist {}".format(len(self.playlists) + 1)
-        playlist = Playlist(name)
-        self.model().insertPlaylist(playlist)
-        self.player.insertPlaylist(playlist)
+    def _onCreatePlaylist(self):
+        self._logger.debug("On create playlist")
+        self._player.insertPlaylist()
 
-    def onRemovePlaylists(self):
+    def _onPlaylistInserted(self, index: int) -> None:
+        unused(index)
+        self._logger.info("On playlist inserted")
+        self._logger.info("Resetting model")
+        self.model().endResetModel()
+        self._logger.info("Model reset")
+
+    def _onRemovePlaylists(self):
         indexes = sorted({x.row() for x in self.selectedIndexes()})
-        self.logger.info("On remove playlists at indexes: %s", indexes)
-        if not indexes:
-            self.logger.info("No playlists to remove, return.")
-            return
-
-        if self.player.getCurrentPlaylistIndex() in indexes:
-            self.logger.info("Remove playing playlist, stop player first")
-            self.player.stop()
-        self.model().removePlaylistsAtIndexes(indexes)
+        self._logger.info("On remove playlists")
+        self._logger.info(">> Removing playlists at indexes: %s", indexes)
+        self._player.removePlaylistsAtIndexes(indexes)
+        self._logger.info("<< Playlists removed")
 
 
 class PlaylistManagerModel(QtCore.QAbstractTableModel):
-    playlistsRemoved: QtCore.SignalInstance = QtCore.Signal(list)
+    _player: Player
 
-    def __init__(self, playlists: typing.List[Playlist], parent: QtCore.QObject) -> None:
+    def __init__(self, player: Player, parent: QtCore.QObject) -> None:
         super().__init__(parent)
-        self.playlists = playlists
+        self._player = player
 
     def rowCount(self, parent: QtCore.QModelIndex = ...) -> int:
-        return len(self.playlists)
+        return self._player.getPlaylists().size()
 
     def columnCount(self, parent: QtCore.QModelIndex = ...) -> int:
         return 2
 
     def data(self, index: QtCore.QModelIndex, role: int = ...) -> typing.Any:
-        playlist = self.playlists[index.row()]
+        playlist = self._player.getPlaylists()[index.row()]
         if role == QtCore.Qt.DisplayRole:
             if index.column() == 0:
                 return playlist.name
@@ -91,16 +86,3 @@ class PlaylistManagerModel(QtCore.QAbstractTableModel):
         if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
             return ["Name", "Items"][section]
         return super().headerData(section, orientation, role)
-
-    def insertPlaylist(self, playlist):
-        index = len(self.playlists)
-        self.beginInsertRows(QtCore.QModelIndex(), index, index)
-        self.playlists.append(playlist)
-        self.endInsertRows()
-
-    def removePlaylistsAtIndexes(self, indexes: typing.List[int]):
-        for index in sorted(indexes, reverse=True):
-            self.beginRemoveRows(QtCore.QModelIndex(), index, index)
-            del self.playlists[index]
-        self.endRemoveRows()
-        self.playlistsRemoved.emit(indexes)
