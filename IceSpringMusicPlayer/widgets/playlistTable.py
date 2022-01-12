@@ -7,11 +7,12 @@ import typing
 
 import qtawesome
 from IceSpringRealOptional.maybe import Maybe
-from IceSpringRealOptional.typingUtils import gg
+from IceSpringRealOptional.typingUtils import gg, unused
 from IceSpringRealOptional.vector import Vector
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
+from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.services.player import Player
 
 
@@ -31,6 +32,9 @@ class PlaylistTable(IceTableView):
         self.setIconSize(QtCore.QSize(32, 32) * zoom)
         self.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
         self.setSortingEnabled(True)
+        self.player.stateChanged.connect(self.onPlayerStateChanged)
+        self.player.currentMusicIndexChanged.connect(self.onMusicIndexChanged)
+        self.player.musicsInserted.connect(self.onMusicsInserted)
 
     def model(self) -> "PlaylistModel":
         return super().model()
@@ -64,6 +68,28 @@ class PlaylistTable(IceTableView):
 
     def fetchFirstSelectedRow(self) -> Maybe[int]:
         return Vector(self.selectedIndexes()).get(0).map(lambda x: x.row())
+
+    def onMusicsInserted(self, indexes: typing.List[int]):
+        self.logger.info("On musics inserted with count %d", len(indexes))
+        self.logger.info("Notify table new data inserted")
+        self.model().beginInsertRows(QtCore.QModelIndex(), indexes[0], indexes[-1])
+        self.model().endInsertRows()
+        self.logger.info("Select inserted rows")
+        self.selectRowRange(indexes[0], indexes[-1])
+        self.resizeRowsToContents()
+        self.logger.info("Scroll first inserted row to center")
+        self.scrollToRowAtCenter(indexes[0])
+
+    def onMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
+        self.logger.info("Refresh playlist table")
+        self.model().notifyDataChangedAtRow(oldIndex)
+        self.model().notifyDataChangedAtRow(newIndex)
+        self.logger.info("Select played item in playlist table")
+        self.selectRow(newIndex)
+
+    def onPlayerStateChanged(self, state: PlayerState) -> None:
+        unused(state)
+        self.model().notifyDataChangedAtRow(self.player.getCurrentMusicIndex())
 
 
 class PlaylistModel(QtCore.QAbstractTableModel):

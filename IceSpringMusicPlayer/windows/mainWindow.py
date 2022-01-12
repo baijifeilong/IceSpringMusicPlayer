@@ -69,7 +69,6 @@ class MainWindow(QtWidgets.QMainWindow):
         player.positionChanged.connect(self.onPlayerPositionChanged)
         player.playlistAdded.connect(self.onPlaylistAdded)
         player.currentMusicIndexChanged.connect(self.onMusicIndexChanged)
-        player.musicsInserted.connect(self.onMusicsInserted)
 
     def initStatusBar(self):
         statusLabel = QtWidgets.QLabel("", self.statusBar())
@@ -142,24 +141,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if not musics:
             self.logger.info("No music file to open, return")
             return
-        if len(self.player.getPlaylists()) <= 0:
-            self.logger.info("No playlist, create one")
-            self.createAndAppendDefaultPlaylist()
         self.logger.info("Inserting musics...")
         self.player.insertMusics(musics)
         self.logger.info("Musics inserted.")
         self.logger.info("<< Musics added")
-
-    def onMusicsInserted(self, indexes: typing.List[int]):
-        self.logger.info("On musics inserted with count %d", len(indexes))
-        self.logger.info("Notify table new data inserted")
-        self.playlistTable.model().beginInsertRows(QtCore.QModelIndex(), indexes[0], indexes[-1])
-        self.playlistTable.model().endInsertRows()
-        self.logger.info("Select inserted rows")
-        self.playlistTable.selectRowRange(indexes[0], indexes[-1])
-        self.app.miniMode and self.playlistTable.resizeRowsToContents()
-        self.logger.info("Scroll first inserted row to center")
-        self.playlistTable.scrollToRowAtCenter(indexes[0])
 
     def initToolbar(self):
         toolbar = self.addToolBar("Toolbar")
@@ -353,11 +338,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.logger.info("Current music: %s", currentMusic)
         self.logger.info("Update window title")
         self.setWindowTitle(Path(currentMusic.filename).with_suffix("").name)
-        self.logger.info("Refresh playlist table")
-        self.playlistTable.model().notifyDataChangedAtRow(oldIndex)
-        self.playlistTable.model().notifyDataChangedAtRow(newIndex)
-        self.logger.info("Select played item in playlist table")
-        self.playlistTable.selectRow(newIndex)
         self.logger.info("Setup lyrics")
         self.setupLyrics()
         self.logger.info("Update status label")
@@ -392,8 +372,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.logger.info("Player state changed: %s ", state)
         self.logger.info("Update play button icon")
         self.playButton.setIcon(qtawesome.icon("mdi.pause" if state.isPlaying() else "mdi.play"))
-        self.logger.info("Update playlist table icon")
-        self.playlistTable.model().notifyDataChangedAtRow(self.player.getCurrentMusicIndex())
 
     def setupLyrics(self):
         self.lyricsLogger.info(">> Setting up lyrics...")

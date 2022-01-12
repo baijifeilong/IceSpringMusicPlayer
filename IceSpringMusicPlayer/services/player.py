@@ -317,11 +317,15 @@ class Player(QtCore.QObject):
             self.stop()
 
     def insertMusics(self, musics: typing.List[Music]) -> None:
+        self._logger.info("Inserting musics with count %d", len(musics))
+        if self._playlists.isEmpty():
+            self._logger.info("No playlist, create one")
+            self.insertPlaylist(Playlist("Playlist One"))
+            self._logger.info("Playlist inserted")
         playlist = self.getFrontPlaylist().orElseThrow(AssertionError)
         oldCount = playlist.musics.size()
         oldMusics = playlist.musics[:]
         indexMap = ListUtils.calcIndexMap(oldMusics, playlist.musics)
-        self._logger.info("Inserting musics with count %d", len(musics))
         self._logger.info("Inserting...")
         playlist.musics.extend(musics)
         self._logger.info("Inserted")
