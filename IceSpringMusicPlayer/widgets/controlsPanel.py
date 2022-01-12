@@ -25,34 +25,34 @@ class ControlsPanel(QtWidgets.QWidget):
         self._logger = logging.getLogger("controlsPanel")
         self._player = player
         self._zoom = zoom
-        player.currentMusicIndexChanged.connect(self.onCurrentMusicIndexChanged)
-        player.stateChanged.connect(self.onPlayerStateChanged)
-        player.durationChanged.connect(self.onPlayerDurationChanged)
-        player.positionChanged.connect(self.onPlayerPositionChanged)
+        player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
+        player.stateChanged.connect(self._onPlayerStateChanged)
+        player.durationChanged.connect(self._onPlayerDurationChanged)
+        player.positionChanged.connect(self._onPlayerPositionChanged)
         layout = QtWidgets.QHBoxLayout(self)
         layout.setSpacing(5)
         playButton = QtWidgets.QToolButton(self)
         playButton.setIcon(qtawesome.icon("mdi.play"))
-        playButton.clicked.connect(self.onPlayButtonClicked)
+        playButton.clicked.connect(self._onPlayButtonClicked)
         stopButton = QtWidgets.QToolButton(self)
         stopButton.setIcon(qtawesome.icon("mdi.stop"))
-        stopButton.clicked.connect(self.onStopButtonClicked)
+        stopButton.clicked.connect(self._onStopButtonClicked)
         previousButton = QtWidgets.QToolButton(self)
         previousButton.setIcon(qtawesome.icon("mdi.step-backward"))
-        previousButton.clicked.connect(self.onPlayPreviousButtonClicked)
+        previousButton.clicked.connect(self._onPlayPreviousButtonClicked)
         nextButton = QtWidgets.QToolButton(self)
         nextButton.setIcon(qtawesome.icon("mdi.step-forward"))
-        nextButton.clicked.connect(self.onPlayNextButtonClicked)
+        nextButton.clicked.connect(self._onPlayNextButtonClicked)
         playbackButton = QtWidgets.QToolButton(self)
         playbackButton.setIcon(qtawesome.icon("mdi.repeat"))
-        playbackButton.clicked.connect(self.onPlaybackButtonClicked)
+        playbackButton.clicked.connect(self._onPlaybackButtonClicked)
         iconSize = QtCore.QSize(48, 48) * zoom
         for button in playButton, stopButton, previousButton, nextButton, playbackButton:
             button.setIconSize(iconSize)
             button.setAutoRaise(True)
         progressSlider = FluentSlider(QtCore.Qt.Orientation.Horizontal, self)
         progressSlider.setDisabled(True)
-        progressSlider.valueChanged.connect(self.onProgressSliderValueChanged)
+        progressSlider.valueChanged.connect(self._onProgressSliderValueChanged)
         progressLabel = QtWidgets.QLabel("00:00/00:00", self)
         volumeDial = QtWidgets.QDial(self)
         volumeDial.setFixedSize(iconSize)
@@ -71,19 +71,19 @@ class ControlsPanel(QtWidgets.QWidget):
         self._progressSlider = progressSlider
         self._progressLabel = progressLabel
 
-    def onProgressSliderValueChanged(self, value: int) -> None:
+    def _onProgressSliderValueChanged(self, value: int) -> None:
         self._logger.info("On progress slider value changed: %d", value)
         self._player.setPosition(value)
 
-    def onPlayNextButtonClicked(self) -> None:
+    def _onPlayNextButtonClicked(self) -> None:
         self._logger.info("On play next button clicked")
         self._player.playNext()
 
-    def onPlayPreviousButtonClicked(self) -> None:
+    def _onPlayPreviousButtonClicked(self) -> None:
         self._logger.info("On play previous button clicked")
         self._player.playPrevious()
 
-    def onPlayButtonClicked(self):
+    def _onPlayButtonClicked(self):
         logging.info("On play button clicked")
         if self._player.getState().isPlaying():
             logging.info("Player is playing, pause it")
@@ -92,7 +92,7 @@ class ControlsPanel(QtWidgets.QWidget):
             logging.info("Player is paused, resume it")
             self._player.play()
 
-    def onStopButtonClicked(self):
+    def _onStopButtonClicked(self):
         self._logger.info("On stop button clicked")
         if self._player.getState().isStopped():
             self._logger.info("Already stopped")
@@ -100,14 +100,14 @@ class ControlsPanel(QtWidgets.QWidget):
             self._logger.info("Stop playing")
             self._player.stop()
 
-    def onPlaybackButtonClicked(self):
+    def _onPlaybackButtonClicked(self):
         self._logger.info("On playback button clicked")
         self._player.setPlaybackMode(self._player.getPlaybackMode().next())
         newPlaybackMode = self._player.getPlaybackMode()
         newIconName = dict(LOOP="mdi.repeat", RANDOM="mdi.shuffle")[newPlaybackMode.name]
         self._playbackButton.setIcon(qtawesome.icon(newIconName))
 
-    def onCurrentMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
+    def _onCurrentMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
         if oldIndex == -1 and newIndex != -1:
             self._logger.info("Enter playing")
             self._logger.info("Enable progress slider")
@@ -121,17 +121,17 @@ class ControlsPanel(QtWidgets.QWidget):
             self._logger.info("Reset progress label")
             self._progressLabel.setText("00:00/00:00")
 
-    def onPlayerStateChanged(self, state: PlayerState):
+    def _onPlayerStateChanged(self, state: PlayerState):
         self._logger.info("Player state changed: %s ", state)
         self._logger.info("Update play button icon")
         self._playButton.setIcon(qtawesome.icon("mdi.pause" if state.isPlaying() else "mdi.play"))
 
-    def onPlayerDurationChanged(self, duration: int) -> None:
+    def _onPlayerDurationChanged(self, duration: int) -> None:
         self._logger.info("Player duration changed: %d", duration)
         self._logger.info("Update progress slider max value")
         self._progressSlider.setMaximum(duration)
 
-    def onPlayerPositionChanged(self, position):
+    def _onPlayerPositionChanged(self, position):
         if self._player.getState().isStopped():
             self._logger.info("Player has been stopped, skip")
             return
