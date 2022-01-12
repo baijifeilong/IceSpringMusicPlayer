@@ -43,8 +43,7 @@ class PlaylistTable(IceTableView):
 
     def onDoubleClicked(self, index):
         self.logger.info(">>> On playlist table double clicked at %d", index)
-        frontPlaylistIndex = self.mainWindow.fetchFrontPlaylistIndex()
-        self.player.playMusicAtPlaylistAndIndex(frontPlaylistIndex, index)
+        self.player.playMusicAtIndex(index)
 
     def scrollToRowAtCenter(self, index):
         self.scrollTo(self.model().index(index, 0), QtWidgets.QTableView.ScrollHint.PositionAtCenter)
@@ -100,7 +99,7 @@ class PlaylistModel(QtCore.QAbstractTableModel):
     def data(self, index: QtCore.QModelIndex, role: int = ...) -> typing.Any:
         music = self.playlist.musics[index.row()]
         currentPlaylistIndex = self.player.fetchCurrentPlaylistIndex()
-        frontPlaylistIndex = self.mainWindow.fetchFrontPlaylistIndex()
+        frontPlaylistIndex = self.player.fetchFrontPlaylistIndex()
         currentMusicIndex = self.player.fetchCurrentMusicIndex()
         if role == QtCore.Qt.DisplayRole:
             return ["", music.artist, music.title][index.column()]

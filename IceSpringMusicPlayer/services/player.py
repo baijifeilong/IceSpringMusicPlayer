@@ -23,6 +23,7 @@ if typing.TYPE_CHECKING:
 
 
 class Player(QtCore.QObject):
+    frontPlaylistIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
     currentPlaylistIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
     currentMusicIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
     playlistAdded: QtCore.SignalInstance = QtCore.Signal(Playlist)
@@ -35,6 +36,7 @@ class Player(QtCore.QObject):
     _currentPlaylistIndex: int
     _histories: Dict[int, int]
     _historyPosition: int
+    _frontPlaylistIndex: int
     _currentMusicIndex: int
     _proxy: QtMultimedia.QMediaPlayer
     _playedCount: int
@@ -47,6 +49,7 @@ class Player(QtCore.QObject):
         self._currentPlaylistIndex = -1
         self._histories = dict()
         self._historyPosition = -1
+        self._frontPlaylistIndex = -1
         self._currentMusicIndex = -1
         self._playedCount = 0
         self._proxy = QtMultimedia.QMediaPlayer(self)
@@ -135,23 +138,48 @@ class Player(QtCore.QObject):
         self._logger.info("> Signal playlistAdded emitting...")
         self.playlistAdded.emit(playlist)
         self._logger.info("< Signal playlistAdded emitted.")
+        if self._frontPlaylistIndex == -1:
+            self._logger.info("Front playlist index is -1, set to 0")
+            self.setFrontPlaylistAtIndex(0)
         if self._currentPlaylistIndex == -1:
             self._logger.info("Current playlist index is -1, set to 0")
             self.setCurrentPlaylistAtIndex(0)
         self._logger.info("Playlist added.")
 
+    def fetchFrontPlaylistIndex(self) -> int:
+        return self._frontPlaylistIndex
+
+    def fetchFrontPlaylist(self) -> Maybe[Playlist]:
+        if self._frontPlaylistIndex < 0:
+            return Maybe.empty()
+        return Maybe.of(self._playlists[self._frontPlaylistIndex])
+
+    def setFrontPlaylistAtIndex(self, index: int) -> None:
+        assert 0 <= index < len(self._playlists)
+        oldFrontPlaylistIndex = self._frontPlaylistIndex
+        self._logger.info("Set front playlist at index: %d => %d", oldFrontPlaylistIndex, index)
+        if index == oldFrontPlaylistIndex:
+            self._logger.info("No change, skip")
+            return
+        self._frontPlaylistIndex = index
+        self._logger.info("> Signal frontPlaylistIndexChanged emitting...")
+        self.currentPlaylistIndexChanged.emit(oldFrontPlaylistIndex, index)
+        self._logger.info("< Signal frontPlaylistIndexChanged emitted...")
+
     def setCurrentPlaylistAtIndex(self, index: int) -> None:
         assert 0 <= index < len(self._playlists)
         oldPlaylistIndex = self._currentPlaylistIndex
+        self._logger.info("Set current playlist at index: %d => %d", oldPlaylistIndex, index)
         if index == oldPlaylistIndex:
+            self._logger.info("No change, skip")
             return
-        self._logger.info("Update current playlist index: %d => %d", oldPlaylistIndex, index)
         self._currentPlaylistIndex = index
+        self._logger.info("> Signal currentPlaylistIndexChanged emitting...")
+        self.currentPlaylistIndexChanged.emit(oldPlaylistIndex, index)
+        self._logger.info("< Signal currentPlaylistIndexChanged emitted...")
         self._logger.info("Reset histories")
         self.resetHistories()
-        self._logger.info("> Signal playlistIndexChanged emitting...")
-        self.currentPlaylistIndexChanged.emit(oldPlaylistIndex, index)
-        self._logger.info("< Signal playlistIndexChanged emitted...")
+        self._logger.info("Histories reset")
 
     def fetchCurrentPlaylistIndex(self) -> int:
         return self._currentPlaylistIndex
@@ -197,36 +225,40 @@ class Player(QtCore.QObject):
 
     def playMusicAtIndex(self, musicIndex: int) -> None:
         self._logger.info("Play music at index: %d", musicIndex)
+        self._logger.info("Set current playlist to front")
+        self.setCurrentPlaylistAtIndex(self._frontPlaylistIndex)
+        self._logger.info("Update play history at relative position %d (+1)", musicIndex)
         self._updatePlayHistoryAtRelativePosition(musicIndex, 1)
+        self._logger.info("Play music at index %d", musicIndex)
         self._doPlayMusicAtIndex(musicIndex)
-
-    def playMusicAtPlaylistAndIndex(self, playlistIndex: int, musicIndex: int) -> None:
-        self._logger.info("Play music at playlist %d and index %d", playlistIndex, musicIndex)
-        self.setCurrentPlaylistAtIndex(playlistIndex)
-        self.playMusicAtIndex(musicIndex)
 
     def playPrevious(self):
         self._logger.info("Play previous")
+        if self.fetchState().isStopped():
+            self._logger.info("Player stopped, set current playlist to front")
+            self.setCurrentPlaylistAtIndex(self._frontPlaylistIndex)
         previousMusicIndex = self._calcPreviousMusicIndex()
-        assert previousMusicIndex >= 0
+        if previousMusicIndex == -1:
+            self._logger.info("Calculated previous music index -1, no music to play, skip")
+            return
+        self._logger.info("Update play history at relative position %d (-1)", previousMusicIndex)
         self._updatePlayHistoryAtRelativePosition(previousMusicIndex, -1)
+        self._logger.info("Play music at index %d", previousMusicIndex)
         self._doPlayMusicAtIndex(previousMusicIndex)
 
     def playNext(self):
         self._logger.info("Play next")
+        if self.fetchState().isStopped():
+            self._logger.info("Player stopped, set current playlist to front")
+            self.setCurrentPlaylistAtIndex(self._frontPlaylistIndex)
         nextMusicIndex = self._calcNextMusicIndex()
+        if nextMusicIndex == -1:
+            self._logger.info("Calculated next music index is -1, no music to play, skip")
+            return
+        self._logger.info("Update play history at relative position %d (+1)", nextMusicIndex)
         self._updatePlayHistoryAtRelativePosition(nextMusicIndex, 1)
+        self._logger.info("Play music at index %d", nextMusicIndex)
         self._doPlayMusicAtIndex(nextMusicIndex)
-
-    def playNextAtPlaylist(self, playlistIndex: int) -> None:
-        self._logger.info("Play next at playlist: %d", playlistIndex)
-        self.setCurrentPlaylistAtIndex(playlistIndex)
-        self.playNext()
-
-    def playPreviousAtPlaylist(self, playlistIndex: int) -> None:
-        self._logger.info("Play previous at playlist: %d", playlistIndex)
-        self.setCurrentPlaylistAtIndex(playlistIndex)
-        self.playPrevious()
 
     def _updatePlayHistoryAtRelativePosition(self, musicIndex: int, relativePosition: int) -> None:
         self._historyPosition += relativePosition

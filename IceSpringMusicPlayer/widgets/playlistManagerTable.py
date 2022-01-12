@@ -32,7 +32,7 @@ class PlaylistManagerTable(IceTableView):
 
     def onDoubleClickedAtRow(self, row):
         self.logger.info("On double clicked at row: %d", row)
-        self.mainWindow.setFrontPlaylistAtIndex(row)
+        self.player.setFrontPlaylistAtIndex(row)
 
     def contextMenuEvent(self, arg__1: QtGui.QContextMenuEvent) -> None:
         menu = QtWidgets.QMenu(self)

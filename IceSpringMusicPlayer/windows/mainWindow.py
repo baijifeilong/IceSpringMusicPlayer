@@ -19,7 +19,7 @@ from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.layoutUtils import LayoutUtils
 from IceSpringMusicPlayer.utils.lyricUtils import LyricUtils
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
-from IceSpringMusicPlayer.utils.timeDeltaUtils import TimeDeltaUtils
+from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
 from IceSpringMusicPlayer.windows.playlistManagerDialog import PlaylistManagerDialog
 
@@ -42,7 +42,6 @@ class MainWindow(QtWidgets.QMainWindow):
     statusLabel: QtWidgets.QLabel
     playlistCombo: QtWidgets.QComboBox
     playlistsDialog: PlaylistManagerDialog
-    _frontPlaylistIndex: int
     player: Player
 
     def __init__(self, app: App, player: Player):
@@ -62,7 +61,6 @@ class MainWindow(QtWidgets.QMainWindow):
         playlistsDialog = PlaylistManagerDialog(self.player.fetchAllPlaylists(), self)
         playlistsDialog.playlistManagerTable.model().playlistsRemoved.connect(self.onPlaylistsRemovedAtIndexes)
         self.playlistsDialog = playlistsDialog
-        self._frontPlaylistIndex = -1
         self.setupPlayer()
 
     def setupPlayer(self):
@@ -111,18 +109,11 @@ class MainWindow(QtWidgets.QMainWindow):
         return Maybe.of(gg(currentPlaylistTable, _type=PlaylistTable))
 
     def fetchFrontPlaylistTable(self) -> Maybe[PlaylistTable]:
-        if self._frontPlaylistIndex < 0:
+        frontPlaylistIndex = self.player.fetchFrontPlaylistIndex()
+        if frontPlaylistIndex < 0:
             return Maybe.empty()
-        frontPlaylistTable = self.playlistWidget.widget(self._frontPlaylistIndex)
+        frontPlaylistTable = self.playlistWidget.widget(frontPlaylistIndex)
         return Maybe.of(gg(frontPlaylistTable, _type=PlaylistTable))
-
-    def fetchFrontPlaylistIndex(self) -> int:
-        return self._frontPlaylistIndex
-
-    def fetchFrontPlaylist(self) -> Maybe[Playlist]:
-        if self._frontPlaylistIndex < 0:
-            return Maybe.empty()
-        return Maybe.of(self.player.fetchAllPlaylists()[self._frontPlaylistIndex])
 
     def initMenu(self):
         fileMenu = self.menuBar().addMenu("File")
@@ -131,20 +122,21 @@ class MainWindow(QtWidgets.QMainWindow):
         viewMenu.addAction("Playlist Manager",
             lambda: PlaylistManagerDialog(self.player.fetchAllPlaylists(), self).show())
 
-    def setFrontPlaylistAtIndex(self, index: int) -> None:
-        self.logger.info("Setting front playlist at index %d", index)
-        assert index >= 0
-        self._frontPlaylistIndex = index
-        self.logger.info("Updating playlist combo")
-        self.playlistCombo.setCurrentIndex(index)
-        self.logger.info("Updating playlist widget")
-        self.playlistWidget.setCurrentIndex(index)
-        self.logger.info("Front playlist set to index %d", index)
+    def onPlaylistComboActivated(self, index: int) -> None:
+        self.logger.info("On playlist combo activated at index %d", index)
+        self.player.setFrontPlaylistAtIndex(index)
 
-    def onCurrentPlaylistIndexChanged(self, oldIndex: int, newIndex: int) -> None:
-        if oldIndex == -1:
-            assert newIndex >= 0
-            self.setFrontPlaylistAtIndex(newIndex)
+    def onFrontPlaylistChangedAtIndex(self, oldIndex: int, newIndex: int) -> None:
+        self.logger.info("On front playlist changed at index: %d => %d", oldIndex, newIndex)
+        if newIndex == -1:
+            self.logger.info("Front playlist set to index -1, skip")
+        else:
+            self.logger.info("Front playlist set to index %d, refreshing main window", newIndex)
+            self.logger.info("Updating playlist combo")
+            self.playlistCombo.setCurrentIndex(newIndex)
+            self.logger.info("Updating playlist widget")
+            self.playlistWidget.setCurrentIndex(newIndex)
+            self.logger.info("Main window refreshed")
 
     def createAndAppendDefaultPlaylist(self):
         self.logger.info("Create default playlist")
@@ -181,7 +173,7 @@ class MainWindow(QtWidgets.QMainWindow):
         toolbar.setMovable(False)
         playlistCombo = QtWidgets.QComboBox(toolbar)
         playlistCombo.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents)
-        playlistCombo.activated.connect(self.setFrontPlaylistAtIndex)
+        playlistCombo.activated.connect(self.onPlaylistComboActivated)
         toolbar.addWidget(QtWidgets.QLabel("Playlist: ", toolbar))
         toolbar.addWidget(playlistCombo)
         self.toolbar = toolbar
@@ -324,9 +316,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.playlistWidget.addWidget(playlistTable)
         assert self.playlistWidget.count() == self.player.fetchAllPlaylists().size()
         self.logger.info("Playlist table added.")
-        if self._frontPlaylistIndex == -1:
-            self.logger.info("Front playlist index is -1, setting to 0...")
-            self.setFrontPlaylistAtIndex(0)
 
     def onPlaylistsRemovedAtIndexes(self, indexes: typing.List[int]):
         self.logger.info("On playlist removed: %s", indexes)
@@ -343,23 +332,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onPlayNextButtonClicked(self) -> None:
         self.logger.info("On play next button clicked")
-        if self.fetchFrontPlaylist().isAbsent():
-            self.logger.info("No playlist to play")
-        elif self.fetchFrontPlaylist().get().musics.isEmpty():
-            self.logger.info("No music to play")
-        else:
-            self.logger.info("Play next at front playlist")
-            self.player.playNextAtPlaylist(self._frontPlaylistIndex)
+        self.player.playNext()
 
     def onPlayPreviousButtonClicked(self) -> None:
         self.logger.info("On play previous button clicked")
-        if self.fetchFrontPlaylist().isAbsent():
-            self.logger.info("No playlist to play")
-        elif self.fetchFrontPlaylist().get().musics.isEmpty():
-            self.logger.info("No music to play")
-        else:
-            self.logger.info("Play previous at front playlist")
-            self.player.playPreviousAtPlaylist(self._frontPlaylistIndex)
+        self.player.playPrevious()
 
     def onPlayButtonClicked(self):
         logging.info("On play button clicked")
@@ -370,16 +347,12 @@ class MainWindow(QtWidgets.QMainWindow):
         elif self.player.fetchState().isPaused():
             logging.info("Player is paused, play it")
             self.player.play()
-        elif self.fetchFrontPlaylist().isAbsent():
-            self.logger.info("No playlist to play")
-        elif self.fetchFrontPlaylist().get().musics.isEmpty():
-            self.logger.info("No music to play")
         elif selectedMaybe.isPresent():
             self.logger.info("Play selected music")
-            self.player.playMusicAtPlaylistAndIndex(self._frontPlaylistIndex, selectedMaybe.get())
+            self.player.playMusicAtIndex(selectedMaybe.get())
         else:
             self.logger.info("Play next music")
-            self.player.playNextAtPlaylist(self._frontPlaylistIndex)
+            self.player.playNext()
 
     def onStopButtonClicked(self):
         self.logger.info("On stop button clicked")
@@ -437,7 +410,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.progressSlider.setValue(position)
         self.progressSlider.blockSignals(False)
         duration = self.player.fetchDuration()
-        progressText = f"{TimeDeltaUtils.formatDelta(position)}/{TimeDeltaUtils.formatDelta(duration)}"
+        progressText = f"{TimedeltaUtils.formatDelta(position)}/{TimedeltaUtils.formatDelta(duration)}"
         self.positionLogger.debug("Update progress label")
         self.progressLabel.setText(progressText)
         currentMusic = self.player.fetchCurrentMusic().orElseThrow(AssertionError)

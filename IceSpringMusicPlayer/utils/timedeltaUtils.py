@@ -1,6 +1,6 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/9 11:47
 
-class TimeDeltaUtils(object):
+class TimedeltaUtils(object):
     @staticmethod
     def formatDelta(milliseconds) -> str:
         seconds = int(milliseconds) // 1000
