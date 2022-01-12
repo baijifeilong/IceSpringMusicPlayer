@@ -305,33 +305,44 @@ class Player(QtCore.QObject):
         currentMusic = self.fetchCurrentMusic().orElseThrow(AssertionError)
         return self._proxy.duration() / currentMusic.duration
 
-    def doBeforeRemoveMusics(self, playlistIndex: int, indexes: typing.List[int]):
+    def doBeforeRemoveMusics(self, indexes: typing.List[int]):
         self._logger.info("Do before musics remove")
+        frontPlaylistIndex = self.fetchFrontPlaylistIndex()
         currentPlaylistIndex = self.fetchCurrentPlaylistIndex()
         currentMusicIndex = self.fetchCurrentMusicIndex()
-        if playlistIndex != currentPlaylistIndex:
+        if frontPlaylistIndex != currentPlaylistIndex:
             self._logger.info("Removed musics not in current playlist, skip")
-            return
-        if currentMusicIndex in indexes:
+        elif currentMusicIndex in indexes:
             self._logger.info("Playing music in removed musics, stop it")
             self.stop()
 
-    def onMusicsInserted(self, playlistIndex: int, indexes: typing.List[int]):
+    def onMusicsInserted(self, indexes: typing.List[int], indexMap: typing.Dict[int, int]):
         self._logger.info("On musics inserted.")
-        unused(playlistIndex, indexes)
-        self.resetHistories()
+        unused(indexes)
+        if self._frontPlaylistIndex != self._currentPlaylistIndex:
+            self._logger.info("Insertion not in current playlist, skip")
+        else:
+            self._logger.info("Reset histories")
+            self.resetHistories()
+            self._logger.info("Refresh indexes")
+            self.refreshIndexes(indexMap)
         self._logger.info("On musics inserted done.")
 
-    def onMusicsRemoved(self, playlistIndex: int, indexes: typing.List[int], indexMap: typing.Dict[int, int]):
+    def onMusicsRemoved(self, indexes: typing.List[int], indexMap: typing.Dict[int, int]):
         self._logger.info("On musics removed.")
-        unused(playlistIndex, indexes)
-        if self._currentMusicIndex == -1:
-            self._logger.info("Current music index is -1, skip refresh")
+        unused(indexes)
+        if self._frontPlaylistIndex != self._currentPlaylistIndex:
+            self._logger.info("Deletion not in current playlist, skip")
         else:
-            self._logger.info("Current music index: %d, refreshing...", self._currentMusicIndex)
-            refreshedMusicIndex = indexMap.get(self._currentMusicIndex)
-            self._logger.info("Refreshed music index: %d", refreshedMusicIndex)
-            self._currentMusicIndex = refreshedMusicIndex
-            self._logger.info("Current music index updated to %d", self._currentMusicIndex)
-        self.resetHistories()
+            self._logger.info("Reset histories")
+            self.resetHistories()
+            self._logger.info("Refresh indexes")
+            self.refreshIndexes(indexMap)
         self._logger.info("On musics removed done.")
+
+    def refreshIndexes(self, indexMap: typing.Dict[int, int]) -> None:
+        self._logger.info("Refreshing indexes")
+        refreshedMusicIndex = indexMap.get(self._currentMusicIndex, -1)
+        self._logger.info("Refreshed music index: %d", refreshedMusicIndex)
+        self._currentMusicIndex = refreshedMusicIndex
+        self._logger.info("Current music index updated to %d", self._currentMusicIndex)

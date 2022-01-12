@@ -13,6 +13,7 @@ from IceSpringRealOptional.vector import Vector
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
+from IceSpringMusicPlayer.utils.listUtils import ListUtils
 
 if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.domains.music import Music
@@ -77,9 +78,9 @@ class PlaylistTable(IceTableView):
 
 
 class PlaylistModel(QtCore.QAbstractTableModel):
-    beforeRemoveMusics: QtCore.SignalInstance = QtCore.Signal(int, list)
-    musicsInserted: QtCore.SignalInstance = QtCore.Signal(int, list)
-    musicsRemoved: QtCore.SignalInstance = QtCore.Signal(int, list, dict)
+    beforeRemoveMusics: QtCore.SignalInstance = QtCore.Signal(list)
+    musicsInserted: QtCore.SignalInstance = QtCore.Signal(list, dict)
+    musicsRemoved: QtCore.SignalInstance = QtCore.Signal(list, dict)
 
     def __init__(self, playlist: Playlist, mainWindow: MainWindow,
             parent: typing.Optional[QtCore.QObject] = None) -> None:
@@ -125,6 +126,8 @@ class PlaylistModel(QtCore.QAbstractTableModel):
         self.dataChanged.emit(self.index(row, 0), self.index(row, 0))
 
     def insertMusics(self, musics: typing.List[Music]) -> (int, int):
+        oldCount = self.playlist.musics.size()
+        oldMusics = self.playlist.musics[:]
         self._logger.info("Inserting musics with count %d", len(musics))
         beginRow, endRow = len(self.playlist.musics), len(self.playlist.musics) + len(musics) - 1
         self.beginInsertRows(QtCore.QModelIndex(), beginRow, endRow)
@@ -132,18 +135,16 @@ class PlaylistModel(QtCore.QAbstractTableModel):
         self.endInsertRows()
         self._logger.info("Musics inserted")
         self._logger.info("> musicsInserted signal emitting...")
-        self.musicsInserted.emit(self.player.calcPlaylistIndex(self.playlist), [])
+        insertedIndexes = [x + oldCount for x in range(len(musics))]
+        self.musicsInserted.emit(insertedIndexes, ListUtils.calcIndexMap(oldMusics, self.playlist.musics))
         self._logger.info("< musicsInserted signal emitted...")
         return beginRow, endRow
 
     def removeMusicsAtIndexes(self, indexes: typing.List[int]) -> None:
-        self.beforeRemoveMusics.emit(self.player.calcPlaylistIndex(self.playlist), indexes)
         oldMusics = self.playlist.musics[:]
+        self.beforeRemoveMusics.emit(indexes)
         for index in sorted(indexes, reverse=True):
             self.beginRemoveRows(QtCore.QModelIndex(), index, index)
             del self.playlist.musics[index]
         self.endRemoveRows()
-        oldIndexToMusic = {index: music for index, music in enumerate(oldMusics)}
-        musicToNewIndex = {music: index for index, music in enumerate(self.playlist.musics)}
-        oldIndexToNewIndex = {index: musicToNewIndex.get(oldIndexToMusic[index], -1) for index in range(len(oldMusics))}
-        self.musicsRemoved.emit(self.player.calcPlaylistIndex(self.playlist), indexes, oldIndexToNewIndex)
+        self.musicsRemoved.emit(indexes, ListUtils.calcIndexMap(oldMusics, self.playlist.musics))
