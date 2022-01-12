@@ -15,7 +15,7 @@ class App(QtWidgets.QApplication):
 
     def __init__(self):
         super().__init__()
-        self.miniMode = True
+        self.miniMode = False
         self.zoom = 0.5 if self.miniMode else 1.25
         self.setApplicationName("Ice Spring Music Player")
         self.setApplicationDisplayName(self.applicationName())

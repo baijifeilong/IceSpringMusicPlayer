@@ -8,18 +8,15 @@ from pathlib import Path
 
 import qtawesome
 from IceSpringRealOptional.maybe import Maybe
-from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtGui, QtWidgets
 
-from IceSpringMusicPlayer.controls.clickableLabel import ClickableLabel
 from IceSpringMusicPlayer.controls.fluentSlider import FluentSlider
 from IceSpringMusicPlayer.domains.playlist import Playlist
 from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.services.player import Player
-from IceSpringMusicPlayer.utils.layoutUtils import LayoutUtils
-from IceSpringMusicPlayer.utils.lyricUtils import LyricUtils
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
+from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
 from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
 from IceSpringMusicPlayer.windows.playlistManagerDialog import PlaylistManagerDialog
 
@@ -33,8 +30,6 @@ class MainWindow(QtWidgets.QMainWindow):
     mainSplitter: QtWidgets.QSplitter
     controlsLayout: QtWidgets.QHBoxLayout
     playlistTable: PlaylistTable
-    lyricsContainer: QtWidgets.QScrollArea
-    lyricsLayout: QtWidgets.QVBoxLayout
     playButton: QtWidgets.QToolButton
     playbackButton: QtWidgets.QToolButton
     progressSlider: QtWidgets.QSlider
@@ -195,31 +190,11 @@ class MainWindow(QtWidgets.QMainWindow):
         playlistTable = PlaylistTable(self.player, self)
         playlistTable.actionAddTriggered.connect(self.onOpenActionTriggered)
         playlistTable.actionOneKeyAddTriggered.connect(self.onOneKeyAddActionTriggered)
-        lyricsContainer = QtWidgets.QScrollArea(mainSplitter)
-        lyricsWidget = QtWidgets.QWidget(lyricsContainer)
-        lyricsLayout = QtWidgets.QVBoxLayout(lyricsWidget)
-        lyricsLayout.setMargin(0)
-        lyricsLayout.setSpacing(1)
-        lyricsWidget.setLayout(lyricsLayout)
-        lyricsContainer.setWidget(lyricsWidget)
-        lyricsContainer.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-        lyricsContainer.setWidgetResizable(True)
-        lyricsContainer.resizeEvent = self.onLyricsContainerResize
-        lyricsContainer.horizontalScrollBar().rangeChanged.connect(lambda *args, bar=lyricsContainer.
-            horizontalScrollBar(): bar.setValue((bar.maximum() + bar.minimum()) // 2))
+        lyricsPanel = LyricsPanel(self.player, self, self.app.zoom)
         mainSplitter.addWidget(playlistTable)
-        mainSplitter.addWidget(lyricsContainer)
+        mainSplitter.addWidget(lyricsPanel)
         mainSplitter.setSizes([2 ** 31 - 1, 2 ** 31 - 1])
         self.playlistTable = playlistTable
-        self.lyricsContainer = lyricsContainer
-        self.lyricsLayout = lyricsLayout
-
-    def onLyricsContainerResize(self, event):
-        if self.lyricsLayout.count() <= 0:
-            return
-        self.lyricsLayout.itemAt(0).spacerItem().changeSize(0, event.size().height() // 2)
-        self.lyricsLayout.itemAt(self.lyricsLayout.count() - 1).spacerItem().changeSize(0, event.size().height() // 2)
-        self.lyricsLayout.invalidate()
 
     def initControlsLayout(self):
         mainWidget = self.mainWidget
@@ -327,9 +302,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.progressSlider.setDisabled(True)
             self.logger.info("Reset progress label")
             self.progressLabel.setText("00:00/00:00")
-            self.logger.info("Clear lyrics layout")
-            LayoutUtils.clearLayout(self.lyricsLayout)
-            return
         if oldIndex == -1 and newIndex != -1:
             self.logger.info("Player resumed from stopped state.")
             self.logger.info("Enable progress slider")
@@ -338,8 +310,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.logger.info("Current music: %s", currentMusic)
         self.logger.info("Update window title")
         self.setWindowTitle(Path(currentMusic.filename).with_suffix("").name)
-        self.logger.info("Setup lyrics")
-        self.setupLyrics()
         self.logger.info("Update status label")
         self.statusLabel.setText("{} - {}".format(currentMusic.artist, currentMusic.title))
 
@@ -365,65 +335,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.statusBar().showMessage(
             "{} | {} kbps | {} Hz | {} channels | {}".format(currentMusic.format, currentMusic.bitrate,
                 currentMusic.sampleRate, currentMusic.channels, progressText.replace("/", " / ")))
-        self.positionLogger.debug("Position not zero, try to refresh lyrics")
-        self.refreshLyrics(position + 2)  # 1 milli for bug rate, 1 milli for double language lyrics
 
     def onPlayerStateChanged(self, state: PlayerState):
         self.logger.info("Player state changed: %s ", state)
         self.logger.info("Update play button icon")
         self.playButton.setIcon(qtawesome.icon("mdi.pause" if state.isPlaying() else "mdi.play"))
-
-    def setupLyrics(self):
-        self.lyricsLogger.info(">> Setting up lyrics...")
-        self.player.setProperty("previousLyricIndex", -1)
-        currentMusic = self.player.getCurrentMusic().orElseThrow(AssertionError)
-        lyricsPath = Path(currentMusic.filename).with_suffix(".lrc")
-        lyricsText = lyricsPath.read_text()
-        self.lyricsLogger.info("Parsing lyrics")
-        lyricDict = LyricUtils.parseLyrics(lyricsText)
-        self.lyricsLogger.info("Lyrics count: %d", len(lyricDict))
-        self.player.setProperty("lyricDict", lyricDict)
-        LayoutUtils.clearLayout(self.lyricsLayout)
-        self.lyricsLayout.addSpacing(self.lyricsContainer.height() // 2)
-        for position, lyric in list(lyricDict.items())[:]:
-            lyricLabel = ClickableLabel(lyric, self.lyricsContainer)
-            lyricLabel.setAlignment(
-                gg(QtCore.Qt.AlignmentFlag.AlignCenter, typing.Any) | QtCore.Qt.AlignmentFlag.AlignVCenter)
-            lyricLabel.clicked.connect(
-                lambda _, position=position: self.player.setPosition(position))
-            font = lyricLabel.font()
-            font.setFamily("等线")
-            font.setPointSize((12 if self.app.miniMode else 16) * self.app.zoom)
-            lyricLabel.setFont(font)
-            lyricLabel.setMargin(int(2 * self.app.zoom))
-            self.lyricsLayout.addWidget(lyricLabel)
-        self.lyricsLayout.addSpacing(self.lyricsContainer.height() // 2)
-        self.lyricsLogger.info("Lyrics layout has children: %d", self.lyricsLayout.count())
-        self.lyricsContainer.verticalScrollBar().setValue(0)
-        self.lyricsLogger.info("<< Lyrics set up")
-
-    def refreshLyrics(self, position):
-        self.lyricsLogger.debug("Refreshing lyrics at position: %d", position)
-        lyricDict = self.player.property("lyricDict")
-        previousLyricIndex = self.player.property("previousLyricIndex")
-        lyricIndex = LyricUtils.calcLyricIndexAtPosition(position, list(lyricDict.keys()))
-        self.lyricsLogger.debug("Lyric index: %d => %d", previousLyricIndex, lyricIndex)
-        if lyricIndex == previousLyricIndex:
-            self.lyricsLogger.debug("Lyric index no changed, skip refresh")
-            return
-        else:
-            self.lyricsLogger.debug("Lyric index changed: %d => %d, refreshing...", previousLyricIndex, lyricIndex)
-        self.player.setProperty("previousLyricIndex", lyricIndex)
-        for index in range(len(lyricDict)):
-            lyricLabel: QtWidgets.QLabel = self.lyricsLayout.itemAt(index + 1).widget()
-            lyricLabel.setStyleSheet("color:rgb(225,65,60)" if index == lyricIndex else "color:rgb(35,85,125)")
-            originalValue = self.lyricsContainer.verticalScrollBar().value()
-            targetValue = lyricLabel.pos().y() - self.lyricsContainer.height() // 2 + lyricLabel.height() // 2
-            # noinspection PyTypeChecker
-            index == lyricIndex and (lambda animation=QtCore.QPropertyAnimation(
-                self.lyricsContainer.verticalScrollBar(), b"value", self.lyricsContainer): [
-                animation.setStartValue(originalValue),
-                animation.setEndValue(targetValue),
-                animation.start(QtCore.QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
-            ])()
-        self.lyricsLogger.debug("Lyrics refreshed")
