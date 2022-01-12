@@ -66,8 +66,8 @@ class PlaylistTable(IceTableView):
         menu.addAction("Rapid Add", self.actionOneKeyAddTriggered.emit)
         menu.exec_(QtGui.QCursor.pos())
 
-    def _onRemove(self, modelIndex: typing.List[QtCore.QModelIndex]):
-        indexes = sorted(set(x.row() for x in modelIndex))
+    def _onRemove(self):
+        indexes = sorted(set(x.row() for x in self.selectedIndexes()))
         self._logger.info("Remove musics at indexes: %s", indexes)
         self._player.removeMusicsAtIndexes(indexes)
 
