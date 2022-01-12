@@ -32,7 +32,7 @@ class PlaylistManagerTable(IceTableView):
 
     def onDoubleClickedAtRow(self, row):
         self.logger.info("On double clicked at row: %d", row)
-        self.player.setFrontPlaylistAtIndex(row)
+        self.player.setFrontPlaylistIndex(row)
 
     def contextMenuEvent(self, arg__1: QtGui.QContextMenuEvent) -> None:
         menu = QtWidgets.QMenu(self)
@@ -51,7 +51,7 @@ class PlaylistManagerTable(IceTableView):
         name = "Playlist {}".format(len(self.playlists) + 1)
         playlist = Playlist(name)
         self.model().insertPlaylist(playlist)
-        self.player.addPlaylist(playlist)
+        self.player.insertPlaylist(playlist)
 
     def onRemovePlaylists(self):
         indexes = sorted({x.row() for x in self.selectedIndexes()})
@@ -60,7 +60,7 @@ class PlaylistManagerTable(IceTableView):
             self.logger.info("No playlists to remove, return.")
             return
 
-        if self.player.fetchCurrentPlaylistIndex() in indexes:
+        if self.player.getCurrentPlaylistIndex() in indexes:
             self.logger.info("Remove playing playlist, stop player first")
             self.player.stop()
         self.model().removePlaylistsAtIndexes(indexes)

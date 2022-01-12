@@ -64,30 +64,30 @@ class Player(QtCore.QObject):
         self.stateChanged.emit(state)
         if state.isStopped():
             self._logger.info("    Proxy stopped at position %d / %d", self._proxy.position(), self._proxy.duration())
-            self._logger.info("    Player stopped at position %d / %d", self.fetchPosition(), self.fetchDuration())
+            self._logger.info("    Player stopped at position %d / %d", self.getPosition(), self.getDuration())
             if self._proxy.position() == self._proxy.duration():
                 self._logger.info("Position equals to duration, play next")
                 self.playNext()
 
     def onProxyDurationChanged(self, duration):
         self._logger.info("Proxy duration changed: %d", duration)
-        self.durationChanged.emit(int(duration / self._fetchBugRateOrOne()))
+        self.durationChanged.emit(int(duration / self._getBugRateOrOne()))
 
     def onProxyPositionChanged(self, position):
         self._logger.debug("Proxy position changed: %d / %d", position, self._proxy.duration())
-        self.positionChanged.emit(int(position / self._fetchBugRateOrOne()))
+        self.positionChanged.emit(int(position / self._getBugRateOrOne()))
 
-    def fetchDuration(self) -> int:
-        return int(self._proxy.duration() // self._fetchBugRateOrOne())
+    def getDuration(self) -> int:
+        return int(self._proxy.duration() // self._getBugRateOrOne())
 
-    def fetchPosition(self) -> int:
-        return int(self._proxy.position() // self._fetchBugRateOrOne())
+    def getPosition(self) -> int:
+        return int(self._proxy.position() // self._getBugRateOrOne())
 
-    def fetchState(self) -> PlayerState:
+    def getState(self) -> PlayerState:
         return Just.of(self._proxy.state()).map(PlayerState.fromQt).value()
 
     def setPosition(self, position: int) -> None:
-        qtPosition = int(position * self._fetchBugRateOrOne())
+        qtPosition = int(position * self._getBugRateOrOne())
         self._logger.info("Setting position: %d (qt=%d)", position, qtPosition)
         self._proxy.setPosition(qtPosition)
 
@@ -108,7 +108,7 @@ class Player(QtCore.QObject):
         self._logger.info("Stopping proxy...")
         self._proxy.stop()
         self._logger.info("Proxy stopped.")
-        self.setCurrentMusicAtIndex(-1)
+        self.setCurrentMusicIndex(-1)
 
     def resetHistories(self):
         self._logger.info("Resetting histories...")
@@ -120,19 +120,16 @@ class Player(QtCore.QObject):
             self._historyPosition = -1
         self._logger.info("Histories reset")
 
-    def fetchCurrentPlaybackMode(self) -> PlaybackMode:
+    def getPlaybackMode(self) -> PlaybackMode:
         return self._playbackMode
 
-    def setCurrentPlaybackMode(self, mode: PlaybackMode) -> None:
+    def setPlaybackMode(self, mode: PlaybackMode) -> None:
         self._playbackMode = mode
 
-    def fetchAllPlaylists(self) -> Vector[Playlist]:
+    def getPlaylists(self) -> Vector[Playlist]:
         return self._playlists
 
-    def calcPlaylistIndex(self, playlist: Playlist) -> int:
-        return self._playlists.index(playlist)
-
-    def addPlaylist(self, playlist: Playlist) -> None:
+    def insertPlaylist(self, playlist: Playlist) -> None:
         self._logger.info("Adding playlist: %s ...", playlist.name)
         self._playlists.append(playlist)
         self._logger.info("> Signal playlistAdded emitting...")
@@ -140,21 +137,21 @@ class Player(QtCore.QObject):
         self._logger.info("< Signal playlistAdded emitted.")
         if self._frontPlaylistIndex == -1:
             self._logger.info("Front playlist index is -1, set to 0")
-            self.setFrontPlaylistAtIndex(0)
+            self.setFrontPlaylistIndex(0)
         if self._currentPlaylistIndex == -1:
             self._logger.info("Current playlist index is -1, set to 0")
-            self.setCurrentPlaylistAtIndex(0)
+            self.setCurrentPlaylistIndex(0)
         self._logger.info("Playlist added.")
 
-    def fetchFrontPlaylistIndex(self) -> int:
+    def getFrontPlaylistIndex(self) -> int:
         return self._frontPlaylistIndex
 
-    def fetchFrontPlaylist(self) -> Maybe[Playlist]:
+    def getFrontPlaylist(self) -> Maybe[Playlist]:
         if self._frontPlaylistIndex < 0:
             return Maybe.empty()
         return Maybe.of(self._playlists[self._frontPlaylistIndex])
 
-    def setFrontPlaylistAtIndex(self, index: int) -> None:
+    def setFrontPlaylistIndex(self, index: int) -> None:
         assert 0 <= index < len(self._playlists)
         oldFrontPlaylistIndex = self._frontPlaylistIndex
         self._logger.info("Set front playlist at index: %d => %d", oldFrontPlaylistIndex, index)
@@ -166,7 +163,7 @@ class Player(QtCore.QObject):
         self.currentPlaylistIndexChanged.emit(oldFrontPlaylistIndex, index)
         self._logger.info("< Signal frontPlaylistIndexChanged emitted...")
 
-    def setCurrentPlaylistAtIndex(self, index: int) -> None:
+    def setCurrentPlaylistIndex(self, index: int) -> None:
         assert 0 <= index < len(self._playlists)
         oldPlaylistIndex = self._currentPlaylistIndex
         self._logger.info("Set current playlist at index: %d => %d", oldPlaylistIndex, index)
@@ -181,13 +178,13 @@ class Player(QtCore.QObject):
         self.resetHistories()
         self._logger.info("Histories reset")
 
-    def fetchCurrentPlaylistIndex(self) -> int:
+    def getCurrentPlaylistIndex(self) -> int:
         return self._currentPlaylistIndex
 
-    def fetchCurrentPlaylist(self) -> Maybe[Playlist]:
+    def getCurrentPlaylist(self) -> Maybe[Playlist]:
         return self._playlists.get(self._currentPlaylistIndex)
 
-    def setCurrentMusicAtIndex(self, index: int) -> None:
+    def setCurrentMusicIndex(self, index: int) -> None:
         oldMusicIndex = self._currentMusicIndex
         self._logger.info("Set current music at index: %d", index)
         self._currentMusicIndex = index
@@ -195,17 +192,17 @@ class Player(QtCore.QObject):
         self.currentMusicIndexChanged.emit(oldMusicIndex, index)
         self._logger.info("< Signal musicIndexChanged emitted.")
 
-    def fetchCurrentMusicIndex(self) -> int:
+    def getCurrentMusicIndex(self) -> int:
         return self._currentMusicIndex
 
-    def fetchCurrentMusic(self) -> Maybe[Music]:
-        return self.fetchCurrentPlaylist().flatMap(lambda x: x.musics.get(self._currentMusicIndex))
+    def getCurrentMusic(self) -> Maybe[Music]:
+        return self.getCurrentPlaylist().flatMap(lambda x: x.musics.get(self._currentMusicIndex))
 
-    def _doPlayMusicAtIndex(self, musicIndex: int) -> None:
-        self._logger.info("Do play music at index: %d", musicIndex)
-        assert musicIndex >= 0
-        playlist = self.fetchCurrentPlaylist().orElseThrow(AssertionError)
-        music = playlist.musics[musicIndex]
+    def _doPlayMusicAtIndex(self, index: int) -> None:
+        self._logger.info("Do play music at index: %d", index)
+        assert index >= 0
+        playlist = self.getCurrentPlaylist().orElseThrow(AssertionError)
+        music = playlist.musics[index]
         self._logger.info("Prepare to play music %s : %s", music.artist, music.title)
         self._logger.info("Stop current playing if exist")
         self._proxy.stop()
@@ -216,27 +213,27 @@ class Player(QtCore.QObject):
         self._proxy.blockSignals(False)
         self._logger.info("Music content set to player.")
         self._logger.info("Update current music index")
-        self.setCurrentMusicAtIndex(musicIndex)
+        self.setCurrentMusicIndex(index)
         self._logger.info("Now start to play music...")
         self._proxy.play()
         self._logger.info("Music play started.")
         self._playedCount += 1
         self._logger.info("Played count now: %d", self._playedCount)
 
-    def playMusicAtIndex(self, musicIndex: int) -> None:
-        self._logger.info("Play music at index: %d", musicIndex)
+    def playMusicAtIndex(self, index: int) -> None:
+        self._logger.info("Play music at index: %d", index)
         self._logger.info("Set current playlist to front")
-        self.setCurrentPlaylistAtIndex(self._frontPlaylistIndex)
-        self._logger.info("Update play history at relative position %d (+1)", musicIndex)
-        self._updatePlayHistoryAtRelativePosition(musicIndex, 1)
-        self._logger.info("Play music at index %d", musicIndex)
-        self._doPlayMusicAtIndex(musicIndex)
+        self.setCurrentPlaylistIndex(self._frontPlaylistIndex)
+        self._logger.info("Update play history at relative position %d (+1)", index)
+        self._updatePlayHistoryAtRelativePosition(index, 1)
+        self._logger.info("Play music at index %d", index)
+        self._doPlayMusicAtIndex(index)
 
     def playPrevious(self):
         self._logger.info("Play previous")
-        if self.fetchState().isStopped():
+        if self.getState().isStopped():
             self._logger.info("Player stopped, set current playlist to front")
-            self.setCurrentPlaylistAtIndex(self._frontPlaylistIndex)
+            self.setCurrentPlaylistIndex(self._frontPlaylistIndex)
         previousMusicIndex = self._calcPreviousMusicIndex()
         if previousMusicIndex == -1:
             self._logger.info("Calculated previous music index -1, no music to play, skip")
@@ -248,9 +245,9 @@ class Player(QtCore.QObject):
 
     def playNext(self):
         self._logger.info("Play next")
-        if self.fetchState().isStopped():
+        if self.getState().isStopped():
             self._logger.info("Player stopped, set current playlist to front")
-            self.setCurrentPlaylistAtIndex(self._frontPlaylistIndex)
+            self.setCurrentPlaylistIndex(self._frontPlaylistIndex)
         nextMusicIndex = self._calcNextMusicIndex()
         if nextMusicIndex == -1:
             self._logger.info("Calculated next music index is -1, no music to play, skip")
@@ -265,9 +262,9 @@ class Player(QtCore.QObject):
         self._histories[self._historyPosition] = musicIndex
 
     def _calcNextMusicIndex(self) -> int:
-        if not self.fetchCurrentPlaylist().isPresent():
+        if not self.getCurrentPlaylist().isPresent():
             return -1
-        playlist = self.fetchCurrentPlaylist().orElseThrow(AssertionError)
+        playlist = self.getCurrentPlaylist().orElseThrow(AssertionError)
         if len(playlist.musics) <= 0:
             return -1
         loopNextMusicIndex = 0 if self._currentMusicIndex == -1 \
@@ -279,16 +276,16 @@ class Player(QtCore.QObject):
 
     def _calcRandomMusicIndex(self, direction: str) -> int:
         assert direction in ["PREVIOUS", "NEXT"]
-        playlist = self.fetchCurrentPlaylist().orElseThrow(AssertionError)
+        playlist = self.getCurrentPlaylist().orElseThrow(AssertionError)
         digest = hashlib.md5(f"{direction}:{self._playedCount}".encode()).hexdigest()
         randomMusicIndex = int(digest, 16) % playlist.musics.size()
         return randomMusicIndex if randomMusicIndex != self._currentMusicIndex \
             else (randomMusicIndex + 1) % len(playlist.musics)
 
     def _calcPreviousMusicIndex(self) -> int:
-        if not self.fetchCurrentPlaylist().isPresent():
+        if not self.getCurrentPlaylist().isPresent():
             return -1
-        playlist = self.fetchCurrentPlaylist().orElseThrow(AssertionError)
+        playlist = self.getCurrentPlaylist().orElseThrow(AssertionError)
         if len(playlist.musics) <= 0:
             return -1
         loopPreviousMusicIndex = len(playlist.musics) - 1 if self._currentMusicIndex == -1 \
@@ -299,17 +296,17 @@ class Player(QtCore.QObject):
             else randomPreviousMusicIndex
         return loopPreviousMusicIndex if self._playbackMode.isLoop() else nonLoopPreviousMusicIndex
 
-    def _fetchBugRateOrOne(self):
-        if not self.fetchCurrentMusic().isPresent():
+    def _getBugRateOrOne(self):
+        if not self.getCurrentMusic().isPresent():
             return 1
-        currentMusic = self.fetchCurrentMusic().orElseThrow(AssertionError)
+        currentMusic = self.getCurrentMusic().orElseThrow(AssertionError)
         return self._proxy.duration() / currentMusic.duration
 
     def doBeforeRemoveMusics(self, indexes: typing.List[int]):
         self._logger.info("Do before musics remove")
-        frontPlaylistIndex = self.fetchFrontPlaylistIndex()
-        currentPlaylistIndex = self.fetchCurrentPlaylistIndex()
-        currentMusicIndex = self.fetchCurrentMusicIndex()
+        frontPlaylistIndex = self.getFrontPlaylistIndex()
+        currentPlaylistIndex = self.getCurrentPlaylistIndex()
+        currentMusicIndex = self.getCurrentMusicIndex()
         if frontPlaylistIndex != currentPlaylistIndex:
             self._logger.info("Removed musics not in current playlist, skip")
         elif currentMusicIndex in indexes:
@@ -325,7 +322,7 @@ class Player(QtCore.QObject):
             self._logger.info("Reset histories")
             self.resetHistories()
             self._logger.info("Refresh indexes")
-            self.refreshIndexes(indexMap)
+            self.refreshMusicIndexes(indexMap)
         self._logger.info("On musics inserted done.")
 
     def onMusicsRemoved(self, indexes: typing.List[int], indexMap: typing.Dict[int, int]):
@@ -337,10 +334,10 @@ class Player(QtCore.QObject):
             self._logger.info("Reset histories")
             self.resetHistories()
             self._logger.info("Refresh indexes")
-            self.refreshIndexes(indexMap)
+            self.refreshMusicIndexes(indexMap)
         self._logger.info("On musics removed done.")
 
-    def refreshIndexes(self, indexMap: typing.Dict[int, int]) -> None:
+    def refreshMusicIndexes(self, indexMap: typing.Dict[int, int]) -> None:
         self._logger.info("Refreshing indexes")
         refreshedMusicIndex = indexMap.get(self._currentMusicIndex, -1)
         self._logger.info("Refreshed music index: %d", refreshedMusicIndex)

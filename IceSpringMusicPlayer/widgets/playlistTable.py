@@ -99,14 +99,14 @@ class PlaylistModel(QtCore.QAbstractTableModel):
 
     def data(self, index: QtCore.QModelIndex, role: int = ...) -> typing.Any:
         music = self.playlist.musics[index.row()]
-        currentPlaylistIndex = self.player.fetchCurrentPlaylistIndex()
-        frontPlaylistIndex = self.player.fetchFrontPlaylistIndex()
-        currentMusicIndex = self.player.fetchCurrentMusicIndex()
+        currentPlaylistIndex = self.player.getCurrentPlaylistIndex()
+        frontPlaylistIndex = self.player.getFrontPlaylistIndex()
+        currentMusicIndex = self.player.getCurrentMusicIndex()
         if role == QtCore.Qt.DisplayRole:
             return ["", music.artist, music.title][index.column()]
         elif role == QtCore.Qt.DecorationRole:
             if index.column() == 0 and index.row() == currentMusicIndex and currentPlaylistIndex == frontPlaylistIndex:
-                playerState = self.app.player.fetchState()
+                playerState = self.app.player.getState()
                 return qtawesome.icon("mdi.play") if playerState.isPlaying() else qtawesome.icon(
                     "mdi.pause") if playerState.isPaused() else qtawesome.icon()
 
