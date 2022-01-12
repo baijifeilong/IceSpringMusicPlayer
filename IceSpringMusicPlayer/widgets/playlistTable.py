@@ -28,6 +28,7 @@ class PlaylistTable(IceTableView):
         self.setModel(model)
         self.setColumnWidth(0, int(35 * zoom))
         self.setColumnWidth(1, int(150 * zoom))
+        self.clicked.connect(self.onClicked)
         self.doubleClicked.connect(self.onDoubleClicked)
         self.setIconSize(QtCore.QSize(32, 32) * zoom)
         self.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
@@ -39,8 +40,14 @@ class PlaylistTable(IceTableView):
     def model(self) -> "PlaylistModel":
         return super().model()
 
+    def onClicked(self, modelIndex: QtCore.QModelIndex):
+        index = modelIndex.row()
+        self.logger.info("On clicked at %d", index)
+        self.logger.info("Set front music index to %d", index)
+        self.player.setFrontMusicIndex(index)
+
     def onDoubleClicked(self, modelIndex: QtCore.QModelIndex):
-        self.logger.info(">>> On playlist table double clicked at %d", modelIndex.row())
+        self.logger.info("On double clicked at %d", modelIndex.row())
         self.player.playMusicAtIndex(modelIndex.row())
 
     def scrollToRowAtCenter(self, index):

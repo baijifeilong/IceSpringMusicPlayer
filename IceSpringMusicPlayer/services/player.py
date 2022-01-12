@@ -36,11 +36,12 @@ class Player(QtCore.QObject):
 
     _playbackMode: PlaybackMode
     _playlists: Vector[Playlist]
+    _frontPlaylistIndex: int
     _currentPlaylistIndex: int
+    _frontMusicIndex: int
+    _currentMusicIndex: int
     _histories: Dict[int, int]
     _historyPosition: int
-    _frontPlaylistIndex: int
-    _currentMusicIndex: int
     _proxy: QtMultimedia.QMediaPlayer
     _playedCount: int
 
@@ -49,11 +50,12 @@ class Player(QtCore.QObject):
         self._logger = logging.getLogger("player")
         self._playbackMode = PlaybackMode.LOOP
         self._playlists = Vector()
+        self._frontPlaylistIndex = -1
         self._currentPlaylistIndex = -1
+        self._frontMusicIndex = -1
+        self._currentMusicIndex = -1
         self._histories = dict()
         self._historyPosition = -1
-        self._frontPlaylistIndex = -1
-        self._currentMusicIndex = -1
         self._playedCount = 0
         self._proxy = QtMultimedia.QMediaPlayer(self)
         self._proxy.setVolume(50)
@@ -98,9 +100,18 @@ class Player(QtCore.QObject):
         self._proxy.setVolume(volume)
 
     def play(self) -> None:
-        self._logger.info("Playing proxy...")
-        self._proxy.play()
-        self._logger.info("Proxy played.")
+        self._logger.info("Play")
+        if self.getState().isPlaying():
+            self._logger.info("Already in playing, nothing to do")
+        elif self.getState().isPaused():
+            self._logger.info("Player paused, resume it")
+            self._proxy.play()
+        elif self._frontMusicIndex != -1:
+            self._logger.info("Front music index is not -1, play it")
+            self.playMusicAtIndex(self._frontMusicIndex)
+        else:
+            self._logger.info("Front music index is -1, play next")
+            self.playNext()
 
     def pause(self) -> None:
         self._logger.info("Pausing proxy...")
@@ -186,6 +197,14 @@ class Player(QtCore.QObject):
 
     def getCurrentPlaylist(self) -> Maybe[Playlist]:
         return self._playlists.get(self._currentPlaylistIndex)
+
+    def setFrontMusicIndex(self, index: int) -> None:
+        self._logger.info("Set front music index to %d", index)
+        self._frontMusicIndex = index
+        self._logger.info("Front music index set")
+
+    def getFrontMusicIndex(self) -> int:
+        return self._frontMusicIndex
 
     def setCurrentMusicIndex(self, index: int) -> None:
         oldMusicIndex = self._currentMusicIndex

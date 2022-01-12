@@ -20,6 +20,7 @@ class LyricsPanel(QtWidgets.QScrollArea):
     def __init__(self, player: Player, parent: QtWidgets.QWidget, zoom: float = 1):
         super().__init__(parent)
         self._logger = logging.getLogger("lyricsPanel")
+        self._logger.setLevel(logging.INFO)
         self._player = player
         self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
         self._player.positionChanged.connect(self._onPlayerPositionChanged)
@@ -41,7 +42,7 @@ class LyricsPanel(QtWidgets.QScrollArea):
         if self._player.getState().isStopped():
             self._logger.info("Player stopped, skip to refresh lyrics")
         else:
-            self._logger.info("Player not stopped, start to refresh lyrics")
+            self._logger.debug("Player not stopped, start to refresh lyrics")
             self._refreshLyrics(position + 2)
 
     def _onCurrentMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
