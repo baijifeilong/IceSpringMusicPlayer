@@ -361,10 +361,13 @@ class Player(QtCore.QObject):
         self._logger.info("< musicsInserted signal emitted...")
 
     def removeMusicsAtIndexes(self, indexes: typing.List[int]) -> None:
+        self._logger.info("Removing musics at indexes: %s", indexes)
+        if len(indexes) == 0:
+            self._logger.info("No music to remove, skip")
+            return
         playlist = self.getFrontPlaylist().orElseThrow(AssertionError)
         oldMusics = playlist.musics[:]
         indexMap = ListUtils.calcIndexMap(oldMusics, playlist.musics)
-        self._logger.info("Removing musics at indexes: %s", indexes)
         self._logger.info("> Signal musicsAboutToBeRemoved emitting...")
         self.musicsAboutToBeRemoved.emit(indexes)
         self._logger.info("< Signal musicsAboutToBeRemoved emitted.")
