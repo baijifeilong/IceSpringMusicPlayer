@@ -7,6 +7,7 @@ import typing
 from pathlib import Path
 
 import qtawesome
+from IceSpringMusicPlayer.windows.playlistsDialog import PlaylistManagerDialog
 from IceSpringRealOptional.maybe import Maybe
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtGui, QtWidgets
@@ -21,7 +22,7 @@ from IceSpringMusicPlayer.utils.lyricUtils import LyricUtils
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 from IceSpringMusicPlayer.utils.timeDeltaUtils import TimeDeltaUtils
 from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
-from IceSpringMusicPlayer.windows.playlistsDialog import PlaylistsDialog
+from IceSpringMusicPlayer.windows.playlistManagerDialog import PlaylistManagerDialog
 
 if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.app import App
@@ -41,7 +42,7 @@ class MainWindow(QtWidgets.QMainWindow):
     progressLabel: QtWidgets.QLabel
     statusLabel: QtWidgets.QLabel
     playlistCombo: QtWidgets.QComboBox
-    playlistsDialog: PlaylistsDialog
+    playlistsDialog: PlaylistManagerDialog
     _frontPlaylistIndex: int
     player: Player
 
@@ -59,8 +60,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.initLayout()
         self.initStatusBar()
         self.insertPlaceholderTableIfNecessary()
-        playlistsDialog = PlaylistsDialog(self.player.fetchAllPlaylists(), self)
-        playlistsDialog.playlistsTable.model().playlistsRemoved.connect(self.onPlaylistsRemovedAtIndexes)
+        playlistsDialog = PlaylistManagerDialog(self.player.fetchAllPlaylists(), self)
+        playlistsDialog.playlistManagerTable.model().playlistsRemoved.connect(self.onPlaylistsRemovedAtIndexes)
         self.playlistsDialog = playlistsDialog
         self._frontPlaylistIndex = -1
         self.setupPlayer()
@@ -71,7 +72,7 @@ class MainWindow(QtWidgets.QMainWindow):
         player.durationChanged.connect(self.onPlayerDurationChanged)
         player.positionChanged.connect(self.onPlayerPositionChanged)
         player.playlistAdded.connect(self.onPlaylistAdded)
-        player.musicIndexChanged.connect(self.onMusicIndexChanged)
+        player.currentMusicIndexChanged.connect(self.onMusicIndexChanged)
 
     def initStatusBar(self):
         statusLabel = QtWidgets.QLabel("", self.statusBar())
@@ -128,7 +129,8 @@ class MainWindow(QtWidgets.QMainWindow):
         fileMenu = self.menuBar().addMenu("File")
         fileMenu.addAction("Open", self.onOpenActionTriggered)
         viewMenu = self.menuBar().addMenu("View")
-        viewMenu.addAction("Playlist Manager", lambda: PlaylistsDialog(self.player.fetchAllPlaylists(), self).show())
+        viewMenu.addAction("Playlist Manager",
+            lambda: PlaylistManagerDialog(self.player.fetchAllPlaylists(), self).show())
 
     def setFrontPlaylistAtIndex(self, index: int) -> None:
         self.logger.info("Setting front playlist at index %d", index)
@@ -171,8 +173,7 @@ class MainWindow(QtWidgets.QMainWindow):
         playlistTable = self.fetchFrontPlaylistTable().orElseThrow(AssertionError)
         beginRow, endRow = playlistTable.model().insertMusics(musics)
         playlistTable.selectRowRange(beginRow, endRow)
-        # playlistTable.resizeRowsToContents()
-        # playlistTable.repaint()
+        self.app.miniMode and playlistTable.resizeRowsToContents()
         playlistTable.scrollToRowAtCenter(beginRow)
         self.logger.info("<< Musics added")
 
@@ -476,7 +477,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 lambda _, position=position: self.player.setPosition(position))
             font = lyricLabel.font()
             font.setFamily("等线")
-            font.setPointSize(16 * self.app.zoom)
+            font.setPointSize((12 if self.app.miniMode else 16) * self.app.zoom)
             lyricLabel.setFont(font)
             lyricLabel.setMargin(int(2 * self.app.zoom))
             self.lyricsLayout.addWidget(lyricLabel)

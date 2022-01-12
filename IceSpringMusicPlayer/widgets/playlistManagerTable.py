@@ -15,7 +15,7 @@ if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.windows.mainWindow import MainWindow
 
 
-class PlaylistsTable(IceTableView):
+class PlaylistManagerTable(IceTableView):
     def __init__(self, playlists: typing.List[Playlist], parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
         self.mainWindow: MainWindow = self.parent().parent()
@@ -23,11 +23,11 @@ class PlaylistsTable(IceTableView):
         self.player = self.app.player
         self.playlists = playlists
         self.logger = logging.getLogger("playlistsTable")
-        self.setModel(PlaylistsModel(playlists, self))
+        self.setModel(PlaylistManagerModel(playlists, self))
         self.setColumnWidth(0, 320)
         self.doubleClicked.connect(lambda x: self.onDoubleClickedAtRow(x.row()))
 
-    def model(self) -> "PlaylistsModel":
+    def model(self) -> PlaylistManagerModel:
         return super().model()
 
     def onDoubleClickedAtRow(self, row):
@@ -66,7 +66,7 @@ class PlaylistsTable(IceTableView):
         self.model().removePlaylistsAtIndexes(indexes)
 
 
-class PlaylistsModel(QtCore.QAbstractTableModel):
+class PlaylistManagerModel(QtCore.QAbstractTableModel):
     playlistsRemoved: QtCore.SignalInstance = QtCore.Signal(list)
 
     def __init__(self, playlists: typing.List[Playlist], parent: QtCore.QObject) -> None:

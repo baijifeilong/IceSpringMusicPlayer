@@ -23,8 +23,8 @@ if typing.TYPE_CHECKING:
 
 
 class Player(QtCore.QObject):
-    playlistIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
-    musicIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
+    currentPlaylistIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
+    currentMusicIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
     playlistAdded: QtCore.SignalInstance = QtCore.Signal(Playlist)
     stateChanged: QtCore.SignalInstance = QtCore.Signal(PlayerState)
     durationChanged: QtCore.SignalInstance = QtCore.Signal(int)
@@ -150,7 +150,7 @@ class Player(QtCore.QObject):
         self._logger.info("Reset histories")
         self.resetHistories()
         self._logger.info("> Signal playlistIndexChanged emitting...")
-        self.playlistIndexChanged.emit(oldPlaylistIndex, index)
+        self.currentPlaylistIndexChanged.emit(oldPlaylistIndex, index)
         self._logger.info("< Signal playlistIndexChanged emitted...")
 
     def fetchCurrentPlaylistIndex(self) -> int:
@@ -164,7 +164,7 @@ class Player(QtCore.QObject):
         self._logger.info("Set current music at index: %d", index)
         self._currentMusicIndex = index
         self._logger.info("> Signal musicIndexChanged emitting...")
-        self.musicIndexChanged.emit(oldMusicIndex, index)
+        self.currentMusicIndexChanged.emit(oldMusicIndex, index)
         self._logger.info("< Signal musicIndexChanged emitted.")
 
     def fetchCurrentMusicIndex(self) -> int:
