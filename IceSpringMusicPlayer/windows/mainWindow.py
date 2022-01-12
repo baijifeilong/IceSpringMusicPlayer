@@ -32,7 +32,7 @@ class MainWindow(QtWidgets.QMainWindow):
     mainWidget: QtWidgets.QWidget
     mainSplitter: QtWidgets.QSplitter
     controlsLayout: QtWidgets.QHBoxLayout
-    playlistWidget: QtWidgets.QStackedWidget
+    playlistTable: PlaylistTable
     lyricsContainer: QtWidgets.QScrollArea
     lyricsLayout: QtWidgets.QVBoxLayout
     playButton: QtWidgets.QToolButton
@@ -57,7 +57,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.initToolbar()
         self.initLayout()
         self.initStatusBar()
-        self.insertPlaceholderTableIfNecessary()
         playlistsDialog = PlaylistManagerDialog(self.player.getPlaylists(), self)
         playlistsDialog.playlistManagerTable.model().playlistsRemoved.connect(self.onPlaylistsRemovedAtIndexes)
         self.playlistsDialog = playlistsDialog
@@ -95,26 +94,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.logger.info("On status bar double clocked")
         if not self.player.getCurrentMusic().isPresent():
             return
-        currentPlaylistIndex = self.player.getCurrentPlaylistIndex()
         currentMusicIndex = self.player.getCurrentMusicIndex()
-        currentPlaylistTable = self.fetchCurrentPlaylistTable().orElseThrow(AssertionError)
-        self.playlistWidget.setCurrentIndex(currentPlaylistIndex)
-        currentPlaylistTable.selectRow(currentMusicIndex)
-        currentPlaylistTable.scrollToRowAtCenter(currentMusicIndex)
-
-    def fetchCurrentPlaylistTable(self) -> Maybe[PlaylistTable]:
-        if not self.player.getCurrentPlaylist().isPresent():
-            return Maybe.empty()
-        currentPlaylistIndex = self.player.getCurrentPlaylistIndex()
-        currentPlaylistTable = self.playlistWidget.widget(currentPlaylistIndex)
-        return Maybe.of(gg(currentPlaylistTable, _type=PlaylistTable))
-
-    def fetchFrontPlaylistTable(self) -> Maybe[PlaylistTable]:
-        frontPlaylistIndex = self.player.getFrontPlaylistIndex()
-        if frontPlaylistIndex < 0:
-            return Maybe.empty()
-        frontPlaylistTable = self.playlistWidget.widget(frontPlaylistIndex)
-        return Maybe.of(gg(frontPlaylistTable, _type=PlaylistTable))
+        self.player.setFrontPlaylistIndex(self.player.getCurrentPlaylistIndex())
+        self.playlistTable.selectRow(currentMusicIndex)
+        self.playlistTable.scrollToRowAtCenter(currentMusicIndex)
 
     def initMenu(self):
         fileMenu = self.menuBar().addMenu("File")
@@ -135,8 +118,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.logger.info("Front playlist set to index %d, refreshing main window", newIndex)
             self.logger.info("Updating playlist combo")
             self.playlistCombo.setCurrentIndex(newIndex)
-            self.logger.info("Updating playlist widget")
-            self.playlistWidget.setCurrentIndex(newIndex)
             self.logger.info("Main window refreshed")
 
     def createAndAppendDefaultPlaylist(self):
@@ -171,15 +152,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onMusicsInserted(self, indexes: typing.List[int]):
         self.logger.info("On musics inserted with count %d", len(indexes))
-        playlistTable = self.fetchFrontPlaylistTable().orElseThrow(AssertionError)
         self.logger.info("Notify table new data inserted")
-        playlistTable.model().beginInsertRows(QtCore.QModelIndex(), indexes[0], indexes[-1])
-        playlistTable.model().endInsertRows()
+        self.playlistTable.model().beginInsertRows(QtCore.QModelIndex(), indexes[0], indexes[-1])
+        self.playlistTable.model().endInsertRows()
         self.logger.info("Select inserted rows")
-        playlistTable.selectRowRange(indexes[0], indexes[-1])
-        self.app.miniMode and playlistTable.resizeRowsToContents()
+        self.playlistTable.selectRowRange(indexes[0], indexes[-1])
+        self.app.miniMode and self.playlistTable.resizeRowsToContents()
         self.logger.info("Scroll first inserted row to center")
-        playlistTable.scrollToRowAtCenter(indexes[0])
+        self.playlistTable.scrollToRowAtCenter(indexes[0])
 
     def initToolbar(self):
         toolbar = self.addToolBar("Toolbar")
@@ -227,7 +207,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def initMainSplitter(self):
         mainSplitter = self.mainSplitter
-        playlistWidget = QtWidgets.QStackedWidget(mainSplitter)
+        playlistTable = PlaylistTable(self.player, self)
+        playlistTable.actionAddTriggered.connect(self.onOpenActionTriggered)
+        playlistTable.actionOneKeyAddTriggered.connect(self.onOneKeyAddActionTriggered)
         lyricsContainer = QtWidgets.QScrollArea(mainSplitter)
         lyricsWidget = QtWidgets.QWidget(lyricsContainer)
         lyricsLayout = QtWidgets.QVBoxLayout(lyricsWidget)
@@ -240,10 +222,10 @@ class MainWindow(QtWidgets.QMainWindow):
         lyricsContainer.resizeEvent = self.onLyricsContainerResize
         lyricsContainer.horizontalScrollBar().rangeChanged.connect(lambda *args, bar=lyricsContainer.
             horizontalScrollBar(): bar.setValue((bar.maximum() + bar.minimum()) // 2))
-        mainSplitter.addWidget(playlistWidget)
+        mainSplitter.addWidget(playlistTable)
         mainSplitter.addWidget(lyricsContainer)
         mainSplitter.setSizes([2 ** 31 - 1, 2 ** 31 - 1])
-        self.playlistWidget = playlistWidget
+        self.playlistTable = playlistTable
         self.lyricsContainer = lyricsContainer
         self.lyricsLayout = lyricsLayout
 
@@ -301,44 +283,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.logger.info("On progress slider value changed: %d", value)
         self.player.setPosition(value)
 
-    def insertPlaceholderTableIfNecessary(self):
-        self.logger.info("Insert placeholder table if necessary")
-        if self.player.getPlaylists().isEmpty():
-            assert self.playlistWidget.count() == 0
-            self.logger.info("No playlist now, insert placeholder table")
-            placeholderTable = PlaylistTable(self.player, self)
-            placeholderTable.actionAddTriggered.connect(self.onOpenActionTriggered)
-            placeholderTable.actionOneKeyAddTriggered.connect(self.onOneKeyAddActionTriggered)
-            self.playlistWidget.addWidget(placeholderTable)
-
-    def removePlaceholderTableIfExists(self) -> None:
-        self.logger.info("Remove placeholder table if exists")
-        if self.player.getPlaylists().size() == 1:
-            assert self.playlistWidget.count() == 1
-            self.logger.info("No playlist before, remove placeholder table")
-            self.playlistWidget.removeWidget(self.playlistWidget.widget(0))
-            self.logger.info("Placeholder table removed")
-
     def onPlaylistAdded(self, playlist: Playlist) -> None:
         self.logger.info("On playlist added: %s", playlist.name)
-        self.removePlaceholderTableIfExists()
-        self.logger.info("Creating playlist table...")
-        playlistTable = PlaylistTable(self.player, self)
-        playlistTable.actionAddTriggered.connect(self.onOpenActionTriggered)
-        playlistTable.actionOneKeyAddTriggered.connect(self.onOneKeyAddActionTriggered)
-        self.logger.info("Playlist table created.")
         self.playlistCombo.addItem(playlist.name)
-        self.playlistWidget.addWidget(playlistTable)
-        self.logger.warning("%d %d", self.playlistWidget.count(), self.player.getPlaylists().size())
-        assert self.playlistWidget.count() == self.player.getPlaylists().size()
-        self.logger.info("Playlist table added.")
 
     def onPlaylistsRemovedAtIndexes(self, indexes: typing.List[int]):
         self.logger.info("On playlist removed: %s", indexes)
         for index in sorted(indexes, reverse=True):
-            self.playlistWidget.removeWidget(self.playlistWidget.widget(index))
             self.playlistCombo.removeItem(index)
-        self.insertPlaceholderTableIfNecessary()
 
     def togglePlaybackMode(self):
         self.player.setPlaybackMode(self.player.getPlaybackMode().next())
@@ -356,7 +308,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onPlayButtonClicked(self):
         logging.info("On play button clicked")
-        selectedMaybe: Maybe[int] = self.fetchFrontPlaylistTable().flatMap(lambda x: x.fetchFirstSelectedRow())
+        selectedMaybe: Maybe[int] = self.playlistTable.fetchFirstSelectedRow()
         if self.player.getState().isPlaying():
             logging.info("Player is playing, pause it")
             self.player.pause()
@@ -402,11 +354,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.logger.info("Update window title")
         self.setWindowTitle(Path(currentMusic.filename).with_suffix("").name)
         self.logger.info("Refresh playlist table")
-        currentPlaylistTable = self.fetchCurrentPlaylistTable().orElseThrow(AssertionError)
-        currentPlaylistTable.model().notifyDataChangedAtRow(oldIndex)
-        currentPlaylistTable.model().notifyDataChangedAtRow(newIndex)
+        self.playlistTable.model().notifyDataChangedAtRow(oldIndex)
+        self.playlistTable.model().notifyDataChangedAtRow(newIndex)
         self.logger.info("Select played item in playlist table")
-        currentPlaylistTable.selectRow(newIndex)
+        self.playlistTable.selectRow(newIndex)
         self.logger.info("Setup lyrics")
         self.setupLyrics()
         self.logger.info("Update status label")
@@ -442,8 +393,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.logger.info("Update play button icon")
         self.playButton.setIcon(qtawesome.icon("mdi.pause" if state.isPlaying() else "mdi.play"))
         self.logger.info("Update playlist table icon")
-        self.fetchCurrentPlaylistTable().orElseThrow(AssertionError).model().notifyDataChangedAtRow(
-            self.player.getCurrentMusicIndex())
+        self.playlistTable.model().notifyDataChangedAtRow(self.player.getCurrentMusicIndex())
 
     def setupLyrics(self):
         self.lyricsLogger.info(">> Setting up lyrics...")
