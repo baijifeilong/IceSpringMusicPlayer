@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import typing
 
+from IceSpringPathLib import Path
 from IceSpringRealOptional.just import Just
 from PySide2 import QtWidgets, QtCore
+
+from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 
 if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.services.config import Config
@@ -14,6 +18,9 @@ if typing.TYPE_CHECKING:
 
 
 class App(QtWidgets.QApplication):
+    requestLocateCurrentMusic: QtCore.SignalInstance = QtCore.Signal()
+
+    _logger: logging.Logger
     _config: Config
     _player: Player
     _mainWindow: MainWindow
@@ -23,6 +30,7 @@ class App(QtWidgets.QApplication):
         from IceSpringMusicPlayer.services.player import Player
         from IceSpringMusicPlayer.windows.mainWindow import MainWindow
         super().__init__()
+        self._logger = logging.getLogger("app")
         self._config = Config()
         self._player = Player(self)
         self.setApplicationName("Ice Spring Music Player")
@@ -48,3 +56,29 @@ class App(QtWidgets.QApplication):
     @staticmethod
     def instance() -> App:
         return QtCore.QCoreApplication.instance()
+
+    def addMusicsFromFileDialog(self):
+        self._logger.info("Add musics from file dialog")
+        musicRoot = str(Path("~/Music").expanduser().absolute())
+        filenames = QtWidgets.QFileDialog.getOpenFileNames(
+            None, "Open music files", musicRoot, "Audio files (*.mp3 *.wma) ;; All files (*)")[0]
+        self._logger.info("There are %d files to open", len(filenames))
+        musics = [MusicUtils.parseMusic(x) for x in filenames]
+        self._player.insertMusics(musics)
+
+    def addMusicsFromHomeFolder(self):
+        self._logger.info("Add musics from home folder")
+        paths = Path("~/Music").expanduser().glob("**/*.mp3")
+        musics = [MusicUtils.parseMusic(str(x)) for x in paths]
+        self._player.insertMusics(musics)
+
+    def loadTestData(self):
+        self._logger.info("Load test data")
+        paths = Path("~/Music").expanduser().glob("**/*.mp3")
+        musics = [MusicUtils.parseMusic(str(x)) for x in paths]
+        self._player.setFrontPlaylistIndex(self._player.insertPlaylist())
+        self._player.insertMusics([x for i, x in enumerate(musics) if i % 6 in (0, 1, 2)])
+        self._player.setFrontPlaylistIndex(self._player.insertPlaylist())
+        self._player.insertMusics([x for i, x in enumerate(musics) if i % 6 in (3, 4)])
+        self._player.setFrontPlaylistIndex(self._player.insertPlaylist())
+        self._player.insertMusics([x for i, x in enumerate(musics) if i % 6 in (5,)])

@@ -6,7 +6,7 @@ import logging
 import typing
 
 import qtawesome
-from IceSpringRealOptional.typingUtils import gg
+from IceSpringRealOptional.typingUtils import gg, unused
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.app import App
@@ -17,17 +17,15 @@ from IceSpringMusicPlayer.services.player import Player
 
 
 class PlaylistTable(IceTableView):
-    actionAddTriggered: QtCore.SignalInstance = QtCore.Signal()
-    actionOneKeyAddTriggered: QtCore.SignalInstance = QtCore.Signal()
-    actionLoadTestDataTriggered: QtCore.SignalInstance = QtCore.Signal()
-
     _logger: logging.Logger
+    _app: App
     _config: Config
     _player: Player
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
         self._logger = logging.getLogger("playlistTable")
+        self._app = App.instance()
         self._config = App.instance().getConfig()
         self._player = App.instance().getPlayer()
         self.setModel(PlaylistModel(self))
@@ -38,6 +36,9 @@ class PlaylistTable(IceTableView):
         self.setIconSize(QtCore.QSize(32, 32) * self._config.getZoom())
         self.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
         self.setSortingEnabled(True)
+        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.onCustomContextMenuRequested)
+        self._app.requestLocateCurrentMusic.connect(self._onRequestLocateCurrentMusic)
         self._player.stateChanged.connect(self._onPlayerStateChanged)
         self._player.frontPlaylistIndexAboutToBeChanged.connect(self._onFrontPlaylistIndexAboutToBeChanged)
         self._player.frontPlaylistIndexChanged.connect(self._onFrontPlaylistIndexChanged)
@@ -57,7 +58,7 @@ class PlaylistTable(IceTableView):
         self._logger.info("On double clicked at %d", modelIndex.row())
         self._player.playMusicAtIndex(modelIndex.row())
 
-    def scrollToRowAtCenter(self, index):
+    def _scrollToRowAtCenter(self, index):
         self.scrollTo(self.model().index(index, 0), QtWidgets.QTableView.ScrollHint.PositionAtCenter)
 
     def _selectRowRange(self, fromRow, toRow):
@@ -71,13 +72,25 @@ class PlaylistTable(IceTableView):
                 QtCore.QItemSelection(self.model().index(index, 0), self.model().index(index, 0)),
                 gg(QtCore.QItemSelectionModel.Select, typing.Any) | QtCore.QItemSelectionModel.Rows)
 
-    def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
+    def onCustomContextMenuRequested(self, position: QtCore.QPoint) -> None:
+        unused(position)
         menu = QtWidgets.QMenu()
         menu.addAction("Remove", self._onRemove)
-        menu.addAction("Add", self.actionAddTriggered.emit)
-        menu.addAction("One Key Add", self.actionOneKeyAddTriggered.emit)
-        menu.addAction("Load Test Data", self.actionLoadTestDataTriggered.emit)
+        menu.addAction("Add", self._app.addMusicsFromFileDialog)
+        menu.addAction("One Key Add", self._app.addMusicsFromHomeFolder)
+        menu.addAction("Load Test Data", self._app.loadTestData)
         menu.exec_(QtGui.QCursor.pos())
+
+    def _onRequestLocateCurrentMusic(self) -> None:
+        self._logger.info("On request locate current music")
+        if not self._player.getCurrentMusic().isPresent():
+            self._logger.info("No music to locate, return")
+            return
+        currentMusicIndex = self._player.getCurrentMusicIndex()
+        self._logger.info("Locate music: %s", currentMusicIndex)
+        self._player.setFrontPlaylistIndex(self._player.getCurrentPlaylistIndex())
+        self.selectRow(currentMusicIndex)
+        self._scrollToRowAtCenter(currentMusicIndex)
 
     def _onFrontPlaylistIndexAboutToBeChanged(self, oldIndex: int, newIndex: int) -> None:
         self._logger.info("On front playlist index about to be changed: %d => %d", oldIndex, newIndex)
@@ -129,7 +142,7 @@ class PlaylistTable(IceTableView):
         self._selectRowRange(indexes[0], indexes[-1])
         self.resizeRowsToContents()
         self._logger.info("Scroll first inserted row to center")
-        self.scrollToRowAtCenter(indexes[0])
+        self._scrollToRowAtCenter(indexes[0])
 
     def _onCurrentMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
         self._logger.info("On current music index changed: %d => %d", oldIndex, newIndex)
