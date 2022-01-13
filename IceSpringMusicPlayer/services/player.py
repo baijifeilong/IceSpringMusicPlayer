@@ -35,6 +35,8 @@ class Player(QtCore.QObject):
     stateChanged: QtCore.SignalInstance = QtCore.Signal(PlayerState)
     durationChanged: QtCore.SignalInstance = QtCore.Signal(int)
     positionChanged: QtCore.SignalInstance = QtCore.Signal(int)
+    playbackModeChanged: QtCore.SignalInstance = QtCore.Signal(PlaybackMode)
+    volumeChanged: QtCore.SignalInstance = QtCore.Signal(int)
 
     _playbackMode: PlaybackMode
     _playlists: Vector[Playlist]
@@ -100,6 +102,9 @@ class Player(QtCore.QObject):
 
     def setVolume(self, volume: int) -> None:
         self._proxy.setVolume(volume)
+        self._logger.info("> Signal volumeChanged emitting...")
+        self.volumeChanged.emit(volume)
+        self._logger.info("< Signal volumeChanged emitted.")
 
     def play(self) -> None:
         self._logger.info("Play")
@@ -142,7 +147,11 @@ class Player(QtCore.QObject):
         return self._playbackMode
 
     def setPlaybackMode(self, mode: PlaybackMode) -> None:
+        self._logger.info("Set playback mode: %s", mode)
         self._playbackMode = mode
+        self._logger.info("> Signal playbackModeChanged emitting...")
+        self.playbackModeChanged.emit(mode)
+        self._logger.info("< Signal playbackModeChanged emitted.")
 
     def getPlaylists(self) -> Vector[Playlist]:
         return self._playlists

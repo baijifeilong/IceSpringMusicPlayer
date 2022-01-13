@@ -9,6 +9,7 @@ from pathlib import Path
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.controls.line import Line
 from IceSpringMusicPlayer.services.config import Config
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
@@ -101,24 +102,21 @@ class MainWindow(QtWidgets.QMainWindow):
         palette.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor("white"))
         mainWidget.setPalette(palette)
         self.setCentralWidget(mainWidget)
-        lines = [QtWidgets.QFrame(self) for _ in range(2)]
-        for line in lines:
-            line.setFrameShape(QtWidgets.QFrame.Shape.HLine)
-            line.setFrameShadow(QtWidgets.QFrame.Shadow.Plain)
-            line.setStyleSheet("color: #D8D8D8")
         mainWidget = self.centralWidget()
         mainLayout = QtWidgets.QVBoxLayout(mainWidget)
         mainLayout.setSpacing(0)
         mainLayout.setMargin(0)
         mainWidget.setLayout(mainLayout)
         mainSplitter = QtWidgets.QSplitter(mainWidget)
-        mainLayout.addWidget(lines[0])
-        mainLayout.addWidget(mainSplitter, 1)
-        mainLayout.addWidget(lines[1])
+        mainLayout.addWidget(Line(mainWidget))
         mainLayout.addWidget(ControlsPanel(self))
-        mainSplitter.addWidget(PlaylistTable(mainSplitter))
-        mainSplitter.addWidget(PlaylistTable(mainSplitter))
+        mainLayout.addWidget(Line(mainWidget))
+        mainLayout.addWidget(mainSplitter, 1)
+        mainLayout.addWidget(Line(mainWidget))
+        mainLayout.addWidget(ControlsPanel(self))
         mainSplitter.addWidget(LyricsPanel(mainSplitter))
+        mainSplitter.addWidget(PlaylistTable(mainSplitter))
+        mainSplitter.addWidget(PlaylistTable(mainSplitter))
         mainSplitter.addWidget(LyricsPanel(mainSplitter))
         mainSplitter.setSizes([2 ** 16, 2 ** 16, 2 ** 16, 2 ** 16])
 

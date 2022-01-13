@@ -6,6 +6,7 @@ from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.fluentSlider import FluentSlider
+from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.services.config import Config
 from IceSpringMusicPlayer.services.player import Player
@@ -21,6 +22,7 @@ class ControlsPanel(QtWidgets.QWidget):
     _playbackButton: QtWidgets.QToolButton
     _progressSlider: FluentSlider
     _progressLabel: QtWidgets.QLabel
+    _volumeDial: QtWidgets.QDial
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
@@ -55,7 +57,7 @@ class ControlsPanel(QtWidgets.QWidget):
         volumeDial = QtWidgets.QDial(self)
         volumeDial.setFixedSize(iconSize)
         volumeDial.setValue(50)
-        volumeDial.valueChanged.connect(self._player.setVolume)
+        volumeDial.valueChanged.connect(self._onVolumeDialValueChanged)
         layout.addWidget(playButton)
         layout.addWidget(stopButton)
         layout.addWidget(previousButton)
@@ -68,10 +70,13 @@ class ControlsPanel(QtWidgets.QWidget):
         self._playbackButton = playbackButton
         self._progressSlider = progressSlider
         self._progressLabel = progressLabel
+        self._volumeDial = volumeDial
         self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
         self._player.stateChanged.connect(self._onPlayerStateChanged)
         self._player.durationChanged.connect(self._onPlayerDurationChanged)
         self._player.positionChanged.connect(self._onPlayerPositionChanged)
+        self._player.playbackModeChanged.connect(self._onPlaybackModeChanged)
+        self._player.volumeChanged.connect(self._onPlayerVolumeChanged)
 
     def _onProgressSliderValueChanged(self, value: int) -> None:
         self._logger.info("On progress slider value changed: %d", value)
@@ -104,10 +109,16 @@ class ControlsPanel(QtWidgets.QWidget):
 
     def _onPlaybackButtonClicked(self):
         self._logger.info("On playback button clicked")
-        self._player.setPlaybackMode(self._player.getPlaybackMode().next())
-        newPlaybackMode = self._player.getPlaybackMode()
-        newIconName = dict(LOOP="mdi.repeat", RANDOM="mdi.shuffle")[newPlaybackMode.name]
-        self._playbackButton.setIcon(qtawesome.icon(newIconName))
+        oldMode = self._player.getPlaybackMode()
+        newMode = oldMode.next()
+        self._logger.info("Update playback mode %s => %s", oldMode, newMode)
+        self._player.setPlaybackMode(newMode)
+
+    def _onPlaybackModeChanged(self, mode: PlaybackMode) -> None:
+        self._logger.info("On playback mode changed")
+        iconName = {PlaybackMode.LOOP: "mdi.repeat", PlaybackMode.RANDOM: "mdi.shuffle"}[mode]
+        self._logger.info("Update playback button icon")
+        self._playbackButton.setIcon(qtawesome.icon(iconName))
 
     def _onCurrentMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
         if oldIndex == -1 and newIndex != -1:
@@ -143,3 +154,13 @@ class ControlsPanel(QtWidgets.QWidget):
         duration = self._player.getDuration()
         progressText = f"{TimedeltaUtils.formatDelta(position)}/{TimedeltaUtils.formatDelta(duration)}"
         self._progressLabel.setText(progressText)
+
+    def _onVolumeDialValueChanged(self, value: int) -> None:
+        self._logger.info("On volume dial value changed: %d", value)
+        self._player.setVolume(value)
+
+    def _onPlayerVolumeChanged(self, value: int) -> None:
+        self._logger.info("On player volume changed: %d", value)
+        self._player.blockSignals(True)
+        self._volumeDial.setValue(value)
+        self._player.blockSignals(False)
