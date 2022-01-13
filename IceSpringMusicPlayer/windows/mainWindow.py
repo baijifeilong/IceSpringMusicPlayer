@@ -118,7 +118,8 @@ class MainWindow(QtWidgets.QMainWindow):
         mainLayout.addWidget(ControlsPanel(self))
         mainSplitter.addWidget(PlaylistTable(mainSplitter))
         mainSplitter.addWidget(LyricsPanel(mainSplitter))
-        mainSplitter.setSizes([2 ** 31 - 1, 2 ** 31 - 1])
+        mainSplitter.addWidget(LyricsPanel(mainSplitter))
+        mainSplitter.setSizes([2 ** 16, 2 ** 16, 2 ** 16])
 
     def _onPlaylistInserted(self, index: int) -> None:
         playlist = self._player.getPlaylists()[index]

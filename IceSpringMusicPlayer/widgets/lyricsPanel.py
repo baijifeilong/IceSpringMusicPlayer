@@ -66,14 +66,14 @@ class LyricsPanel(QtWidgets.QScrollArea):
 
     def _setupLyrics(self):
         self._logger.info(">> Setting up lyrics...")
-        self._player.setProperty("previousLyricIndex", -1)
+        self.setProperty("previousLyricIndex", -1)
         currentMusic = self._player.getCurrentMusic().orElseThrow(AssertionError)
         lyricsPath = Path(currentMusic.filename).with_suffix(".lrc")
         lyricsText = lyricsPath.read_text(encoding="gbk")
         self._logger.info("Parsing lyrics")
         lyricDict = LyricUtils.parseLyrics(lyricsText)
         self._logger.info("Lyrics count: %d", len(lyricDict))
-        self._player.setProperty("lyricDict", lyricDict)
+        self.setProperty("lyricDict", lyricDict)
         LayoutUtils.clearLayout(self._layout)
         self._layout.addSpacing(self.height() // 2)
         for position, lyric in list(lyricDict.items())[:]:
@@ -95,8 +95,8 @@ class LyricsPanel(QtWidgets.QScrollArea):
 
     def _refreshLyrics(self, position):
         self._logger.debug("Refreshing lyrics at position: %d", position)
-        lyricDict = self._player.property("lyricDict")
-        previousLyricIndex = self._player.property("previousLyricIndex")
+        lyricDict = self.property("lyricDict")
+        previousLyricIndex = self.property("previousLyricIndex")
         lyricIndex = LyricUtils.calcLyricIndexAtPosition(position, list(lyricDict.keys()))
         self._logger.debug("Lyric index: %d => %d", previousLyricIndex, lyricIndex)
         if lyricIndex == previousLyricIndex:
@@ -104,7 +104,7 @@ class LyricsPanel(QtWidgets.QScrollArea):
             return
         else:
             self._logger.debug("Lyric index changed: %d => %d, refreshing...", previousLyricIndex, lyricIndex)
-        self._player.setProperty("previousLyricIndex", lyricIndex)
+        self.setProperty("previousLyricIndex", lyricIndex)
         for index in range(len(lyricDict)):
             lyricLabel: QtWidgets.QLabel = self._layout.itemAt(index + 1).widget()
             lyricLabel.setStyleSheet("color:rgb(225,65,60)" if index == lyricIndex else "color:rgb(35,85,125)")
