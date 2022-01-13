@@ -6,7 +6,7 @@ import logging
 import typing
 
 import qtawesome
-from IceSpringRealOptional.typingUtils import gg, unused
+from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.app import App
@@ -19,6 +19,7 @@ from IceSpringMusicPlayer.services.player import Player
 class PlaylistTable(IceTableView):
     actionAddTriggered: QtCore.SignalInstance = QtCore.Signal()
     actionOneKeyAddTriggered: QtCore.SignalInstance = QtCore.Signal()
+    actionLoadTestDataTriggered: QtCore.SignalInstance = QtCore.Signal()
 
     _logger: logging.Logger
     _config: Config
@@ -38,8 +39,9 @@ class PlaylistTable(IceTableView):
         self.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
         self.setSortingEnabled(True)
         self._player.stateChanged.connect(self._onPlayerStateChanged)
+        self._player.frontPlaylistIndexAboutToBeChanged.connect(self._onFrontPlaylistIndexAboutToBeChanged)
         self._player.frontPlaylistIndexChanged.connect(self._onFrontPlaylistIndexChanged)
-        self._player.currentMusicIndexChanged.connect(self._onMusicIndexChanged)
+        self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
         self._player.musicsInserted.connect(self._onMusicsInserted)
 
     def model(self) -> "PlaylistModel":
@@ -48,8 +50,8 @@ class PlaylistTable(IceTableView):
     def _onClicked(self, modelIndex: QtCore.QModelIndex):
         index = modelIndex.row()
         self._logger.info("On clicked at %d", index)
-        self._logger.info("Set front music index to %d", index)
-        self._player.setFrontMusicIndex(index)
+        self._logger.info("Set selected music index to %d", index)
+        self._player.setSelectedMusicIndex(index)
 
     def _onDoubleClicked(self, modelIndex: QtCore.QModelIndex):
         self._logger.info("On double clicked at %d", modelIndex.row())
@@ -59,23 +61,56 @@ class PlaylistTable(IceTableView):
         self.scrollTo(self.model().index(index, 0), QtWidgets.QTableView.ScrollHint.PositionAtCenter)
 
     def _selectRowRange(self, fromRow, toRow):
-        self.clearSelection()
         self.selectionModel().select(
             QtCore.QItemSelection(self.model().index(fromRow, 0), self.model().index(toRow, 0)),
             gg(QtCore.QItemSelectionModel.Select, typing.Any) | QtCore.QItemSelectionModel.Rows)
+
+    def _selectRows(self, indexes: typing.Iterable[int]) -> None:
+        for index in indexes:
+            self.selectionModel().select(
+                QtCore.QItemSelection(self.model().index(index, 0), self.model().index(index, 0)),
+                gg(QtCore.QItemSelectionModel.Select, typing.Any) | QtCore.QItemSelectionModel.Rows)
 
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         menu = QtWidgets.QMenu()
         menu.addAction("Remove", self._onRemove)
         menu.addAction("Add", self.actionAddTriggered.emit)
-        menu.addAction("Rapid Add", self.actionOneKeyAddTriggered.emit)
+        menu.addAction("One Key Add", self.actionOneKeyAddTriggered.emit)
+        menu.addAction("Load Test Data", self.actionLoadTestDataTriggered.emit)
         menu.exec_(QtGui.QCursor.pos())
+
+    def _onFrontPlaylistIndexAboutToBeChanged(self, oldIndex: int, newIndex: int) -> None:
+        self._logger.info("On front playlist index about to be changed: %d => %d", oldIndex, newIndex)
+        if oldIndex == -1:
+            self._logger.info("Old front playlist index is -1, nothing to save, return")
+            return
+        playlist = self._player.getFrontPlaylist().orElseThrow(AssertionError)
+        selectedIndexes = {x.row() for x in self.selectionModel().selectedIndexes()}
+        self._logger.info("Save playlist selections: %s => %s", playlist.name, selectedIndexes)
+        playlist.setProperty("selectedIndexes", selectedIndexes)
+        scrollLocation = self.verticalScrollBar().value()
+        self._logger.info("Save scroll location: %s => %s", playlist.name, scrollLocation)
+        playlist.setProperty("scrollLocation", scrollLocation)
 
     def _onFrontPlaylistIndexChanged(self, oldIndex: int, newIndex: int) -> None:
         self._logger.info("On front playlist index changed: %d => %d", oldIndex, newIndex)
         self._logger.info("Reset model")
         self.model().endResetModel()
         self._logger.info("Model reset")
+        if newIndex == -1:
+            self._logger.info("New front playlist index is -1, nothing to recover, return")
+            return
+        playlist = self._player.getFrontPlaylist().orElseThrow(AssertionError)
+        selectedIndexes: typing.Optional[typing.Set[int]] = playlist.property("selectedIndexes")
+        if selectedIndexes is None:
+            self._logger.info("No saved selections, nothing to recover, return")
+            return
+        self._logger.info("Recover playlist selections: %s => %s", playlist.name, selectedIndexes)
+        self._selectRows(selectedIndexes)
+        scrollLocation: int = playlist.property("scrollLocation")
+        assert scrollLocation is not None
+        self._logger.info("Recover scroll location: %s => %s", playlist.name, scrollLocation)
+        self.verticalScrollBar().setValue(scrollLocation)
 
     def _onRemove(self):
         indexes = sorted(set(x.row() for x in self.selectedIndexes()))
@@ -87,22 +122,24 @@ class PlaylistTable(IceTableView):
         self._logger.info("Notify table new data inserted")
         self.model().beginInsertRows(QtCore.QModelIndex(), indexes[0], indexes[-1])
         self.model().endInsertRows()
+        self._logger.info("Clear old selection")
+        self.clearSelection()
         self._logger.info("Select inserted rows")
         self._selectRowRange(indexes[0], indexes[-1])
         self.resizeRowsToContents()
         self._logger.info("Scroll first inserted row to center")
         self.scrollToRowAtCenter(indexes[0])
 
-    def _onMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
-        self._logger.info("Refresh playlist table")
+    def _onCurrentMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
+        self._logger.info("On current music index changed: %d => %d", oldIndex, newIndex)
+        self._logger.info("Refresh old row")
         self.model().notifyDataChangedAtRow(oldIndex)
+        self._logger.info("Refresh new row")
         self.model().notifyDataChangedAtRow(newIndex)
-        self._logger.info("Select played item in playlist table")
-        self.selectRow(newIndex)
 
     def _onPlayerStateChanged(self, state: PlayerState) -> None:
-        unused(state)
-        self._logger.info("On player state changed, refresh table")
+        self._logger.info("On player state changed: %s", state)
+        self._logger.info("Notify model to refresh current row")
         self.model().notifyDataChangedAtRow(self._player.getCurrentMusicIndex())
 
 

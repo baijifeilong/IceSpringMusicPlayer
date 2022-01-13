@@ -20,6 +20,8 @@ from IceSpringMusicPlayer.windows.playlistManagerDialog import PlaylistManagerDi
 
 
 class MainWindow(QtWidgets.QMainWindow):
+    requestLocateCurrentMusic: QtCore.SignalInstance = QtCore.Signal()
+
     _config: Config
     _player: Player
     _playlistTable: PlaylistTable
@@ -93,23 +95,25 @@ class MainWindow(QtWidgets.QMainWindow):
         filenames = QtWidgets.QFileDialog.getOpenFileNames(
             self, "Open music files", musicRoot, "Audio files (*.mp3 *.wma) ;; All files (*)")[0]
         self._logger.info("There are %d files to open", len(filenames))
-        self._addMusicsByFilenames(filenames)
+        musics = [MusicUtils.parseMusic(x) for x in filenames]
+        self._player.insertMusics(musics)
 
     def _onOneKeyAddActionTriggered(self):
         self._logger.info("On one key add action triggered")
         paths = Path("~/Music").expanduser().glob("**/*.mp3")
-        self._addMusicsByFilenames([str(x) for x in paths])
-
-    def _addMusicsByFilenames(self, filenames: typing.List[str]):
-        self._logger.info(">> Add musics with count %d", len(filenames))
-        musics = [MusicUtils.parseMusic(x) for x in filenames]
-        if not musics:
-            self._logger.info("No music file to open, return")
-            return
-        self._logger.info("Inserting musics...")
+        musics = [MusicUtils.parseMusic(str(x)) for x in paths]
         self._player.insertMusics(musics)
-        self._logger.info("Musics inserted.")
-        self._logger.info("<< Musics added")
+
+    def _onLoadTestDataActionTriggered(self):
+        self._logger.info("On load test data action triggered")
+        paths = Path("~/Music").expanduser().glob("**/*.mp3")
+        musics = [MusicUtils.parseMusic(str(x)) for x in paths]
+        self._player.setFrontPlaylistIndex(self._player.insertPlaylist())
+        self._player.insertMusics([x for i, x in enumerate(musics) if i % 6 in (0, 1, 2)])
+        self._player.setFrontPlaylistIndex(self._player.insertPlaylist())
+        self._player.insertMusics([x for i, x in enumerate(musics) if i % 6 in (3, 4)])
+        self._player.setFrontPlaylistIndex(self._player.insertPlaylist())
+        self._player.insertMusics([x for i, x in enumerate(musics) if i % 6 in (5,)])
 
     def _initToolbar(self):
         toolbar = self.addToolBar("Toolbar")
@@ -146,6 +150,7 @@ class MainWindow(QtWidgets.QMainWindow):
         playlistTable = PlaylistTable(mainSplitter)
         playlistTable.actionAddTriggered.connect(self._onOpenActionTriggered)
         playlistTable.actionOneKeyAddTriggered.connect(self._onOneKeyAddActionTriggered)
+        playlistTable.actionLoadTestDataTriggered.connect(self._onLoadTestDataActionTriggered)
         lyricsPanel = LyricsPanel(mainSplitter)
         mainSplitter.addWidget(playlistTable)
         mainSplitter.addWidget(lyricsPanel)

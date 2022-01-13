@@ -23,6 +23,7 @@ if typing.TYPE_CHECKING:
 
 class Player(QtCore.QObject):
     frontPlaylistIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
+    frontPlaylistIndexAboutToBeChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
     currentPlaylistIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
     currentMusicIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
     playlistInserted: QtCore.SignalInstance = QtCore.Signal(int)
@@ -38,7 +39,7 @@ class Player(QtCore.QObject):
     _playlists: Vector[Playlist]
     _frontPlaylistIndex: int
     _currentPlaylistIndex: int
-    _frontMusicIndex: int
+    _selectedMusicIndex: int
     _currentMusicIndex: int
     _histories: Dict[int, int]
     _historyPosition: int
@@ -52,7 +53,7 @@ class Player(QtCore.QObject):
         self._playlists = Vector()
         self._frontPlaylistIndex = -1
         self._currentPlaylistIndex = -1
-        self._frontMusicIndex = -1
+        self._selectedMusicIndex = -1
         self._currentMusicIndex = -1
         self._histories = dict()
         self._historyPosition = -1
@@ -106,11 +107,11 @@ class Player(QtCore.QObject):
         elif self.getState().isPaused():
             self._logger.info("Player paused, resume it")
             self._proxy.play()
-        elif self._frontMusicIndex != -1:
-            self._logger.info("Front music index is not -1, play it")
-            self.playMusicAtIndex(self._frontMusicIndex)
+        elif self._selectedMusicIndex != -1:
+            self._logger.info("Selected music index is not -1, play it")
+            self.playMusicAtIndex(self._selectedMusicIndex)
         else:
-            self._logger.info("Front music index is -1, play next")
+            self._logger.info("Selected music index is -1, play next")
             self.playNext()
 
     def pause(self) -> None:
@@ -122,6 +123,7 @@ class Player(QtCore.QObject):
         self._logger.info("Stopping proxy...")
         self._proxy.stop()
         self._logger.info("Proxy stopped.")
+        self._logger.info("Set current music index to -1")
         self.setCurrentMusicIndex(-1)
 
     def _resetHistories(self):
@@ -190,6 +192,9 @@ class Player(QtCore.QObject):
         if index == oldFrontPlaylistIndex:
             self._logger.info("No change, skip")
             return
+        self._logger.info("> Signal frontPlaylistIndexToBeChanged emitting...")
+        self.frontPlaylistIndexAboutToBeChanged.emit(oldFrontPlaylistIndex, index)
+        self._logger.info("< Signal frontPlaylistIndexToBeChanged emitted.")
         self._frontPlaylistIndex = index
         self._logger.info("> Signal frontPlaylistIndexChanged emitting...")
         self.frontPlaylistIndexChanged.emit(oldFrontPlaylistIndex, index)
@@ -216,21 +221,21 @@ class Player(QtCore.QObject):
     def getCurrentPlaylist(self) -> Maybe[Playlist]:
         return self._playlists.get(self._currentPlaylistIndex)
 
-    def setFrontMusicIndex(self, index: int) -> None:
-        self._logger.info("Set front music index to %d", index)
-        self._frontMusicIndex = index
-        self._logger.info("Front music index set")
+    def setSelectedMusicIndex(self, index: int) -> None:
+        self._logger.info("Set selected music index to %d", index)
+        self._selectedMusicIndex = index
+        self._logger.info("Selected music index set")
 
-    def getFrontMusicIndex(self) -> int:
-        return self._frontMusicIndex
+    def getSelectedMusicIndex(self) -> int:
+        return self._selectedMusicIndex
 
     def setCurrentMusicIndex(self, index: int) -> None:
-        oldMusicIndex = self._currentMusicIndex
+        oldIndex = self._currentMusicIndex
         self._logger.info("Set current music at index: %d", index)
         self._currentMusicIndex = index
-        self._logger.info("> Signal musicIndexChanged emitting...")
-        self.currentMusicIndexChanged.emit(oldMusicIndex, index)
-        self._logger.info("< Signal musicIndexChanged emitted.")
+        self._logger.info("> Signal currentMusicIndexChanged emitting...")
+        self.currentMusicIndexChanged.emit(oldIndex, index)
+        self._logger.info("< Signal currentMusicIndexChanged emitted.")
 
     def getCurrentMusicIndex(self) -> int:
         return self._currentMusicIndex

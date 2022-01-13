@@ -5,13 +5,15 @@ from __future__ import annotations
 import typing
 
 from IceSpringRealOptional.vector import Vector
+from PySide2 import QtCore
 
 if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.domains.music import Music
 
 
-class Playlist(object):
+class Playlist(QtCore.QObject):
     def __init__(self, name: str):
+        super().__init__()
         self.name = name
         self.musics: Vector[Music] = Vector()
 
