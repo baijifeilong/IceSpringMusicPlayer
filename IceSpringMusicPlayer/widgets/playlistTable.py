@@ -62,6 +62,10 @@ class PlaylistTable(IceTableView):
     def _onSelectedMusicIndexesChanged(self, indexes: typing.Set[int]) -> None:
         self._logger.info("On selected music indexes changed: %s", indexes)
         self._logger.info("Clear all selection and reselect")
+        selectedIndexes = {x.row() for x in self.selectedIndexes()}
+        if indexes == selectedIndexes:
+            self._logger.info("Selection not changed, return")
+            return
         self.selectionModel().blockSignals(True)
         self.model().endResetModel()
         self._selectRows(indexes)
