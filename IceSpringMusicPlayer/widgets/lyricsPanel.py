@@ -6,25 +6,27 @@ from IceSpringPathLib import Path
 from IceSpringRealOptional.typingUtils import unused, gg
 from PySide2 import QtWidgets, QtGui, QtCore
 
+from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.clickableLabel import ClickableLabel
+from IceSpringMusicPlayer.services.config import Config
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.layoutUtils import LayoutUtils
 from IceSpringMusicPlayer.utils.lyricUtils import LyricUtils
 
 
 class LyricsPanel(QtWidgets.QScrollArea):
+    _config: Config
     _player: Player
     _layout: QtWidgets.QVBoxLayout
-    _zoom: float
 
-    def __init__(self, player: Player, parent: QtWidgets.QWidget, zoom: float = 1):
+    def __init__(self, parent: QtWidgets.QWidget):
         super().__init__(parent)
         self._logger = logging.getLogger("lyricsPanel")
         self._logger.setLevel(logging.INFO)
-        self._player = player
+        self._config = App.instance().getConfig()
+        self._player = App.instance().getPlayer()
         self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
         self._player.positionChanged.connect(self._onPlayerPositionChanged)
-        self._zoom = zoom
         widget = QtWidgets.QWidget(self)
         layout = QtWidgets.QVBoxLayout(widget)
         layout.setMargin(0)
@@ -82,9 +84,9 @@ class LyricsPanel(QtWidgets.QScrollArea):
                 lambda _, position=position: self._player.setPosition(position))
             font = lyricLabel.font()
             font.setFamily("等线")
-            font.setPointSize(12 * self._zoom)
+            font.setPointSize(12 * self._config.getZoom())
             lyricLabel.setFont(font)
-            lyricLabel.setMargin(int(2 * self._zoom))
+            lyricLabel.setMargin(int(2 * self._config.getZoom()))
             self._layout.addWidget(lyricLabel)
         self._layout.addSpacing(self.height() // 2)
         self._logger.info("Lyrics layout has children: %d", self._layout.count())

@@ -9,8 +9,10 @@ import qtawesome
 from IceSpringRealOptional.typingUtils import gg, unused
 from PySide2 import QtCore, QtGui, QtWidgets
 
+from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
 from IceSpringMusicPlayer.enums.playerState import PlayerState
+from IceSpringMusicPlayer.services.config import Config
 from IceSpringMusicPlayer.services.player import Player
 
 
@@ -19,18 +21,20 @@ class PlaylistTable(IceTableView):
     actionOneKeyAddTriggered: QtCore.SignalInstance = QtCore.Signal()
 
     _logger: logging.Logger
+    _config: Config
     _player: Player
 
-    def __init__(self, player: Player, parent: QtWidgets.QWidget, zoom=1) -> None:
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
         self._logger = logging.getLogger("playlistTable")
-        self._player = player
-        self.setModel(PlaylistModel(player, self))
-        self.setColumnWidth(0, int(35 * zoom))
-        self.setColumnWidth(1, int(150 * zoom))
+        self._config = App.instance().getConfig()
+        self._player = App.instance().getPlayer()
+        self.setModel(PlaylistModel(self))
+        self.setColumnWidth(0, int(35 * self._config.getZoom()))
+        self.setColumnWidth(1, int(150 * self._config.getZoom()))
         self.clicked.connect(self._onClicked)
         self.doubleClicked.connect(self._onDoubleClicked)
-        self.setIconSize(QtCore.QSize(32, 32) * zoom)
+        self.setIconSize(QtCore.QSize(32, 32) * self._config.getZoom())
         self.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
         self.setSortingEnabled(True)
         self._player.stateChanged.connect(self._onPlayerStateChanged)
@@ -106,10 +110,10 @@ class PlaylistModel(QtCore.QAbstractTableModel):
     _logger: logging.Logger
     _player: Player
 
-    def __init__(self, player: Player, parent: QtCore.QObject) -> None:
+    def __init__(self, parent: QtCore.QObject) -> None:
         super().__init__(parent)
         self._logger = logging.getLogger("playlistModel")
-        self._player = player
+        self._player = App.instance().getPlayer()
 
     def rowCount(self, parent: QtCore.QModelIndex = ...) -> int:
         return self._player.getFrontPlaylist().map(lambda x: x.musics.size()).orElse(0)

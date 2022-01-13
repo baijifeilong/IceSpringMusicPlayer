@@ -8,6 +8,8 @@ from pathlib import Path
 
 from PySide2 import QtCore, QtGui, QtWidgets
 
+from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.services.config import Config
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
@@ -16,35 +18,32 @@ from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
 from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
 from IceSpringMusicPlayer.windows.playlistManagerDialog import PlaylistManagerDialog
 
-if typing.TYPE_CHECKING:
-    from IceSpringMusicPlayer.app import App
-
 
 class MainWindow(QtWidgets.QMainWindow):
+    _config: Config
+    _player: Player
     _playlistTable: PlaylistTable
     _statusLabel: QtWidgets.QLabel
     _playlistCombo: QtWidgets.QComboBox
-    _player: Player
 
-    def __init__(self, app: App, player: Player):
+    def __init__(self):
         super().__init__()
         self._logger = logging.getLogger("mainWindow")
-        self.app = app
         self._positionLogger = logging.getLogger("position")
         self._positionLogger.setLevel(logging.INFO)
-        self._player = player
+        self._config = App.instance().getConfig()
+        self._player = App.instance().getPlayer()
+        self._initPlayer()
         self._initMenu()
         self._initToolbar()
         self._initLayout()
         self._initStatusBar()
-        self._setupPlayer()
 
-    def _setupPlayer(self):
-        player = self._player
-        player.frontPlaylistIndexChanged.connect(self._onFrontPlaylistChangedAtIndex)
-        player.positionChanged.connect(self._onPlayerPositionChanged)
-        player.playlistInserted.connect(self._onPlaylistInserted)
-        player.currentMusicIndexChanged.connect(self._onMusicIndexChanged)
+    def _initPlayer(self):
+        self._player.frontPlaylistIndexChanged.connect(self._onFrontPlaylistChangedAtIndex)
+        self._player.positionChanged.connect(self._onPlayerPositionChanged)
+        self._player.playlistInserted.connect(self._onPlaylistInserted)
+        self._player.currentMusicIndexChanged.connect(self._onMusicIndexChanged)
 
     def _initStatusBar(self):
         statusLabel = QtWidgets.QLabel("", self.statusBar())
@@ -72,7 +71,7 @@ class MainWindow(QtWidgets.QMainWindow):
         fileMenu = self.menuBar().addMenu("File")
         fileMenu.addAction("Open", self._onOpenActionTriggered)
         viewMenu = self.menuBar().addMenu("View")
-        viewMenu.addAction("Playlist Manager", lambda: PlaylistManagerDialog(self._player, self).show())
+        viewMenu.addAction("Playlist Manager", lambda: PlaylistManagerDialog(self).show())
 
     def _onPlaylistComboActivated(self, index: int) -> None:
         self._logger.info("On playlist combo activated at index %d", index)
@@ -143,11 +142,11 @@ class MainWindow(QtWidgets.QMainWindow):
         mainLayout.addWidget(lines[0])
         mainLayout.addWidget(mainSplitter, 1)
         mainLayout.addWidget(lines[1])
-        mainLayout.addWidget(ControlsPanel(self._player, self, self.app.zoom))
-        playlistTable = PlaylistTable(self._player, self)
+        mainLayout.addWidget(ControlsPanel(self))
+        playlistTable = PlaylistTable(mainSplitter)
         playlistTable.actionAddTriggered.connect(self._onOpenActionTriggered)
         playlistTable.actionOneKeyAddTriggered.connect(self._onOneKeyAddActionTriggered)
-        lyricsPanel = LyricsPanel(self._player, self, self.app.zoom)
+        lyricsPanel = LyricsPanel(mainSplitter)
         mainSplitter.addWidget(playlistTable)
         mainSplitter.addWidget(lyricsPanel)
         mainSplitter.setSizes([2 ** 31 - 1, 2 ** 31 - 1])

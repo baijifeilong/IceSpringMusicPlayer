@@ -4,31 +4,29 @@ import logging
 import qtawesome
 from PySide2 import QtWidgets, QtCore
 
+from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.fluentSlider import FluentSlider
 from IceSpringMusicPlayer.enums.playerState import PlayerState
+from IceSpringMusicPlayer.services.config import Config
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 
 
 class ControlsPanel(QtWidgets.QWidget):
     _logger: logging.Logger
+    _config: Config
     _player: Player
-    _zoom: float
     _layout: QtWidgets.QHBoxLayout
     _playButton: QtWidgets.QToolButton
     _playbackButton: QtWidgets.QToolButton
     _progressSlider: FluentSlider
     _progressLabel: QtWidgets.QLabel
 
-    def __init__(self, player: Player, parent: QtWidgets.QWidget, zoom: float = 1.0) -> None:
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
         self._logger = logging.getLogger("controlsPanel")
-        self._player = player
-        self._zoom = zoom
-        player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
-        player.stateChanged.connect(self._onPlayerStateChanged)
-        player.durationChanged.connect(self._onPlayerDurationChanged)
-        player.positionChanged.connect(self._onPlayerPositionChanged)
+        self._config = App.instance().getConfig()
+        self._player = App.instance().getPlayer()
         layout = QtWidgets.QHBoxLayout(self)
         layout.setSpacing(5)
         playButton = QtWidgets.QToolButton(self)
@@ -46,7 +44,7 @@ class ControlsPanel(QtWidgets.QWidget):
         playbackButton = QtWidgets.QToolButton(self)
         playbackButton.setIcon(qtawesome.icon("mdi.repeat"))
         playbackButton.clicked.connect(self._onPlaybackButtonClicked)
-        iconSize = QtCore.QSize(48, 48) * zoom
+        iconSize = QtCore.QSize(48, 48) * self._config.getZoom()
         for button in playButton, stopButton, previousButton, nextButton, playbackButton:
             button.setIconSize(iconSize)
             button.setAutoRaise(True)
@@ -57,7 +55,7 @@ class ControlsPanel(QtWidgets.QWidget):
         volumeDial = QtWidgets.QDial(self)
         volumeDial.setFixedSize(iconSize)
         volumeDial.setValue(50)
-        volumeDial.valueChanged.connect(player.setVolume)
+        volumeDial.valueChanged.connect(self._player.setVolume)
         layout.addWidget(playButton)
         layout.addWidget(stopButton)
         layout.addWidget(previousButton)
@@ -70,6 +68,10 @@ class ControlsPanel(QtWidgets.QWidget):
         self._playbackButton = playbackButton
         self._progressSlider = progressSlider
         self._progressLabel = progressLabel
+        self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
+        self._player.stateChanged.connect(self._onPlayerStateChanged)
+        self._player.durationChanged.connect(self._onPlayerDurationChanged)
+        self._player.positionChanged.connect(self._onPlayerPositionChanged)
 
     def _onProgressSliderValueChanged(self, value: int) -> None:
         self._logger.info("On progress slider value changed: %d", value)

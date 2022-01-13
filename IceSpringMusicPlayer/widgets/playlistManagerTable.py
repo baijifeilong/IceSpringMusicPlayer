@@ -8,6 +8,7 @@ import typing
 from IceSpringRealOptional.typingUtils import unused
 from PySide2 import QtCore, QtWidgets, QtGui
 
+from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
 from IceSpringMusicPlayer.services.player import Player
 
@@ -16,11 +17,11 @@ class PlaylistManagerTable(IceTableView):
     _logger: logging.Logger
     _player: Player
 
-    def __init__(self, player: Player, parent: QtWidgets.QWidget) -> None:
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
         self._logger = logging.getLogger("playlistsTable")
-        self._player = player
-        self.setModel(PlaylistManagerModel(player, self))
+        self._player = App.instance().getPlayer()
+        self.setModel(PlaylistManagerModel(self))
         self.setColumnWidth(0, 320)
         self.doubleClicked.connect(self._onDoubleClicked)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
@@ -64,9 +65,9 @@ class PlaylistManagerTable(IceTableView):
 class PlaylistManagerModel(QtCore.QAbstractTableModel):
     _player: Player
 
-    def __init__(self, player: Player, parent: QtCore.QObject) -> None:
+    def __init__(self, parent: QtCore.QObject) -> None:
         super().__init__(parent)
-        self._player = player
+        self._player = App.instance().getPlayer()
 
     def rowCount(self, parent: QtCore.QModelIndex = ...) -> int:
         return self._player.getPlaylists().size()

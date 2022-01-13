@@ -6,7 +6,6 @@ import hashlib
 import logging
 import typing
 
-import PySide2.QtCore
 from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.maybe import Maybe
 from IceSpringRealOptional.vector import Vector
@@ -46,7 +45,7 @@ class Player(QtCore.QObject):
     _proxy: QtMultimedia.QMediaPlayer
     _playedCount: int
 
-    def __init__(self, parent: PySide2.QtCore.QObject):
+    def __init__(self, parent: QtCore.QObject):
         super().__init__(parent)
         self._logger = logging.getLogger("player")
         self._playbackMode = PlaybackMode.LOOP
