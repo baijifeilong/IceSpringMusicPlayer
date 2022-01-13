@@ -117,7 +117,8 @@ class MainWindow(QtWidgets.QMainWindow):
         mainLayout.addWidget(lines[1])
         mainLayout.addWidget(ControlsPanel(self))
         mainSplitter.addWidget(PlaylistTable(mainSplitter))
-        mainSplitter.addWidget(LyricsPanel(mainSplitter))
+        mainSplitter.addWidget(PlaylistTable(mainSplitter))
+        # mainSplitter.addWidget(LyricsPanel(mainSplitter))
         mainSplitter.addWidget(LyricsPanel(mainSplitter))
         mainSplitter.setSizes([2 ** 16, 2 ** 16, 2 ** 16])
 

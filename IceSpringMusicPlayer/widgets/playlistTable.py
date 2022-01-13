@@ -31,32 +31,55 @@ class PlaylistTable(IceTableView):
         self.setModel(PlaylistModel(self))
         self.setColumnWidth(0, int(35 * self._config.getZoom()))
         self.setColumnWidth(1, int(150 * self._config.getZoom()))
-        self.clicked.connect(self._onClicked)
         self.doubleClicked.connect(self._onDoubleClicked)
         self.setIconSize(QtCore.QSize(32, 32) * self._config.getZoom())
         self.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
         self.setSortingEnabled(True)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.onCustomContextMenuRequested)
+        self.selectionModel().selectionChanged.connect(self._onSelectionChanged)
         self._app.requestLocateCurrentMusic.connect(self._onRequestLocateCurrentMusic)
         self._player.stateChanged.connect(self._onPlayerStateChanged)
         self._player.frontPlaylistIndexAboutToBeChanged.connect(self._onFrontPlaylistIndexAboutToBeChanged)
         self._player.frontPlaylistIndexChanged.connect(self._onFrontPlaylistIndexChanged)
+        self._player.selectedMusicIndexesChanged.connect(self._onSelectedMusicIndexesChanged)
         self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
         self._player.musicsInserted.connect(self._onMusicsInserted)
 
     def model(self) -> "PlaylistModel":
         return super().model()
 
-    def _onClicked(self, modelIndex: QtCore.QModelIndex):
-        index = modelIndex.row()
-        self._logger.info("On clicked at %d", index)
-        self._logger.info("Set selected music index to %d", index)
-        self._player.setSelectedMusicIndex(index)
+    def _onSelectionChanged(self, selected: QtCore.QItemSelection, deselected: QtCore.QItemSelection) -> None:
+        self._logger.info("On selection changed")
+        selectedIndexes = [x.row() for x in selected.indexes()]
+        deselectedIndexes = [x.row() for x in deselected.indexes()]
+        oldSelectedIndexes = self._player.getSelectedMusicIndexes()
+        newSelectedIndexes = oldSelectedIndexes.union(selectedIndexes).difference(deselectedIndexes)
+        self.blockSignals(True)
+        self._player.setSelectedMusicIndexes(newSelectedIndexes)
+        self.blockSignals(False)
+
+    def _onSelectedMusicIndexesChanged(self, indexes: typing.Set[int]) -> None:
+        self._logger.info("On selected music indexes changed: %s", indexes)
+        self._logger.info("Clear all selection and reselect")
+        self.selectionModel().blockSignals(True)
+        self.model().endResetModel()
+        self._selectRows(indexes)
+        self.selectionModel().blockSignals(False)
+        self._logger.info("Reselection done")
+        if len(indexes) == 0:
+            self._logger.info("Selection indexes is empty, no scroll required")
+        else:
+            firstIndex = sorted(indexes)[0]
+            self._logger.info("Scroll to first index: %d", firstIndex)
+            self._scrollToRow(firstIndex)
 
     def _onDoubleClicked(self, modelIndex: QtCore.QModelIndex):
         self._logger.info("On double clicked at %d", modelIndex.row())
         self._player.playMusicAtIndex(modelIndex.row())
+
+    def _scrollToRow(self, index):
+        self.scrollTo(self.model().index(index, 0))
 
     def _scrollToRowAtCenter(self, index):
         self.scrollTo(self.model().index(index, 0), QtWidgets.QTableView.ScrollHint.PositionAtCenter)
@@ -69,7 +92,7 @@ class PlaylistTable(IceTableView):
     def _selectRows(self, indexes: typing.Iterable[int]) -> None:
         for index in indexes:
             self.selectionModel().select(
-                QtCore.QItemSelection(self.model().index(index, 0), self.model().index(index, 0)),
+                QtCore.QItemSelection(self.model().index(index, 0), self.model().index(index, 2)),
                 gg(QtCore.QItemSelectionModel.Select, typing.Any) | QtCore.QItemSelectionModel.Rows)
 
     def onCustomContextMenuRequested(self, position: QtCore.QPoint) -> None:
@@ -140,7 +163,7 @@ class PlaylistTable(IceTableView):
         self.clearSelection()
         self._logger.info("Select inserted rows")
         self._selectRowRange(indexes[0], indexes[-1])
-        self.resizeRowsToContents()
+        self._config.getMiniMode() and self.resizeRowsToContents()
         self._logger.info("Scroll first inserted row to center")
         self._scrollToRowAtCenter(indexes[0])
 

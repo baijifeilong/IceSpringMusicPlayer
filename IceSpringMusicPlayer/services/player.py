@@ -26,6 +26,7 @@ class Player(QtCore.QObject):
     frontPlaylistIndexAboutToBeChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
     currentPlaylistIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
     currentMusicIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
+    selectedMusicIndexesChanged: QtCore.SignalInstance = QtCore.Signal(set)
     playlistInserted: QtCore.SignalInstance = QtCore.Signal(int)
     playlistsRemoved: QtCore.SignalInstance = QtCore.Signal(list)
     musicsInserted: QtCore.SignalInstance = QtCore.Signal(list, dict)
@@ -39,7 +40,7 @@ class Player(QtCore.QObject):
     _playlists: Vector[Playlist]
     _frontPlaylistIndex: int
     _currentPlaylistIndex: int
-    _selectedMusicIndex: int
+    _selectedMusicIndexes: typing.Set[int]
     _currentMusicIndex: int
     _histories: Dict[int, int]
     _historyPosition: int
@@ -53,7 +54,7 @@ class Player(QtCore.QObject):
         self._playlists = Vector()
         self._frontPlaylistIndex = -1
         self._currentPlaylistIndex = -1
-        self._selectedMusicIndex = -1
+        self._selectedMusicIndexes = set()
         self._currentMusicIndex = -1
         self._histories = dict()
         self._historyPosition = -1
@@ -102,14 +103,15 @@ class Player(QtCore.QObject):
 
     def play(self) -> None:
         self._logger.info("Play")
+        selectedMusicIndex = -1 if len(self._selectedMusicIndexes) == 0 else sorted(self._selectedMusicIndexes)[0]
         if self.getState().isPlaying():
             self._logger.info("Already in playing, nothing to do")
         elif self.getState().isPaused():
             self._logger.info("Player paused, resume it")
             self._proxy.play()
-        elif self._selectedMusicIndex != -1:
+        elif selectedMusicIndex != -1:
             self._logger.info("Selected music index is not -1, play it")
-            self.playMusicAtIndex(self._selectedMusicIndex)
+            self.playMusicAtIndex(selectedMusicIndex)
         else:
             self._logger.info("Selected music index is -1, play next")
             self.playNext()
@@ -221,13 +223,16 @@ class Player(QtCore.QObject):
     def getCurrentPlaylist(self) -> Maybe[Playlist]:
         return self._playlists.get(self._currentPlaylistIndex)
 
-    def setSelectedMusicIndex(self, index: int) -> None:
-        self._logger.info("Set selected music index to %d", index)
-        self._selectedMusicIndex = index
-        self._logger.info("Selected music index set")
+    def setSelectedMusicIndexes(self, indexes: typing.Set[int]) -> None:
+        self._logger.info("Set selected music indexes to %s", indexes)
+        self._selectedMusicIndexes = indexes
+        self._logger.info("Selected music indexes set")
+        self._logger.info("> Signal selectedMusicIndexesChanged emitting...")
+        self.selectedMusicIndexesChanged.emit(indexes)
+        self._logger.info("< Signal selectedMusicIndexesChanged emitted.")
 
-    def getSelectedMusicIndex(self) -> int:
-        return self._selectedMusicIndex
+    def getSelectedMusicIndexes(self) -> typing.Set[int]:
+        return self._selectedMusicIndexes
 
     def setCurrentMusicIndex(self, index: int) -> None:
         oldIndex = self._currentMusicIndex
