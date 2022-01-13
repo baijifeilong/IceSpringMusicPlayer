@@ -76,14 +76,14 @@ class PlaylistTable(IceTableView):
         else:
             firstIndex = sorted(indexes)[0]
             self._logger.info("Scroll to first index: %d", firstIndex)
-            self._scrollToRow(firstIndex)
+            visible = firstIndex in range(self.rowAt(0), self.rowAt(self.height()))
+            hint = QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible if visible \
+                else QtWidgets.QAbstractItemView.ScrollHint.PositionAtCenter
+            self.scrollTo(self.model().index(firstIndex, 0), hint)
 
     def _onDoubleClicked(self, modelIndex: QtCore.QModelIndex):
         self._logger.info("On double clicked at %d", modelIndex.row())
         self._player.playMusicAtIndex(modelIndex.row())
-
-    def _scrollToRow(self, index):
-        self.scrollTo(self.model().index(index, 0))
 
     def _scrollToRowAtCenter(self, index):
         self.scrollTo(self.model().index(index, 0), QtWidgets.QTableView.ScrollHint.PositionAtCenter)
