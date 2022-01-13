@@ -110,6 +110,7 @@ class PlaylistTable(IceTableView):
         scrollLocation: int = playlist.property("scrollLocation")
         assert scrollLocation is not None
         self._logger.info("Recover scroll location: %s => %s", playlist.name, scrollLocation)
+        self.verticalScrollBar().setMaximum(playlist.musics.size())
         self.verticalScrollBar().setValue(scrollLocation)
 
     def _onRemove(self):
