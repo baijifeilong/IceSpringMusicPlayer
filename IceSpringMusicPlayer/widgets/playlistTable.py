@@ -76,17 +76,17 @@ class PlaylistTable(IceTableView):
         else:
             firstIndex = sorted(indexes)[0]
             self._logger.info("Scroll to first index: %d", firstIndex)
-            visible = firstIndex in range(self.rowAt(0), self.rowAt(self.height()))
-            hint = QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible if visible \
-                else QtWidgets.QAbstractItemView.ScrollHint.PositionAtCenter
-            self.scrollTo(self.model().index(firstIndex, 0), hint)
+            self._smartScrollToRow(firstIndex)
 
     def _onDoubleClicked(self, modelIndex: QtCore.QModelIndex):
         self._logger.info("On double clicked at %d", modelIndex.row())
         self._player.playMusicAtIndex(modelIndex.row())
 
-    def _scrollToRowAtCenter(self, index):
-        self.scrollTo(self.model().index(index, 0), QtWidgets.QTableView.ScrollHint.PositionAtCenter)
+    def _smartScrollToRow(self, index):
+        visible = index in range(self.rowAt(0), self.rowAt(self.height()))
+        hint = QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible if visible \
+            else QtWidgets.QAbstractItemView.ScrollHint.PositionAtCenter
+        self.scrollTo(self.model().index(index, 0), hint)
 
     def _selectRowRange(self, fromRow, toRow):
         self.selectionModel().select(
@@ -117,7 +117,7 @@ class PlaylistTable(IceTableView):
         self._logger.info("Locate music: %s", currentMusicIndex)
         self._player.setFrontPlaylistIndex(self._player.getCurrentPlaylistIndex())
         self.selectRow(currentMusicIndex)
-        self._scrollToRowAtCenter(currentMusicIndex)
+        self._smartScrollToRow(currentMusicIndex)
 
     def _onFrontPlaylistIndexAboutToBeChanged(self, oldIndex: int, newIndex: int) -> None:
         self._logger.info("On front playlist index about to be changed: %d => %d", oldIndex, newIndex)
@@ -169,14 +169,22 @@ class PlaylistTable(IceTableView):
         self._selectRowRange(indexes[0], indexes[-1])
         self._config.getMiniMode() and self.resizeRowsToContents()
         self._logger.info("Scroll first inserted row to center")
-        self._scrollToRowAtCenter(indexes[0])
+        self._smartScrollToRow(indexes[0])
 
     def _onCurrentMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
         self._logger.info("On current music index changed: %d => %d", oldIndex, newIndex)
-        self._logger.info("Refresh old row")
-        self.model().notifyDataChangedAtRow(oldIndex)
-        self._logger.info("Refresh new row")
-        self.model().notifyDataChangedAtRow(newIndex)
+        if self._player.getFrontPlaylistIndex() != self._player.getCurrentPlaylistIndex():
+            self._logger.info("Front playlist not current, return")
+            return
+        self._logger.info("Select new row")
+        self._clearAndSelectRow(newIndex)
+        self._logger.info("Scroll to new row")
+        self._smartScrollToRow(newIndex)
+
+    def _clearAndSelectRow(self, index: int) -> None:
+        self.selectionModel().select(self.model().index(index, 0),
+            gg(QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect, typing.Any) |
+            QtCore.QItemSelectionModel.SelectionFlag.Rows)
 
     def _onPlayerStateChanged(self, state: PlayerState) -> None:
         self._logger.info("On player state changed: %s", state)
