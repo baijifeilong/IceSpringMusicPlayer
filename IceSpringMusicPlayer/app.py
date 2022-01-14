@@ -7,7 +7,7 @@ import typing
 
 from IceSpringPathLib import Path
 from IceSpringRealOptional.just import Just
-from PySide2 import QtWidgets, QtCore
+from PySide2 import QtWidgets, QtCore, QtGui
 
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 
@@ -41,10 +41,17 @@ class App(QtWidgets.QApplication):
         self.setFont(
             Just.of(self.font()).apply(lambda x: x.setPointSize(x.pointSize() * self._config.getZoom())).value())
         self._mainWindow.resize(QtCore.QSize(640, 360) if self._config.getMiniMode() else QtCore.QSize(1280, 720))
-        diff = self.primaryScreen().availableSize() - self._mainWindow.size()
-        titleBarHeight = self.style().pixelMetric(QtWidgets.QStyle.PixelMetric.PM_TitleBarHeight)
-        self._config.getMiniMode() and self._mainWindow.move(diff.width() - 5, diff.height() - titleBarHeight - 10)
-        self._mainWindow.show()
+        screensTotalWidth = sum(x.size().width() for x in QtGui.QGuiApplication.screens())
+        screensTotalHeight = sum(x.size().height() for x in QtGui.QGuiApplication.screens())
+        viewportWidth = QtGui.QGuiApplication.primaryScreen().availableSize().width()
+        viewportHeight = QtGui.QGuiApplication.primaryScreen().availableSize().height()
+        if self._config.getMiniMode():
+            self._mainWindow.move(screensTotalWidth, screensTotalHeight)
+            self._mainWindow.show()
+            frameWidth, frameHeight = self._mainWindow.frameSize().width(), self._mainWindow.frameSize().height()
+            self._mainWindow.move(viewportWidth - frameWidth, viewportHeight - frameHeight)
+        else:
+            self._mainWindow.show()
         return super().exec_()
 
     def getConfig(self) -> Config:
