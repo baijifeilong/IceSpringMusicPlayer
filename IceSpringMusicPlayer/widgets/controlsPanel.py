@@ -2,7 +2,8 @@
 import logging
 
 import qtawesome
-from PySide2 import QtWidgets, QtCore
+from IceSpringRealOptional.just import Just
+from PySide2 import QtWidgets, QtCore, QtGui
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.fluentSlider import FluentSlider
@@ -194,3 +195,7 @@ class ControlsPanel(QtWidgets.QWidget, ReplacerMixin):
         self._volumeDial.setValue(self._player.getVolume())
         self._volumeDial.blockSignals(False)
         self._refreshProgressLabel()
+
+    def paintEvent(self, evt):
+        self.style().drawPrimitive(QtWidgets.QStyle.PrimitiveElement.PE_Widget,
+            Just.of(QtWidgets.QStyleOption()).apply(lambda x: x.init(self)).value(), QtGui.QPainter(self), self)
