@@ -21,13 +21,14 @@ class ReplacerMixin(object):
         objectName = self.objectName() if self.objectName() != "" else str(id(self))
         self.setObjectName(objectName)
         self.setStyleSheet("#%s {%s}" % (objectName, stylesheet))
+        self.setStyleSheet(stylesheet)
 
     def _onCustomContextMenuRequested(self: base):
         from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
         from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
-        oldBackgroundColor = self.palette().color(self.backgroundRole())
-        self._setStylesheetOnlySelf("background: pink")
-        menu = QtWidgets.QMenu(self)
+        oldStylesheet = self.styleSheet()
+        self._setStylesheetOnlySelf(oldStylesheet + "* {background: pink}")
+        menu = QtWidgets.QMenu()
         menu.addAction("Replace by horizontal splitter", lambda: self._doReplace(SplitterWidget(False, self)))
         menu.addAction("Replace by vertical splitter", lambda: self._doReplace(SplitterWidget(True, self)))
         menu.addAction("Replace by button widget", lambda: self._doReplace(ButtonWidget(self)))
@@ -36,7 +37,7 @@ class ReplacerMixin(object):
         menu.addAction("Replace by lyrics widget", lambda: self._doReplace(LyricsPanel(self)))
         # menu.addAction("Replace by controls widget", self._doReplaceControlsWidget)
         menu.exec_(QtGui.QCursor.pos())
-        self._setStylesheetOnlySelf(f"background: {oldBackgroundColor.name()}")
+        self._setStylesheetOnlySelf(oldStylesheet)
 
     def _doReplaceControlsWidget(self: base):
         from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
@@ -49,7 +50,7 @@ class ReplacerMixin(object):
         if isinstance(parent, QtWidgets.QMainWindow):
             self._replacerLogger.info("Parent is main window")
             parent.setCentralWidget(widget)
-        if isinstance(parent, QtWidgets.QSplitter):
+        elif isinstance(parent, QtWidgets.QSplitter):
             self._replacerLogger.info("Parent is splitter")
             parent.replaceWidget(parent.indexOf(self), widget)
         else:
