@@ -6,6 +6,7 @@ import logging
 import typing
 from pathlib import Path
 
+from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.app import App
@@ -16,6 +17,7 @@ from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
 from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
 from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
+from IceSpringMusicPlayer.widgets.replacerMixin import BlankWidget
 from IceSpringMusicPlayer.windows.playlistManagerDialog import PlaylistManagerDialog
 
 
@@ -37,7 +39,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._initPlayer()
         self._initMenu()
         self._initToolbar()
-        self._initLayout()
+        # self._initLayout()
+        self.setCentralWidget(BlankWidget(self))
         self._initStatusBar()
 
     def _initPlayer(self):
@@ -93,6 +96,7 @@ class MainWindow(QtWidgets.QMainWindow):
         playlistCombo.activated.connect(self._onPlaylistComboActivated)
         toolbar.addWidget(QtWidgets.QLabel("Playlist: ", toolbar))
         toolbar.addWidget(playlistCombo)
+        toolbar.addAction(*gg(("One Key Add", self._app.addMusicsFromHomeFolder)))
         self._playlistCombo = playlistCombo
 
     def _initLayout(self):

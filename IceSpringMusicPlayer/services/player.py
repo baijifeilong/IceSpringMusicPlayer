@@ -106,8 +106,14 @@ class Player(QtCore.QObject):
         self.volumeChanged.emit(volume)
         self._logger.info("< Signal volumeChanged emitted.")
 
+    def getVolume(self) -> int:
+        return self._proxy.volume()
+
     def play(self) -> None:
         self._logger.info("Play")
+        if self.getPlaylists().isEmpty():
+            self._logger.info("No playlist to play, return")
+            return
         selectedMusicIndex = -1 if len(self._selectedMusicIndexes) == 0 else sorted(self._selectedMusicIndexes)[0]
         if self.getState().isPlaying():
             self._logger.info("Already in playing, nothing to do")

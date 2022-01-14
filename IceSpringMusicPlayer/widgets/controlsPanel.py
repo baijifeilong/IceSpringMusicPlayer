@@ -11,9 +11,10 @@ from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.services.config import Config
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
+from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
 
 
-class ControlsPanel(QtWidgets.QWidget):
+class ControlsPanel(QtWidgets.QWidget, ReplacerMixin):
     _logger: logging.Logger
     _config: Config
     _player: Player
@@ -26,6 +27,7 @@ class ControlsPanel(QtWidgets.QWidget):
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
+        ReplacerMixin.__init__(self)
         self._logger = logging.getLogger("controlsPanel")
         self._config = App.instance().getConfig()
         self._player = App.instance().getPlayer()
@@ -51,7 +53,6 @@ class ControlsPanel(QtWidgets.QWidget):
             button.setIconSize(iconSize)
             button.setAutoRaise(True)
         progressSlider = FluentSlider(QtCore.Qt.Orientation.Horizontal, self)
-        progressSlider.setDisabled(True)
         progressSlider.valueChanged.connect(self._onProgressSliderValueChanged)
         progressLabel = QtWidgets.QLabel("00:00/00:00", self)
         volumeDial = QtWidgets.QDial(self)
@@ -71,6 +72,7 @@ class ControlsPanel(QtWidgets.QWidget):
         self._progressSlider = progressSlider
         self._progressLabel = progressLabel
         self._volumeDial = volumeDial
+        self._refreshView()
         self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
         self._player.stateChanged.connect(self._onPlayerStateChanged)
         self._player.durationChanged.connect(self._onPlayerDurationChanged)
@@ -96,7 +98,7 @@ class ControlsPanel(QtWidgets.QWidget):
             logging.info("Player is playing, pause it")
             self._player.pause()
         else:
-            logging.info("Player is paused, resume it")
+            logging.info("Player is not playing, play it")
             self._player.play()
 
     def _onStopButtonClicked(self):
@@ -115,9 +117,13 @@ class ControlsPanel(QtWidgets.QWidget):
         self._player.setPlaybackMode(newMode)
 
     def _onPlaybackModeChanged(self, mode: PlaybackMode) -> None:
-        self._logger.info("On playback mode changed")
-        iconName = {PlaybackMode.LOOP: "mdi.repeat", PlaybackMode.RANDOM: "mdi.shuffle"}[mode]
+        self._logger.info("On playback mode changed: %s", mode)
         self._logger.info("Update playback button icon")
+        self._refreshPlaybackButton()
+
+    def _refreshPlaybackButton(self):
+        mode = self._player.getPlaybackMode()
+        iconName = {PlaybackMode.LOOP: "mdi.repeat", PlaybackMode.RANDOM: "mdi.shuffle"}[mode]
         self._playbackButton.setIcon(qtawesome.icon(iconName))
 
     def _onCurrentMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
@@ -137,7 +143,10 @@ class ControlsPanel(QtWidgets.QWidget):
     def _onPlayerStateChanged(self, state: PlayerState):
         self._logger.info("Player state changed: %s ", state)
         self._logger.info("Update play button icon")
-        self._playButton.setIcon(qtawesome.icon("mdi.pause" if state.isPlaying() else "mdi.play"))
+        self._refreshPlayButton()
+
+    def _refreshPlayButton(self):
+        self._playButton.setIcon(qtawesome.icon("mdi.pause" if self._player.getState().isPlaying() else "mdi.play"))
 
     def _onPlayerDurationChanged(self, duration: int) -> None:
         self._logger.info("Player duration changed: %d", duration)
@@ -151,6 +160,13 @@ class ControlsPanel(QtWidgets.QWidget):
         self._progressSlider.blockSignals(True)
         self._progressSlider.setValue(position)
         self._progressSlider.blockSignals(False)
+        self._refreshProgressLabel()
+
+    def _refreshProgressLabel(self):
+        if self._player.getState().isStopped():
+            self._progressLabel.setText("00:00/00:00")
+            return
+        position = self._player.getPosition()
         duration = self._player.getDuration()
         progressText = f"{TimedeltaUtils.formatDelta(position)}/{TimedeltaUtils.formatDelta(duration)}"
         self._progressLabel.setText(progressText)
@@ -164,3 +180,17 @@ class ControlsPanel(QtWidgets.QWidget):
         self._player.blockSignals(True)
         self._volumeDial.setValue(value)
         self._player.blockSignals(False)
+
+    def _refreshView(self):
+        self._refreshPlayButton()
+        self._refreshPlaybackButton()
+        self._progressSlider.blockSignals(True)
+        print(self._player.getPosition(), self._player.getDuration())
+        self._progressSlider.setMaximum(self._player.getDuration())
+        self._progressSlider.setValue(self._player.getPosition())
+        self._progressSlider.setDisabled(self._player.getState().isStopped())
+        self._progressSlider.blockSignals(False)
+        self._volumeDial.blockSignals(True)
+        self._volumeDial.setValue(self._player.getVolume())
+        self._volumeDial.blockSignals(False)
+        self._refreshProgressLabel()

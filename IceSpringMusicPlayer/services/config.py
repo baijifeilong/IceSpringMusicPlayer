@@ -10,7 +10,7 @@ class Config(QObject):
     def __init__(self):
         super().__init__()
         self._miniMode = True
-        self._zoom = 0.5
+        self._zoom = 0.75
 
     def getMiniMode(self) -> bool:
         return self._miniMode

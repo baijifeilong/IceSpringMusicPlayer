@@ -1,5 +1,6 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/12 20:39
 import logging
+import typing
 from typing import Any
 
 from IceSpringPathLib import Path
@@ -64,19 +65,24 @@ class LyricsPanel(QtWidgets.QScrollArea):
         self._layout.itemAt(self._layout.count() - 1).spacerItem().changeSize(0, event.size().height() // 2)
         self._layout.invalidate()
 
-    def _setupLyrics(self):
-        self._logger.info(">> Setting up lyrics...")
-        self.setProperty("previousLyricIndex", -1)
+    def _getLyrics(self) -> typing.Dict[int, str]:
+        if self.property("lyrics") is not None:
+            return self.property("lyrics")
         currentMusic = self._player.getCurrentMusic().orElseThrow(AssertionError)
         lyricsPath = Path(currentMusic.filename).with_suffix(".lrc")
         lyricsText = lyricsPath.read_text(encoding="gbk")
         self._logger.info("Parsing lyrics")
-        lyricDict = LyricUtils.parseLyrics(lyricsText)
-        self._logger.info("Lyrics count: %d", len(lyricDict))
-        self.setProperty("lyricDict", lyricDict)
+        lyrics = LyricUtils.parseLyrics(lyricsText)
+        self._logger.info("Lyrics count: %d", len(lyrics))
+        self.setProperty("lyrics", lyrics)
+        return lyrics
+
+    def _setupLyrics(self):
+        self._logger.info(">> Setting up lyrics...")
+        self.setProperty("previousLyricIndex", None)
         LayoutUtils.clearLayout(self._layout)
         self._layout.addSpacing(self.height() // 2)
-        for position, lyric in list(lyricDict.items())[:]:
+        for position, lyric in list(self._getLyrics().items())[:]:
             lyricLabel = ClickableLabel(lyric, self)
             lyricLabel.setAlignment(
                 gg(QtCore.Qt.AlignmentFlag.AlignCenter, Any) | QtCore.Qt.AlignmentFlag.AlignVCenter)
@@ -95,9 +101,9 @@ class LyricsPanel(QtWidgets.QScrollArea):
 
     def _refreshLyrics(self, position):
         self._logger.debug("Refreshing lyrics at position: %d", position)
-        lyricDict = self.property("lyricDict")
+        lyrics = self._getLyrics()
         previousLyricIndex = self.property("previousLyricIndex")
-        lyricIndex = LyricUtils.calcLyricIndexAtPosition(position, list(lyricDict.keys()))
+        lyricIndex = LyricUtils.calcLyricIndexAtPosition(position, list(lyrics.keys()))
         self._logger.debug("Lyric index: %d => %d", previousLyricIndex, lyricIndex)
         if lyricIndex == previousLyricIndex:
             self._logger.debug("Lyric index no changed, skip refresh")
@@ -105,7 +111,7 @@ class LyricsPanel(QtWidgets.QScrollArea):
         else:
             self._logger.debug("Lyric index changed: %d => %d, refreshing...", previousLyricIndex, lyricIndex)
         self.setProperty("previousLyricIndex", lyricIndex)
-        for index in range(len(lyricDict)):
+        for index in range(len(lyrics)):
             lyricLabel: QtWidgets.QLabel = self._layout.itemAt(index + 1).widget()
             lyricLabel.setStyleSheet("color:rgb(225,65,60)" if index == lyricIndex else "color:rgb(35,85,125)")
             originalValue = self.verticalScrollBar().value()
