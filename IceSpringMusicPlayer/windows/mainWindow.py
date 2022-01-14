@@ -97,6 +97,7 @@ class MainWindow(QtWidgets.QMainWindow):
         toolbar.addWidget(QtWidgets.QLabel("Playlist: ", toolbar))
         toolbar.addWidget(playlistCombo)
         toolbar.addAction(*gg(("One Key Add", self._app.addMusicsFromHomeFolder)))
+        toolbar.addAction(*gg(("Play", self._player.play)))
         self._playlistCombo = playlistCombo
 
     def _initLayout(self):

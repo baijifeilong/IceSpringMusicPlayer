@@ -39,6 +39,7 @@ class LyricsPanel(QtWidgets.QScrollArea):
         self.horizontalScrollBar().rangeChanged.connect(
             lambda *args, bar=self.horizontalScrollBar(): bar.setValue((bar.maximum() + bar.minimum()) // 2))
         self._layout = layout
+        self._setupLyrics()
 
     def _onPlayerPositionChanged(self, position: int) -> None:
         self._logger.debug("Player position changed: %d", position)
@@ -79,6 +80,9 @@ class LyricsPanel(QtWidgets.QScrollArea):
 
     def _setupLyrics(self):
         self._logger.info(">> Setting up lyrics...")
+        if self._player.getCurrentMusic().isAbsent():
+            self._logger.info("No music, return")
+            return
         self.setProperty("previousLyricIndex", -1)
         LayoutUtils.clearLayout(self._layout)
         self._layout.addSpacing(self.height() // 2)
@@ -103,10 +107,6 @@ class LyricsPanel(QtWidgets.QScrollArea):
         self._logger.debug("Refreshing lyrics at position: %d", position)
         lyrics = self._getLyrics()
         previousLyricIndex = self.property("previousLyricIndex")
-        if previousLyricIndex is None:
-            self._logger.info("Previous lyric index is none, setup lyrics")
-            self._setupLyrics()
-            previousLyricIndex = -1
         lyricIndex = LyricUtils.calcLyricIndexAtPosition(position, list(lyrics.keys()))
         self._logger.debug("Lyric index: %d => %d", previousLyricIndex, lyricIndex)
         if lyricIndex == previousLyricIndex:
