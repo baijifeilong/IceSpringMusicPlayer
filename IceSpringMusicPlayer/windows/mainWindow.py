@@ -11,13 +11,12 @@ from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.line import Line
-from IceSpringMusicPlayer.services.config import Config
+from IceSpringMusicPlayer.services.config import Config, Element
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
 from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
 from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
-from IceSpringMusicPlayer.widgets.replacerMixin import BlankWidget
 from IceSpringMusicPlayer.windows.playlistManagerDialog import PlaylistManagerDialog
 
 
@@ -40,8 +39,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self._initMenu()
         self._initToolbar()
         # self._initLayout()
-        self.setCentralWidget(BlankWidget(self))
+        self._loadConfig()
         self._initStatusBar()
+
+    def _loadConfig(self):
+        self._logger.info("Load config")
+        self._drawElement(self._config.getLayout(), self)
+
+    def _drawElement(self, element: Element, parent: QtWidgets.QWidget) -> None:
+        self._logger.info("Draw element: %s to %s", element.clazz, parent)
+        widget = element.clazz(parent)
+        if isinstance(parent, QtWidgets.QMainWindow):
+            self._logger.info("Parent is main window")
+            parent.setCentralWidget(widget)
+        elif isinstance(parent, QtWidgets.QSplitter):
+            self._logger.info("Parent is splitter")
+            parent.addWidget(widget)
+            parent.setProperty("iceSizes", (parent.property("iceSizes") or ()) + (element.weight * 2 ** 16,))
+            parent.setSizes(parent.property("iceSizes"))
+        else:
+            raise AssertionError("Unsupported parent: %s" % type(parent))
+        for child in element.children:
+            self._drawElement(child, widget)
 
     def _initPlayer(self):
         self._player.frontPlaylistIndexChanged.connect(self._onFrontPlaylistChangedAtIndex)

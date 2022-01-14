@@ -30,8 +30,8 @@ class ReplacerMixin(object):
         oldStylesheet = self.styleSheet()
         self._setStylesheetOnlySelf(oldStylesheet + "* {background: pink}")
         menu = QtWidgets.QMenu()
-        menu.addAction("Replace by horizontal splitter", lambda: self._doReplace(SplitterWidget(False, self)))
-        menu.addAction("Replace by vertical splitter", lambda: self._doReplace(SplitterWidget(True, self)))
+        menu.addAction("Replace by horizontal splitter", lambda: self._doReplace(HorizontalSplitter(self, 2)))
+        menu.addAction("Replace by vertical splitter", lambda: self._doReplace(VerticalSplitter(self, 2)))
         menu.addAction("Replace by button widget", lambda: self._doReplace(ButtonWidget(self)))
         menu.addAction("Replace by blank widget", lambda: self._doReplace(BlankWidget(self)))
         menu.addAction("Replace by controls widget", lambda: self._doReplace(ControlsPanel(self)))
@@ -65,6 +65,10 @@ class BlankWidget(QtWidgets.QFrame, ReplacerMixin):
     def __init__(self, parent: typing.Optional[QtWidgets.QWidget]):
         super().__init__(parent)
         ReplacerMixin.__init__(self)
+        self.setLayout(QtWidgets.QGridLayout(self))
+        label = QtWidgets.QLabel("BLANK", self)
+        label.setSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+        self.layout().addWidget(label)
 
 
 class ButtonWidget(QtWidgets.QFrame, ReplacerMixin):
@@ -76,15 +80,25 @@ class ButtonWidget(QtWidgets.QFrame, ReplacerMixin):
 
 
 class SplitterWidget(QtWidgets.QSplitter, ReplacerMixin):
-    def __init__(self, vertical=False, parent=None):
+    def __init__(self, parent=None, vertical=False, children=0):
         orientation = QtCore.Qt.Orientation.Vertical if vertical else QtCore.Qt.Orientation.Horizontal
         super().__init__(orientation, parent)
         ReplacerMixin.__init__(self)
         self.setHandleWidth(3)
-        self.setSizes([2 ** 16, 2 ** 16])
         self.setStyleSheet("QSplitter::handle { background: red }")
-        self.addWidget(BlankWidget(self))
-        self.addWidget(BlankWidget(self))
+        self.setSizes([2 ** 16 for _ in range(children)])
+        for _ in range(children):
+            self.addWidget(BlankWidget(self))
+
+
+class HorizontalSplitter(SplitterWidget):
+    def __init__(self, parent=None, children=0):
+        super().__init__(parent, False, children)
+
+
+class VerticalSplitter(SplitterWidget):
+    def __init__(self, parent=None, children=0):
+        super().__init__(parent, True, children)
 
 
 class Button(QtWidgets.QPushButton):
