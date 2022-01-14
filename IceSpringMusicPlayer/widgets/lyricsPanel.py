@@ -68,9 +68,11 @@ class LyricsPanel(QtWidgets.QScrollArea, ReplacerMixin):
         self._layout.itemAt(self._layout.count() - 1).spacerItem().changeSize(0, event.size().height() // 2)
         self._layout.invalidate()
 
-    def _getLyrics(self) -> typing.Dict[int, str]:
-        if self.property("lyrics") is not None:
-            return self.property("lyrics")
+    def _setupLyrics(self):
+        self._logger.info(">> Setting up lyrics...")
+        if self._player.getCurrentMusic().isAbsent():
+            self._logger.info("No music, return")
+            return
         currentMusic = self._player.getCurrentMusic().orElseThrow(AssertionError)
         lyricsPath = Path(currentMusic.filename).with_suffix(".lrc")
         lyricsText = lyricsPath.read_text(encoding="gbk")
@@ -78,17 +80,10 @@ class LyricsPanel(QtWidgets.QScrollArea, ReplacerMixin):
         lyrics = LyricUtils.parseLyrics(lyricsText)
         self._logger.info("Lyrics count: %d", len(lyrics))
         self.setProperty("lyrics", lyrics)
-        return lyrics
-
-    def _setupLyrics(self):
-        self._logger.info(">> Setting up lyrics...")
-        if self._player.getCurrentMusic().isAbsent():
-            self._logger.info("No music, return")
-            return
         self.setProperty("previousLyricIndex", -1)
         LayoutUtils.clearLayout(self._layout)
         self._layout.addSpacing(self.height() // 2)
-        for position, lyric in list(self._getLyrics().items())[:]:
+        for position, lyric in list(lyrics.items())[:]:
             lyricLabel = ClickableLabel(lyric, self)
             lyricLabel.setAlignment(
                 gg(QtCore.Qt.AlignmentFlag.AlignCenter, Any) | QtCore.Qt.AlignmentFlag.AlignVCenter)
@@ -107,7 +102,7 @@ class LyricsPanel(QtWidgets.QScrollArea, ReplacerMixin):
 
     def _refreshLyrics(self, position):
         self._logger.debug("Refreshing lyrics at position: %d", position)
-        lyrics = self._getLyrics()
+        lyrics: typing.Dict[int, str] = self.property("lyrics")
         previousLyricIndex = self.property("previousLyricIndex")
         lyricIndex = LyricUtils.calcLyricIndexAtPosition(position, list(lyrics.keys()))
         self._logger.debug("Lyric index: %d => %d", previousLyricIndex, lyricIndex)
