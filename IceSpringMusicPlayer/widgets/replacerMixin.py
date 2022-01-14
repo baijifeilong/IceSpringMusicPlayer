@@ -26,6 +26,7 @@ class ReplacerMixin(object):
     def _onCustomContextMenuRequested(self: base):
         from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
         from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
+        from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         oldStylesheet = self.styleSheet()
         self._setStylesheetOnlySelf(oldStylesheet + "* {background: pink}")
         menu = QtWidgets.QMenu()
@@ -35,6 +36,7 @@ class ReplacerMixin(object):
         menu.addAction("Replace by blank widget", lambda: self._doReplace(BlankWidget(self)))
         menu.addAction("Replace by controls widget", lambda: self._doReplace(ControlsPanel(self)))
         menu.addAction("Replace by lyrics widget", lambda: self._doReplace(LyricsPanel(self)))
+        menu.addAction("Replace by playlist widget", lambda: self._doReplace(PlaylistTable(self)))
         # menu.addAction("Replace by controls widget", self._doReplaceControlsWidget)
         menu.exec_(QtGui.QCursor.pos())
         self._setStylesheetOnlySelf(oldStylesheet)
