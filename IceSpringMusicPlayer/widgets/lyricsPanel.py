@@ -17,6 +17,7 @@ from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
 
 
 class LyricsPanel(QtWidgets.QScrollArea, ReplacerMixin):
+    _app: App
     _config: Config
     _player: Player
     _layout: QtWidgets.QVBoxLayout
@@ -26,6 +27,7 @@ class LyricsPanel(QtWidgets.QScrollArea, ReplacerMixin):
         ReplacerMixin.__init__(self)
         self._logger = logging.getLogger("lyricsPanel")
         self._logger.setLevel(logging.INFO)
+        self._app = App.instance()
         self._config = App.instance().getConfig()
         self._player = App.instance().getPlayer()
         self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
@@ -91,9 +93,9 @@ class LyricsPanel(QtWidgets.QScrollArea, ReplacerMixin):
                 lambda _, position=position: self._player.setPosition(position))
             font = lyricLabel.font()
             font.setFamily("等线")
-            font.setPointSize(12 * self._config.getZoom())
+            font.setPointSize(self._config.getLyricSizeOrDefault())
             lyricLabel.setFont(font)
-            lyricLabel.setMargin(int(2 * self._config.getZoom()))
+            lyricLabel.setMargin(int(2 * self._app.getZoom()))
             self._layout.addWidget(lyricLabel)
         self._layout.addSpacing(self.height() // 2)
         self._logger.info("Lyrics layout has children: %d", self._layout.count())

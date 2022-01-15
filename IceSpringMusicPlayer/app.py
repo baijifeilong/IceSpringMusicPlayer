@@ -7,7 +7,7 @@ import typing
 
 from IceSpringPathLib import Path
 from IceSpringRealOptional.just import Just
-from PySide2 import QtWidgets, QtCore, QtGui
+from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 
@@ -22,6 +22,7 @@ class App(QtWidgets.QApplication):
 
     _logger: logging.Logger
     _config: Config
+    _zoom: float
     _player: Player
     _mainWindow: MainWindow
 
@@ -32,30 +33,33 @@ class App(QtWidgets.QApplication):
         super().__init__()
         self._logger = logging.getLogger("app")
         self._config = Config()
+        self._zoom = 1.0
         self._player = Player(self)
         self.setApplicationName("Ice Spring Music Player")
         self.setApplicationDisplayName(self.applicationName())
         self._mainWindow = MainWindow()
 
     def exec_(self) -> int:
-        self.setFont(
-            Just.of(self.font()).apply(lambda x: x.setPointSize(x.pointSize() * self._config.getZoom())).value())
-        self._mainWindow.resize(QtCore.QSize(640, 360) if self._config.getMiniMode() else QtCore.QSize(1280, 720))
-        screensTotalWidth = sum(x.size().width() for x in QtGui.QGuiApplication.screens())
-        screensTotalHeight = sum(x.size().height() for x in QtGui.QGuiApplication.screens())
-        viewportWidth = QtGui.QGuiApplication.primaryScreen().availableSize().width()
-        viewportHeight = QtGui.QGuiApplication.primaryScreen().availableSize().height()
-        if self._config.getMiniMode():
-            self._mainWindow.move(screensTotalWidth, screensTotalHeight)
-            self._mainWindow.show()
-            frameWidth, frameHeight = self._mainWindow.frameSize().width(), self._mainWindow.frameSize().height()
-            self._mainWindow.move(viewportWidth - frameWidth, viewportHeight - frameHeight)
+        fontsize = self.getConfig().getFontSize()
+        geometry = self.getConfig().getGeometry()
+        self._logger.info("Fontsize: %s", fontsize)
+        self._logger.info("Geometry: %s", geometry)
+        if fontsize.isPresent():
+            self._zoom = fontsize.get() / self.font().pointSize()
+            self.setFont(Just.of(self.font()).apply(lambda x: x.setPointSize(fontsize.get())).value())
+        self._logger.info("Zoom: %f", self._zoom)
+        if geometry.isPresent():
+            self._mainWindow.setGeometry(geometry.get())
         else:
-            self._mainWindow.show()
+            self._mainWindow.resize(1280, 720)
+        self._mainWindow.show()
         return super().exec_()
 
     def getConfig(self) -> Config:
         return self._config
+
+    def getZoom(self) -> float:
+        return self._zoom
 
     def getPlayer(self) -> Player:
         return self._player

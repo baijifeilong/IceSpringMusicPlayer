@@ -5,9 +5,8 @@ from __future__ import annotations
 import typing
 from dataclasses import dataclass
 
-from PySide2.QtCore import QObject
-
-from IceSpringMusicPlayer.widgets.replacerMixin import HorizontalSplitter, VerticalSplitter
+from IceSpringRealOptional.maybe import Maybe
+from PySide2 import QtCore
 
 
 @dataclass
@@ -17,19 +16,61 @@ class Element(object):
     children: typing.List[Element]
 
 
-class Config(QObject):
-    _miniMode: bool
-    _zoom: float
+class Config(QtCore.QObject):
+    _geometry: Maybe[QtCore.QRect]
+    _fontSize: Maybe[int]
+    _iconSize: Maybe[int]
+    _lyricSize: Maybe[int]
     _layout: Element
 
     def __init__(self):
         super().__init__()
-        self._miniMode = False
-        self._zoom = 1.25
+        self._geometry = Maybe.empty()
+        self._fontSize = Maybe.empty()
+        self._iconSize = Maybe.empty()
+        self._lyricSize = Maybe.empty()
+        self._layout = self._getDefaultLayout()
+
+    def getGeometry(self) -> Maybe[QtCore.QRect]:
+        return self._geometry
+
+    def setGeometry(self, geometry: Maybe[QtCore.QRect]) -> None:
+        self._geometry = geometry
+
+    def getFontSize(self) -> Maybe[int]:
+        return self._fontSize
+
+    def setFontSize(self, size: Maybe[int]) -> None:
+        self._fontSize = size
+
+    def getIconSize(self) -> Maybe[int]:
+        return self._iconSize
+
+    def setIconSize(self, size: Maybe[int]) -> None:
+        self._iconSize = size
+
+    def getLyricSize(self) -> Maybe[int]:
+        return self._lyricSize
+
+    def getLyricSizeOrDefault(self) -> int:
+        return self._lyricSize.orElse(12)
+
+    def setLyricSize(self, size: Maybe[int]) -> None:
+        self._lyricSize = size
+
+    def getLayout(self) -> Element:
+        return self._layout
+
+    def setLayout(self, layout: Element) -> None:
+        self._layout = layout
+
+    @staticmethod
+    def _getDefaultLayout() -> Element:
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
         from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
-        self._layout = Element(clazz=HorizontalSplitter, weight=1, children=[
+        from IceSpringMusicPlayer.widgets.replacerMixin import HorizontalSplitter, VerticalSplitter
+        return Element(clazz=HorizontalSplitter, weight=1, children=[
             Element(clazz=VerticalSplitter, weight=1, children=[
                 Element(clazz=ControlsPanel, weight=1, children=[]),
                 Element(clazz=LyricsPanel, weight=3, children=[]),
@@ -41,12 +82,3 @@ class Config(QObject):
                 Element(clazz=ControlsPanel, weight=1, children=[]),
             ]),
         ])
-
-    def getMiniMode(self) -> bool:
-        return self._miniMode
-
-    def getZoom(self) -> float:
-        return self._zoom
-
-    def getLayout(self) -> Element:
-        return self._layout

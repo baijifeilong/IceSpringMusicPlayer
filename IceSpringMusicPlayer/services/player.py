@@ -90,7 +90,6 @@ class Player(QtCore.QObject):
         return int(self._proxy.duration() // self._getBugRateOrOne())
 
     def getPosition(self) -> int:
-        print(self._proxy.position(), self._proxy.duration(), self._getBugRateOrOne())
         return int(self._proxy.position() // self._getBugRateOrOne())
 
     def getState(self) -> PlayerState:
