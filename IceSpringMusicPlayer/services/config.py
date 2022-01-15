@@ -29,17 +29,18 @@ class Config(QObject):
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
         from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
-        self._layout = Element(
-            clazz=HorizontalSplitter,
-            weight=1,
-            children=[
-                Element(clazz=PlaylistTable, weight=1, children=[]),
-                Element(clazz=LyricsPanel, weight=2, children=[]),
-                Element(clazz=VerticalSplitter, weight=3, children=[
-                    Element(clazz=ControlsPanel, weight=1, children=[]),
-                    Element(clazz=LyricsPanel, weight=2, children=[]),
-                    Element(clazz=PlaylistTable, weight=3, children=[])]
-                )])
+        self._layout = Element(clazz=HorizontalSplitter, weight=1, children=[
+            Element(clazz=VerticalSplitter, weight=1, children=[
+                Element(clazz=ControlsPanel, weight=1, children=[]),
+                Element(clazz=LyricsPanel, weight=3, children=[]),
+                Element(clazz=PlaylistTable, weight=5, children=[]),
+            ]),
+            Element(clazz=VerticalSplitter, weight=2, children=[
+                Element(clazz=PlaylistTable, weight=3, children=[]),
+                Element(clazz=LyricsPanel, weight=5, children=[]),
+                Element(clazz=ControlsPanel, weight=1, children=[]),
+            ]),
+        ])
 
     def getMiniMode(self) -> bool:
         return self._miniMode

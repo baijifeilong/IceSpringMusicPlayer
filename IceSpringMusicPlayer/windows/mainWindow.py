@@ -1,9 +1,10 @@
 # Created by BaiJiFeiLong@gmail.com at 2022-01-03 11:06:37
-
+import copy
 import logging
 import typing
 from pathlib import Path
 
+from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtGui, QtWidgets
 
@@ -15,6 +16,7 @@ from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
 from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
 from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
+from IceSpringMusicPlayer.widgets.replacerMixin import HorizontalSplitter, VerticalSplitter
 from IceSpringMusicPlayer.windows.playlistManagerDialog import PlaylistManagerDialog
 
 
@@ -42,7 +44,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _loadConfig(self):
         self._logger.info("Load config")
-        self._drawElement(self._config.getLayout(), self)
+        self._loadLayout(self._config.getLayout())
+
+    def _loadLayout(self, layout: Element) -> None:
+        self._logger.info("Load layout")
+        if self.centralWidget() is not None:
+            self._logger.info("Central widget is not none, clear it")
+            self.centralWidget().setParent(gg(None))
+            assert self.centralWidget() is None
+        self._drawElement(layout, self)
 
     def _drawElement(self, element: Element, parent: QtWidgets.QWidget) -> None:
         self._logger.info("Draw element: %s to %s", element.clazz, parent)
@@ -86,10 +96,23 @@ class MainWindow(QtWidgets.QMainWindow):
         self._logger.info("> Signal app.requestLocateCurrentMusic emitted.")
 
     def _initMenu(self):
-        fileMenu = self.menuBar().addMenu("File")
-        fileMenu.addAction("Open", self._app.addMusicsFromFileDialog)
-        viewMenu = self.menuBar().addMenu("View")
-        viewMenu.addAction("Playlist Manager", lambda: PlaylistManagerDialog(self).show())
+        fileMenu = self.menuBar().addMenu("&File")
+        fileMenu.addAction("&Open", self._app.addMusicsFromFileDialog)
+        viewMenu = self.menuBar().addMenu("&View")
+        viewMenu.addAction("&Playlist Manager", lambda: PlaylistManagerDialog(self).show())
+
+        controlsDownLayout = Element(clazz=VerticalSplitter, weight=1, children=[
+            Element(clazz=HorizontalSplitter, weight=7, children=[
+                Element(clazz=PlaylistTable, weight=1, children=[]),
+                Element(clazz=LyricsPanel, weight=1, children=[]),
+            ]),
+            Element(clazz=ControlsPanel, weight=1, children=[]),
+        ])
+        controlsUpLayout = Just.of(copy.deepcopy(controlsDownLayout)).apply(lambda x: x.children.reverse()).value()
+        layoutMenu = self.menuBar().addMenu("&Layout")
+        layoutMenu.addAction("&Playlist+Lyrics+Controls", lambda: self._loadLayout(controlsDownLayout))
+        layoutMenu.addAction("&Controls+Playlist+Lyrics", lambda: self._loadLayout(controlsUpLayout))
+        layoutMenu.addAction("Comple&x Layout", lambda: self._loadLayout(self._config.getLayout()))
 
     def _onPlaylistComboActivated(self, index: int) -> None:
         self._logger.info("On playlist combo activated at index %d", index)
