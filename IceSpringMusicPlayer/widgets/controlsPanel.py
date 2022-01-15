@@ -187,9 +187,14 @@ class ControlsPanel(QtWidgets.QWidget, ReplacerMixin):
         self._refreshPlaybackButton()
         self._progressSlider.blockSignals(True)
         print(self._player.getPosition(), self._player.getDuration())
-        self._progressSlider.setMaximum(self._player.getDuration())
-        self._progressSlider.setValue(self._player.getPosition())
-        self._progressSlider.setDisabled(self._player.getState().isStopped())
+        if self._player.getState().isStopped():
+            self._progressSlider.setMaximum(100)
+            self._progressSlider.setValue(0)
+            self._progressSlider.setDisabled(True)
+        else:
+            self._progressSlider.setMaximum(self._player.getDuration())
+            self._progressSlider.setValue(self._player.getPosition())
+            self._progressSlider.setDisabled(False)
         self._progressSlider.blockSignals(False)
         self._volumeDial.blockSignals(True)
         self._volumeDial.setValue(self._player.getVolume())
