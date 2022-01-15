@@ -1,7 +1,9 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/14 15:01
+
 import logging
 import typing
 
+from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtWidgets, QtGui
 
@@ -27,9 +29,8 @@ class ReplacerMixin(object):
         from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
         from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
-        oldStylesheet = self.styleSheet()
-        self._setStylesheetOnlySelf(oldStylesheet + "* {background: pink}")
-        menu = QtWidgets.QMenu()
+        Just.of(MaskWidget(self)).apply(lambda x: x.deleteLater()).apply(lambda x: x.show())
+        menu = QtWidgets.QMenu(self)
         menu.addAction("Replace by horizontal splitter", lambda: self._doReplace(HorizontalSplitter(self, 2)))
         menu.addAction("Replace by vertical splitter", lambda: self._doReplace(VerticalSplitter(self, 2)))
         menu.addAction("Replace by button widget", lambda: self._doReplace(ButtonWidget(self)))
@@ -39,7 +40,6 @@ class ReplacerMixin(object):
         menu.addAction("Replace by playlist widget", lambda: self._doReplace(PlaylistTable(self)))
         # menu.addAction("Replace by controls widget", self._doReplaceControlsWidget)
         menu.exec_(QtGui.QCursor.pos())
-        self._setStylesheetOnlySelf(oldStylesheet)
 
     def _doReplaceControlsWidget(self: base):
         from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
@@ -105,3 +105,13 @@ class Button(QtWidgets.QPushButton):
     def __init__(self, text, parent):
         super().__init__(text, parent)
         self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
+
+
+class MaskWidget(QtWidgets.QFrame):
+    def __init__(self, above: QtWidgets.QFrame):
+        super().__init__(QtWidgets.QApplication.activeWindow())
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setGeometry(QtCore.QRect(self.mapFromGlobal(above.mapToGlobal(above.rect().topLeft())), above.size()))
+
+    def paintEvent(self, arg__1: QtGui.QPaintEvent) -> None:
+        QtGui.QPainter(self).fillRect(self.rect(), QtGui.QColor("#55FF0000"))
