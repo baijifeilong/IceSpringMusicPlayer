@@ -202,3 +202,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.statusBar().showMessage("{} | {} kbps | {} Hz | {} channels | {}".format(
             currentMusic.format, currentMusic.bitrate,
             currentMusic.sampleRate, currentMusic.channels, progressText.replace("/", " / ")))
+
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        self._config.geometry = self.geometry()
+
+    def moveEvent(self, event: QtGui.QMoveEvent) -> None:
+        self._config.geometry = self.geometry()
