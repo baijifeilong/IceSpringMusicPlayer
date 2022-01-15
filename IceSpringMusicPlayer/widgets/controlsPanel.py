@@ -49,7 +49,7 @@ class ControlsPanel(QtWidgets.QWidget, ReplacerMixin):
         playbackButton = QtWidgets.QToolButton(self)
         playbackButton.setIcon(qtawesome.icon("mdi.repeat"))
         playbackButton.clicked.connect(self._onPlaybackButtonClicked)
-        iconSize = self._config.getIconSize().orElse(48)
+        iconSize = self._config.iconSize
         for button in playButton, stopButton, previousButton, nextButton, playbackButton:
             button.setIconSize(QtCore.QSize(iconSize, iconSize))
             button.setAutoRaise(True)

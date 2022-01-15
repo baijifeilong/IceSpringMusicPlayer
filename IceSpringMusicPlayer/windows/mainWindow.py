@@ -44,7 +44,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _loadConfig(self):
         self._logger.info("Load config")
-        self._loadLayout(self._config.getLayout())
+        self._loadLayout(self._config.layout)
 
     def _loadLayout(self, layout: Element) -> None:
         self._logger.info("Load layout")
@@ -112,7 +112,7 @@ class MainWindow(QtWidgets.QMainWindow):
         layoutMenu = self.menuBar().addMenu("&Layout")
         layoutMenu.addAction("&Playlist+Lyrics+Controls", lambda: self._loadLayout(controlsDownLayout))
         layoutMenu.addAction("&Controls+Playlist+Lyrics", lambda: self._loadLayout(controlsUpLayout))
-        layoutMenu.addAction("Comple&x Layout", lambda: self._loadLayout(self._config.getLayout()))
+        layoutMenu.addAction("Comple&x Layout", lambda: self._loadLayout(self._app.getDefaultLayout()))
 
     def _onPlaylistComboActivated(self, index: int) -> None:
         self._logger.info("On playlist combo activated at index %d", index)
