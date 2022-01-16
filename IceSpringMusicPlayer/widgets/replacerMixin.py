@@ -7,13 +7,13 @@ from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtWidgets, QtGui
 
+from IceSpringMusicPlayer.app import App
+
 
 class ReplacerMixin(object):
     base = typing.Union[QtWidgets.QFrame, "ReplacerMixin"]
-    _replacerLogger: logging.Logger
 
     def __init__(self: base):
-        self._replacerLogger = logging.getLogger("replacerMixin")
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
         self.setMinimumWidth(30)
@@ -47,18 +47,21 @@ class ReplacerMixin(object):
         self._doReplace(widget)
 
     def _doReplace(self: base, widget):
-        self._replacerLogger.info("Replacing %s with %s", self, widget)
+        logger = logging.getLogger("replacerMixin")
+        logger.info("Replacing %s with %s", self, widget)
+        assert isinstance(widget, (QtWidgets.QWidget, ReplacerMixin))
         parent = self.parentWidget()
         if isinstance(parent, QtWidgets.QMainWindow):
-            self._replacerLogger.info("Parent is main window")
+            logger.info("Parent is main window")
             parent.setCentralWidget(widget)
         elif isinstance(parent, QtWidgets.QSplitter):
-            self._replacerLogger.info("Parent is splitter")
+            logger.info("Parent is splitter")
             parent.replaceWidget(parent.indexOf(self), widget)
         else:
-            self._replacerLogger.info("Parent is others")
+            logger.info("Parent is others")
             self.parentWidget().layout().replaceWidget(self, ButtonWidget(self.parentWidget()))
         self.setParent(gg(None))
+        App.instance().layoutChanged.emit()
 
 
 class BlankWidget(QtWidgets.QFrame, ReplacerMixin):

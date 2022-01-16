@@ -11,12 +11,13 @@ from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
-from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.domains.config import Config
+from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.services.player import Player
+from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
 
 
-class PlaylistTable(IceTableView):
+class PlaylistTable(IceTableView, ReplacerMixin):
     _logger: logging.Logger
     _app: App
     _config: Config
@@ -24,6 +25,7 @@ class PlaylistTable(IceTableView):
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
+        ReplacerMixin.__init__(self)
         self._logger = logging.getLogger("playlistTable")
         self._app = App.instance()
         self._config = App.instance().getConfig()

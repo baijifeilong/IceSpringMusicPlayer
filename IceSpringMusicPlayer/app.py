@@ -17,7 +17,6 @@ from IceSpringMusicPlayer.domains.config import Config, Element
 from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.domains.playlist import Playlist
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
-from IceSpringMusicPlayer.widgets.replacerMixin import BlankWidget
 
 if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.services.player import Player
@@ -27,6 +26,7 @@ if typing.TYPE_CHECKING:
 class App(QtWidgets.QApplication):
     requestLocateCurrentMusic: QtCore.SignalInstance = QtCore.Signal()
     configChanged: QtCore.SignalInstance = QtCore.Signal()
+    layoutChanged: QtCore.SignalInstance = QtCore.Signal()
 
     _logger: logging.Logger
     _config: Config
@@ -45,6 +45,24 @@ class App(QtWidgets.QApplication):
         self._mainWindow = MainWindow()
         self.aboutToQuit.connect(self._onAboutToQuit)
         self.configChanged.connect(self._onConfigChanged)
+        self.layoutChanged.connect(self._onLayoutChanged)
+
+    def _onLayoutChanged(self):
+        self._logger.info("On layout changed")
+        newLayout = self._widgetToElement(self._mainWindow.centralWidget())
+        self._logger.info("New layout: %s", newLayout)
+        self._config.layout = newLayout
+
+    def _widgetToElement(self, widget: QtWidgets.QWidget) -> Element:
+        from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
+        assert isinstance(widget, ReplacerMixin)
+        clazz = type(widget)
+        return Element(
+            clazz=clazz,
+            weight=1,
+            children=[self._widgetToElement(widget.widget(x)) for x in range(widget.count())] if isinstance(
+                widget, QtWidgets.QSplitter) else []
+        )
 
     def _onConfigChanged(self):
         self._logger.info("On config changed")
@@ -132,7 +150,6 @@ class App(QtWidgets.QApplication):
         )
         config.zoom = config.fontSize / QtWidgets.QApplication.font().pointSize()
         config.frontPlaylistIndex = jd.get("frontPlaylistIndex", -1 if len(config.playlists) == 0 else 0)
-        config.layout = self.getDemoLayout()
         self._logger.info("Loaded config: %s", config)
         return config
 
@@ -162,6 +179,7 @@ class App(QtWidgets.QApplication):
         from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
         from IceSpringMusicPlayer.widgets.replacerMixin import HorizontalSplitter, VerticalSplitter
         from IceSpringMusicPlayer.widgets.configWidget import ConfigWidget
+        from IceSpringMusicPlayer.widgets.replacerMixin import BlankWidget
         return Element(clazz=HorizontalSplitter, weight=1, children=[
             Element(clazz=VerticalSplitter, weight=1, children=[
                 Element(clazz=ControlsPanel, weight=1, children=[]),
