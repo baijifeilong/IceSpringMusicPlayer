@@ -17,6 +17,7 @@ from IceSpringMusicPlayer.domains.config import Config, Element
 from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.domains.playlist import Playlist
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
+from IceSpringMusicPlayer.widgets.replacerMixin import BlankWidget
 
 if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.services.player import Player
@@ -131,6 +132,7 @@ class App(QtWidgets.QApplication):
         )
         config.zoom = config.fontSize / QtWidgets.QApplication.font().pointSize()
         config.frontPlaylistIndex = jd.get("frontPlaylistIndex", -1 if len(config.playlists) == 0 else 0)
+        config.layout = self.getDemoLayout()
         self._logger.info("Loaded config: %s", config)
         return config
 
@@ -166,5 +168,8 @@ class App(QtWidgets.QApplication):
                 Element(clazz=LyricsPanel, weight=3, children=[]),
                 Element(clazz=PlaylistTable, weight=5, children=[]),
             ]),
-            Element(clazz=ConfigWidget, weight=2, children=[]),
+            Element(clazz=VerticalSplitter, weight=1, children=[
+                Element(clazz=ConfigWidget, weight=1, children=[]),
+                Element(clazz=BlankWidget, weight=3, children=[]),
+            ]),
         ])

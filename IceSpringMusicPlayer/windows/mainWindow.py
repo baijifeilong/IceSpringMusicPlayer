@@ -9,7 +9,6 @@ from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.controls.line import Line
 from IceSpringMusicPlayer.domains.config import Config, Element
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
@@ -38,7 +37,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._initPlayer()
         self._initMenu()
         self._initToolbar()
-        # self._initLayout()
         self._loadConfig()
         self._initStatusBar()
 
@@ -58,6 +56,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.centralWidget().setParent(gg(None))
             assert self.centralWidget() is None
         self._drawElement(layout, self)
+        self.centralWidget().setAutoFillBackground(True)
+        self.centralWidget().setPalette(Just.of(QtGui.QPalette()).apply(
+            lambda x: x.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor("white"))).value())
 
     def _drawElement(self, element: Element, parent: QtWidgets.QWidget) -> None:
         self._logger.info("Draw element: %s to %s", element.clazz, parent)
@@ -145,31 +146,6 @@ class MainWindow(QtWidgets.QMainWindow):
         toolbar.addAction(*gg(("One Key Add", self._app.addMusicsFromHomeFolder)))
         toolbar.addAction(*gg(("Play", self._player.play)))
         self._playlistCombo = playlistCombo
-
-    def _initLayout(self):
-        mainWidget = QtWidgets.QWidget(self)
-        mainWidget.setAutoFillBackground(True)
-        palette = QtGui.QPalette()
-        palette.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor("white"))
-        mainWidget.setPalette(palette)
-        self.setCentralWidget(mainWidget)
-        mainWidget = self.centralWidget()
-        mainLayout = QtWidgets.QVBoxLayout(mainWidget)
-        mainLayout.setSpacing(0)
-        mainLayout.setMargin(0)
-        mainWidget.setLayout(mainLayout)
-        mainSplitter = QtWidgets.QSplitter(mainWidget)
-        mainLayout.addWidget(Line(mainWidget))
-        mainLayout.addWidget(ControlsPanel(self))
-        mainLayout.addWidget(Line(mainWidget))
-        mainLayout.addWidget(mainSplitter, 1)
-        mainLayout.addWidget(Line(mainWidget))
-        mainLayout.addWidget(ControlsPanel(self))
-        mainSplitter.addWidget(LyricsPanel(mainSplitter))
-        mainSplitter.addWidget(PlaylistTable(mainSplitter))
-        mainSplitter.addWidget(PlaylistTable(mainSplitter))
-        mainSplitter.addWidget(LyricsPanel(mainSplitter))
-        mainSplitter.setSizes([2 ** 16, 2 ** 16, 2 ** 16, 2 ** 16])
 
     def _onPlaylistInserted(self, index: int) -> None:
         playlist = self._player.getPlaylists()[index]
