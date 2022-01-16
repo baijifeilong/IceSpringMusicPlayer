@@ -11,6 +11,8 @@ from IceSpringRealOptional.maybe import Maybe
 from IceSpringRealOptional.vector import Vector
 from PySide2 import QtMultimedia, QtCore
 
+from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.domains.playlist import Playlist
 from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
@@ -38,6 +40,8 @@ class Player(QtCore.QObject):
     playbackModeChanged: QtCore.SignalInstance = QtCore.Signal(PlaybackMode)
     volumeChanged: QtCore.SignalInstance = QtCore.Signal(int)
 
+    _logger: logging.Logger
+    _config: Config
     _playbackMode: PlaybackMode
     _playlists: Vector[Playlist]
     _frontPlaylistIndex: int
@@ -52,10 +56,11 @@ class Player(QtCore.QObject):
     def __init__(self, parent: QtCore.QObject):
         super().__init__(parent)
         self._logger = logging.getLogger("player")
+        self._config = App.instance().getConfig()
         self._playbackMode = PlaybackMode.LOOP
-        self._playlists = Vector()
-        self._frontPlaylistIndex = -1
-        self._currentPlaylistIndex = -1
+        self._playlists = self._config.playlists
+        self._frontPlaylistIndex = self._config.frontPlaylistIndex
+        self._currentPlaylistIndex = self._config.frontPlaylistIndex
         self._selectedMusicIndexes = set()
         self._currentMusicIndex = -1
         self._histories = dict()

@@ -12,7 +12,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
 from IceSpringMusicPlayer.enums.playerState import PlayerState
-from IceSpringMusicPlayer.services.config import Config
+from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.services.player import Player
 
 

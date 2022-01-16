@@ -10,7 +10,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.line import Line
-from IceSpringMusicPlayer.services.config import Config, Element
+from IceSpringMusicPlayer.domains.config import Config, Element
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
@@ -44,6 +44,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _loadConfig(self):
         self._logger.info("Load config")
+        self._loadLayout(self._config.layout)
+
+    def _changeLayout(self, layout: Element) -> None:
+        self._logger.info("Change layout")
+        self._config.layout = layout
         self._loadLayout(self._config.layout)
 
     def _loadLayout(self, layout: Element) -> None:
@@ -110,9 +115,10 @@ class MainWindow(QtWidgets.QMainWindow):
         ])
         controlsUpLayout = Just.of(copy.deepcopy(controlsDownLayout)).apply(lambda x: x.children.reverse()).value()
         layoutMenu = self.menuBar().addMenu("&Layout")
-        layoutMenu.addAction("&Playlist+Lyrics+Controls", lambda: self._loadLayout(controlsDownLayout))
-        layoutMenu.addAction("&Controls+Playlist+Lyrics", lambda: self._loadLayout(controlsUpLayout))
-        layoutMenu.addAction("Comple&x Layout", lambda: self._loadLayout(self._app.getDefaultLayout()))
+        layoutMenu.addAction("&Playlist+Lyrics+Controls", lambda: self._changeLayout(controlsDownLayout))
+        layoutMenu.addAction("&Controls+Playlist+Lyrics", lambda: self._changeLayout(controlsUpLayout))
+        layoutMenu.addAction("&Default Layout", lambda: self._changeLayout(self._app.getDefaultLayout()))
+        layoutMenu.addAction("De&mo Layout", lambda: self._changeLayout(self._app.getDemoLayout()))
 
     def _onPlaylistComboActivated(self, index: int) -> None:
         self._logger.info("On playlist combo activated at index %d", index)

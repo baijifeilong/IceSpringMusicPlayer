@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import logging
 import typing
@@ -9,9 +10,12 @@ import typing
 import pydash
 from IceSpringPathLib import Path
 from IceSpringRealOptional.just import Just
+from IceSpringRealOptional.vector import Vector
 from PySide2 import QtWidgets, QtCore, QtGui
 
-from IceSpringMusicPlayer.services.config import Config, Element
+from IceSpringMusicPlayer.domains.config import Config, Element
+from IceSpringMusicPlayer.domains.music import Music
+from IceSpringMusicPlayer.domains.playlist import Playlist
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 
 if typing.TYPE_CHECKING:
@@ -54,7 +58,6 @@ class App(QtWidgets.QApplication):
         self.setFont(Just.of(self.font()).apply(lambda x: x.setPointSize(self._config.fontSize)).value())
         self._mainWindow.setGeometry(self._config.geometry)
         self._mainWindow.show()
-        self.addMusicsFromHomeFolder()
         return super().exec_()
 
     def getConfig(self) -> Config:
@@ -95,13 +98,15 @@ class App(QtWidgets.QApplication):
 
     def _persistConfig(self):
         self._logger.info("Persist")
-        geometry = self._config.geometry
-        Path("config.json").write_text(json.dumps(dict(
-            geometry=(geometry.left(), geometry.top(), geometry.width(), geometry.height()),
-            fontSize=self._config.fontSize,
-            iconSize=self._config.iconSize,
-            lyricSize=self._config.lyricSize
-        ), indent=4, ensure_ascii=False))
+        Path("config.json").write_text(json.dumps(self._config, indent=4, ensure_ascii=False, default=Config.toJson))
+
+    def _parseLayout(self, jd: dict) -> Element:
+        module, clazz = jd["clazz"].rsplit(".", maxsplit=1)
+        return Element(
+            clazz=getattr(importlib.import_module(module), clazz),
+            weight=jd["weight"],
+            children=[self._parseLayout(x) for x in jd["children"]]
+        )
 
     def _loadConfig(self) -> Config:
         self._logger.info("Load config")
@@ -111,18 +116,21 @@ class App(QtWidgets.QApplication):
         windowSize = screenSize / 1.5
         diffSize = (screenSize - windowSize) / 2
         defaultGeometry = QtCore.QRect(QtCore.QPoint(diffSize.width(), diffSize.height()), windowSize)
-        self._logger.info("Default geometry: %s", defaultGeometry)
-        geometry = QtCore.QRect(*jd.get("geometry")) if "geometry" in jd else defaultGeometry
-        fontSize = jd.get("fontSize", QtWidgets.QApplication.font().pointSize())
-        lyricSize = jd.get("lyricSize", 16)
         config = Config(
-            zoom=fontSize / QtWidgets.QApplication.font().pointSize(),
-            geometry=geometry,
-            fontSize=fontSize,
-            iconSize=48,
-            lyricSize=lyricSize,
-            layout=self.getInitialLayout(),
+            zoom=-1,
+            geometry=QtCore.QRect(*jd.get("geometry")) if "geometry" in jd else defaultGeometry,
+            fontSize=jd.get("fontSize", QtWidgets.QApplication.font().pointSize()),
+            iconSize=jd.get("iconSize", 48),
+            lyricSize=jd.get("lyricSize", 16),
+            layout=self._parseLayout(jd["layout"]) if "layout" in jd else self.getDefaultLayout(),
+            frontPlaylistIndex=-1,
+            playlists=Vector(Playlist(
+                name=playlistJd["name"],
+                musics=Vector(Music(**musicJd) for musicJd in playlistJd["musics"])
+            ) for playlistJd in jd.get("playlists", [])),
         )
+        config.zoom = config.fontSize / QtWidgets.QApplication.font().pointSize()
+        config.frontPlaylistIndex = jd.get("frontPlaylistIndex", -1 if len(config.playlists) == 0 else 0)
         self._logger.info("Loaded config: %s", config)
         return config
 
@@ -146,7 +154,7 @@ class App(QtWidgets.QApplication):
         ])
 
     @staticmethod
-    def getInitialLayout() -> Element:
+    def getDemoLayout() -> Element:
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
         from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel

@@ -9,7 +9,7 @@ from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.fluentSlider import FluentSlider
 from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 from IceSpringMusicPlayer.enums.playerState import PlayerState
-from IceSpringMusicPlayer.services.config import Config
+from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin

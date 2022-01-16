@@ -4,7 +4,7 @@ import logging
 from PySide2 import QtWidgets
 
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.services.config import Config
+from IceSpringMusicPlayer.domains.config import Config
 
 
 class ConfigWidget(QtWidgets.QFrame):

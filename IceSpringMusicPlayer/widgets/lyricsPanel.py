@@ -9,7 +9,7 @@ from PySide2 import QtWidgets, QtGui, QtCore
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.clickableLabel import ClickableLabel
-from IceSpringMusicPlayer.services.config import Config
+from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.layoutUtils import LayoutUtils
 from IceSpringMusicPlayer.utils.lyricUtils import LyricUtils
