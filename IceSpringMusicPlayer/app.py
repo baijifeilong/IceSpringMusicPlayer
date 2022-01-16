@@ -21,6 +21,7 @@ if typing.TYPE_CHECKING:
 
 class App(QtWidgets.QApplication):
     requestLocateCurrentMusic: QtCore.SignalInstance = QtCore.Signal()
+    configChanged: QtCore.SignalInstance = QtCore.Signal()
 
     _logger: logging.Logger
     _config: Config
@@ -48,6 +49,7 @@ class App(QtWidgets.QApplication):
         self.setFont(Just.of(self.font()).apply(lambda x: x.setPointSize(self._config.fontSize)).value())
         self._mainWindow.setGeometry(self._config.geometry)
         self._mainWindow.show()
+        self.addMusicsFromHomeFolder()
         return super().exec_()
 
     def getConfig(self) -> Config:
@@ -113,7 +115,7 @@ class App(QtWidgets.QApplication):
             fontSize=fontSize,
             iconSize=48,
             lyricSize=16,
-            layout=self.getDefaultLayout(),
+            layout=self.getInitialLayout(),
         )
         self._logger.info("Loaded config: %s", config)
         return config
@@ -135,4 +137,20 @@ class App(QtWidgets.QApplication):
                 Element(clazz=LyricsPanel, weight=5, children=[]),
                 Element(clazz=ControlsPanel, weight=1, children=[]),
             ]),
+        ])
+
+    @staticmethod
+    def getInitialLayout() -> Element:
+        from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
+        from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
+        from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
+        from IceSpringMusicPlayer.widgets.replacerMixin import HorizontalSplitter, VerticalSplitter
+        from IceSpringMusicPlayer.widgets.configWidget import ConfigWidget
+        return Element(clazz=HorizontalSplitter, weight=1, children=[
+            Element(clazz=VerticalSplitter, weight=1, children=[
+                Element(clazz=ControlsPanel, weight=1, children=[]),
+                Element(clazz=LyricsPanel, weight=3, children=[]),
+                Element(clazz=PlaylistTable, weight=5, children=[]),
+            ]),
+            Element(clazz=ConfigWidget, weight=2, children=[]),
         ])
