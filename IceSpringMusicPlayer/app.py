@@ -39,6 +39,11 @@ class App(QtWidgets.QApplication):
         self.setApplicationDisplayName(self.applicationName())
         self._mainWindow = MainWindow()
         self.aboutToQuit.connect(self._onAboutToQuit)
+        self.configChanged.connect(self._onConfigChanged)
+
+    def _onConfigChanged(self):
+        self._logger.info("On config changed")
+        self.setFont(Just.of(self.font()).apply(lambda x: x.setPointSize(self._config.fontSize)).value())
 
     def _onAboutToQuit(self):
         self._logger.info("On about to quit")
@@ -109,12 +114,13 @@ class App(QtWidgets.QApplication):
         self._logger.info("Default geometry: %s", defaultGeometry)
         geometry = QtCore.QRect(*jd.get("geometry")) if "geometry" in jd else defaultGeometry
         fontSize = jd.get("fontSize", QtWidgets.QApplication.font().pointSize())
+        lyricSize = jd.get("lyricSize", 16)
         config = Config(
             zoom=fontSize / QtWidgets.QApplication.font().pointSize(),
             geometry=geometry,
             fontSize=fontSize,
             iconSize=48,
-            lyricSize=16,
+            lyricSize=lyricSize,
             layout=self.getInitialLayout(),
         )
         self._logger.info("Loaded config: %s", config)
