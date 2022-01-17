@@ -14,6 +14,7 @@ from IceSpringMusicPlayer.domains.playlist import Playlist
 @dataclass
 class Element(object):
     clazz: typing.Type
+    vertical: bool
     weight: float
     children: typing.List[Element]
 

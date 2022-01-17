@@ -15,7 +15,7 @@ from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
 from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
 from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
-from IceSpringMusicPlayer.widgets.replacerMixin import HorizontalSplitter, VerticalSplitter
+from IceSpringMusicPlayer.widgets.replacerMixin import SplitterWidget
 from IceSpringMusicPlayer.windows.playlistManagerDialog import PlaylistManagerDialog
 
 
@@ -63,6 +63,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def _drawElement(self, element: Element, parent: QtWidgets.QWidget) -> None:
         self._logger.info("Draw element: %s to %s", element.clazz, parent)
         widget = element.clazz(parent)
+        if isinstance(widget, QtWidgets.QSplitter) and element.vertical:
+            widget.setOrientation(QtCore.Qt.Orientation.Vertical)
         if isinstance(parent, QtWidgets.QMainWindow):
             self._logger.info("Parent is main window")
             parent.setCentralWidget(widget)
@@ -107,12 +109,12 @@ class MainWindow(QtWidgets.QMainWindow):
         viewMenu = self.menuBar().addMenu("&View")
         viewMenu.addAction("&Playlist Manager", lambda: PlaylistManagerDialog(self).show())
 
-        controlsDownLayout = Element(clazz=VerticalSplitter, weight=1, children=[
-            Element(clazz=HorizontalSplitter, weight=7, children=[
-                Element(clazz=PlaylistTable, weight=1, children=[]),
-                Element(clazz=LyricsPanel, weight=1, children=[]),
+        controlsDownLayout = Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
+            Element(clazz=SplitterWidget, vertical=False, weight=7, children=[
+                Element(clazz=PlaylistTable, vertical=False, weight=1, children=[]),
+                Element(clazz=LyricsPanel, vertical=False, weight=1, children=[]),
             ]),
-            Element(clazz=ControlsPanel, weight=1, children=[]),
+            Element(clazz=ControlsPanel, vertical=False, weight=1, children=[]),
         ])
         controlsUpLayout = Just.of(copy.deepcopy(controlsDownLayout)).apply(lambda x: x.children.reverse()).value()
         layoutMenu = self.menuBar().addMenu("&Layout")

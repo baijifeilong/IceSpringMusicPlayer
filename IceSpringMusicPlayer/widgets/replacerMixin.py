@@ -31,9 +31,8 @@ class ReplacerMixin(object):
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         Just.of(MaskWidget(self)).apply(lambda x: x.deleteLater()).apply(lambda x: x.show())
         menu = QtWidgets.QMenu(self)
-        menu.addAction("Replace by horizontal splitter", lambda: self._doReplace(HorizontalSplitter(self, 2)))
-        menu.addAction("Replace by vertical splitter", lambda: self._doReplace(VerticalSplitter(self, 2)))
-        menu.addAction("Replace by button widget", lambda: self._doReplace(ButtonWidget(self)))
+        menu.addAction("Replace by horizontal splitter", lambda: self._doReplace(SplitterWidget(self, False, 2)))
+        menu.addAction("Replace by vertical splitter", lambda: self._doReplace(SplitterWidget(self, True, 2)))
         menu.addAction("Replace by blank widget", lambda: self._doReplace(BlankWidget(self)))
         menu.addAction("Replace by controls widget", lambda: self._doReplace(ControlsPanel(self)))
         menu.addAction("Replace by lyrics widget", lambda: self._doReplace(LyricsPanel(self)))
@@ -59,7 +58,7 @@ class ReplacerMixin(object):
             parent.replaceWidget(parent.indexOf(self), widget)
         else:
             logger.info("Parent is others")
-            self.parentWidget().layout().replaceWidget(self, ButtonWidget(self.parentWidget()))
+            parent.layout().replaceWidget(self, widget)
         self.setParent(gg(None))
         App.instance().layoutChanged.emit()
 
@@ -74,40 +73,16 @@ class BlankWidget(QtWidgets.QFrame, ReplacerMixin):
         self.layout().addWidget(label)
 
 
-class ButtonWidget(QtWidgets.QFrame, ReplacerMixin):
-    def __init__(self, parent):
-        super().__init__(parent)
-        ReplacerMixin.__init__(self)
-        self.setLayout(QtWidgets.QGridLayout(self))
-        self.layout().addWidget(Button("CLICK", self))
-
-
 class SplitterWidget(QtWidgets.QSplitter, ReplacerMixin):
     def __init__(self, parent=None, vertical=False, children=0):
         orientation = QtCore.Qt.Orientation.Vertical if vertical else QtCore.Qt.Orientation.Horizontal
         super().__init__(orientation, parent)
         ReplacerMixin.__init__(self)
         self.setHandleWidth(3)
-        self.setStyleSheet("QSplitter::handle { background: red }")
+        self.setStyleSheet("QSplitter::handle { background: gray }")
         self.setSizes([2 ** 16 for _ in range(children)])
         for _ in range(children):
             self.addWidget(BlankWidget(self))
-
-
-class HorizontalSplitter(SplitterWidget):
-    def __init__(self, parent=None, children=0):
-        super().__init__(parent, False, children)
-
-
-class VerticalSplitter(SplitterWidget):
-    def __init__(self, parent=None, children=0):
-        super().__init__(parent, True, children)
-
-
-class Button(QtWidgets.QPushButton):
-    def __init__(self, text, parent):
-        super().__init__(text, parent)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
 
 
 class MaskWidget(QtWidgets.QFrame):

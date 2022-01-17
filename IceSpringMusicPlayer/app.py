@@ -10,6 +10,7 @@ import typing
 import pydash
 from IceSpringPathLib import Path
 from IceSpringRealOptional.just import Just
+from IceSpringRealOptional.typingUtils import gg
 from IceSpringRealOptional.vector import Vector
 from PySide2 import QtWidgets, QtCore, QtGui
 
@@ -55,11 +56,12 @@ class App(QtWidgets.QApplication):
 
     def _widgetToElement(self, widget: QtWidgets.QWidget) -> Element:
         from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
-        assert isinstance(widget, ReplacerMixin)
-        clazz = type(widget)
+        assert isinstance(widget, (ReplacerMixin, QtWidgets.QWidget))
         return Element(
-            clazz=clazz,
-            weight=1,
+            clazz=type(widget),
+            vertical=isinstance(widget, QtWidgets.QSplitter) and widget.orientation() == QtCore.Qt.Orientation.Vertical,
+            weight=widget.height() if isinstance(widget.parentWidget(), QtWidgets.QSplitter) and gg(
+                widget.parentWidget()).orientation() == QtCore.Qt.Orientation.Vertical else widget.width(),
             children=[self._widgetToElement(widget.widget(x)) for x in range(widget.count())] if isinstance(
                 widget, QtWidgets.QSplitter) else []
         )
@@ -117,15 +119,17 @@ class App(QtWidgets.QApplication):
 
     def _persistConfig(self):
         self._logger.info("Persist")
+        self._logger.info("Fetch latest layout")
+        self._config.layout = self._widgetToElement(self._mainWindow.centralWidget())
+        self._logger.info("Save to config.json")
         Path("config.json").write_text(json.dumps(self._config, indent=4, ensure_ascii=False, default=Config.toJson))
 
     def _parseLayout(self, jd: dict) -> Element:
         module, clazz = jd["clazz"].rsplit(".", maxsplit=1)
-        return Element(
+        return Element(**{**jd, **dict(
             clazz=getattr(importlib.import_module(module), clazz),
-            weight=jd["weight"],
             children=[self._parseLayout(x) for x in jd["children"]]
-        )
+        )})
 
     def _loadConfig(self) -> Config:
         self._logger.info("Load config")
@@ -158,17 +162,17 @@ class App(QtWidgets.QApplication):
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
         from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
-        from IceSpringMusicPlayer.widgets.replacerMixin import HorizontalSplitter, VerticalSplitter
-        return Element(clazz=HorizontalSplitter, weight=1, children=[
-            Element(clazz=VerticalSplitter, weight=1, children=[
-                Element(clazz=ControlsPanel, weight=1, children=[]),
-                Element(clazz=LyricsPanel, weight=3, children=[]),
-                Element(clazz=PlaylistTable, weight=5, children=[]),
+        from IceSpringMusicPlayer.widgets.replacerMixin import SplitterWidget
+        return Element(clazz=SplitterWidget, vertical=False, weight=1, children=[
+            Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
+                Element(clazz=ControlsPanel, vertical=False, weight=1, children=[]),
+                Element(clazz=LyricsPanel, vertical=False, weight=3, children=[]),
+                Element(clazz=PlaylistTable, vertical=False, weight=5, children=[]),
             ]),
-            Element(clazz=VerticalSplitter, weight=2, children=[
-                Element(clazz=PlaylistTable, weight=3, children=[]),
-                Element(clazz=LyricsPanel, weight=5, children=[]),
-                Element(clazz=ControlsPanel, weight=1, children=[]),
+            Element(clazz=SplitterWidget, vertical=True, weight=2, children=[
+                Element(clazz=PlaylistTable, vertical=False, weight=3, children=[]),
+                Element(clazz=LyricsPanel, vertical=False, weight=5, children=[]),
+                Element(clazz=ControlsPanel, vertical=False, weight=1, children=[]),
             ]),
         ])
 
@@ -177,17 +181,17 @@ class App(QtWidgets.QApplication):
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
         from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
-        from IceSpringMusicPlayer.widgets.replacerMixin import HorizontalSplitter, VerticalSplitter
+        from IceSpringMusicPlayer.widgets.replacerMixin import SplitterWidget
         from IceSpringMusicPlayer.widgets.configWidget import ConfigWidget
         from IceSpringMusicPlayer.widgets.replacerMixin import BlankWidget
-        return Element(clazz=HorizontalSplitter, weight=1, children=[
-            Element(clazz=VerticalSplitter, weight=1, children=[
-                Element(clazz=ControlsPanel, weight=1, children=[]),
-                Element(clazz=LyricsPanel, weight=3, children=[]),
-                Element(clazz=PlaylistTable, weight=5, children=[]),
+        return Element(clazz=SplitterWidget, vertical=False, weight=1, children=[
+            Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
+                Element(clazz=ControlsPanel, vertical=False, weight=1, children=[]),
+                Element(clazz=LyricsPanel, vertical=False, weight=3, children=[]),
+                Element(clazz=PlaylistTable, vertical=False, weight=5, children=[]),
             ]),
-            Element(clazz=VerticalSplitter, weight=1, children=[
-                Element(clazz=ConfigWidget, weight=1, children=[]),
-                Element(clazz=BlankWidget, weight=3, children=[]),
+            Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
+                Element(clazz=ConfigWidget, vertical=False, weight=1, children=[]),
+                Element(clazz=BlankWidget, vertical=False, weight=3, children=[]),
             ]),
         ])
