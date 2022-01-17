@@ -169,7 +169,7 @@ class App(QtWidgets.QApplication):
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
         from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
-        from IceSpringMusicPlayer.widgets.replacerMixin import SplitterWidget
+        from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
         return Element(clazz=SplitterWidget, vertical=False, weight=1, children=[
             Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
                 Element(clazz=ControlsPanel, vertical=False, weight=1, children=[]),
@@ -188,9 +188,9 @@ class App(QtWidgets.QApplication):
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
         from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
-        from IceSpringMusicPlayer.widgets.replacerMixin import SplitterWidget
+        from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
         from IceSpringMusicPlayer.widgets.configWidget import ConfigWidget
-        from IceSpringMusicPlayer.widgets.replacerMixin import BlankWidget
+        from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
         return Element(clazz=SplitterWidget, vertical=False, weight=1, children=[
             Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
                 Element(clazz=ControlsPanel, vertical=False, weight=1, children=[]),

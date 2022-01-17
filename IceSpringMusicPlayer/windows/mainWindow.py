@@ -15,7 +15,7 @@ from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
 from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
 from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
-from IceSpringMusicPlayer.widgets.replacerMixin import SplitterWidget
+from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
 from IceSpringMusicPlayer.windows.playlistManagerDialog import PlaylistManagerDialog
 
 
