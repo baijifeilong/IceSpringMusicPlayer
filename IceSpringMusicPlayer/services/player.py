@@ -57,7 +57,7 @@ class Player(QtCore.QObject):
         super().__init__(parent)
         self._logger = logging.getLogger("player")
         self._config = App.instance().getConfig()
-        self._playbackMode = PlaybackMode.LOOP
+        self._playbackMode = self._config.playbackMode
         self._playlists = self._config.playlists
         self._frontPlaylistIndex = self._config.frontPlaylistIndex
         self._currentPlaylistIndex = self._config.frontPlaylistIndex

@@ -12,6 +12,7 @@ from IceSpringRealOptional.vector import Vector
 from PySide2 import QtWidgets, QtCore, QtGui
 
 from IceSpringMusicPlayer.domains.config import Config, Element
+from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 
 if typing.TYPE_CHECKING:
@@ -106,6 +107,7 @@ class App(QtWidgets.QApplication):
         self._logger.info("Persist, refresh current config")
         self._config.layout = self._mainWindow.calcLayout()
         self._config.volume = self._player.getVolume()
+        self._config.playbackMode = self._player.getPlaybackMode()
         self._config.frontPlaylistIndex = self._player.getFrontPlaylistIndex()
         self._config.selectedMusicIndexes = self._player.getSelectedMusicIndexes()
         self._logger.info("Save to config.json")
@@ -130,6 +132,7 @@ class App(QtWidgets.QApplication):
             iconSize=48,
             lyricSize=16,
             volume=50,
+            playbackMode=PlaybackMode.LOOP,
             frontPlaylistIndex=-1,
             selectedMusicIndexes=set(),
             layout=self.getDefaultLayout(),
