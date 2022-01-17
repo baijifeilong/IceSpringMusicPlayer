@@ -7,9 +7,9 @@ from PySide2 import QtWidgets, QtCore, QtGui
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.fluentSlider import FluentSlider
+from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 from IceSpringMusicPlayer.enums.playerState import PlayerState
-from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
@@ -58,7 +58,6 @@ class ControlsWidget(QtWidgets.QWidget, ReplacerMixin):
         progressLabel = QtWidgets.QLabel("00:00/00:00", self)
         volumeDial = QtWidgets.QDial(self)
         volumeDial.setFixedSize(QtCore.QSize(iconSize, iconSize))
-        volumeDial.setValue(50)
         volumeDial.valueChanged.connect(self._onVolumeDialValueChanged)
         layout.addWidget(playButton)
         layout.addWidget(stopButton)

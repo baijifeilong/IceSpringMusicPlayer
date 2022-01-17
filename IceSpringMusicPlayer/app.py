@@ -7,7 +7,6 @@ import json
 import logging
 import typing
 
-import pydash
 from IceSpringPathLib import Path
 from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.typingUtils import gg
@@ -15,8 +14,6 @@ from IceSpringRealOptional.vector import Vector
 from PySide2 import QtWidgets, QtCore, QtGui
 
 from IceSpringMusicPlayer.domains.config import Config, Element
-from IceSpringMusicPlayer.domains.music import Music
-from IceSpringMusicPlayer.domains.playlist import Playlist
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 
 if typing.TYPE_CHECKING:
@@ -139,28 +136,27 @@ class App(QtWidgets.QApplication):
             children=[self._parseLayout(x) for x in jd["children"]]
         )})
 
-    def _loadConfig(self) -> Config:
-        self._logger.info("Load config")
-        jd = json.loads(Path("config.json").read_text()) if Path("config.json").exists() else dict()
-        self._logger.info("Config json: %s", pydash.truncate(json.dumps(jd, ensure_ascii=False)))
+    def _getDefaultConfig(self) -> Config:
         screenSize = QtGui.QGuiApplication.primaryScreen().size()
         windowSize = screenSize / 1.5
         diffSize = (screenSize - windowSize) / 2
         defaultGeometry = QtCore.QRect(QtCore.QPoint(diffSize.width(), diffSize.height()), windowSize)
-        config = Config(
-            geometry=QtCore.QRect(*jd.get("geometry")) if "geometry" in jd else defaultGeometry,
-            fontSize=jd.get("fontSize", QtWidgets.QApplication.font().pointSize()),
-            iconSize=jd.get("iconSize", 48),
-            lyricSize=jd.get("lyricSize", 16),
+        return Config(
+            geometry=defaultGeometry,
+            fontSize=QtWidgets.QApplication.font().pointSize(),
+            iconSize=48,
+            lyricSize=16,
+            volume=50,
             frontPlaylistIndex=-1,
-            volume=jd.get("volume", 50),
-            layout=self._parseLayout(jd["layout"]) if "layout" in jd else self.getDefaultLayout(),
-            playlists=Vector(Playlist(
-                name=playlistJd["name"],
-                musics=Vector(Music(**musicJd) for musicJd in playlistJd["musics"])
-            ) for playlistJd in jd.get("playlists", [])),
+            layout=self.getDefaultLayout(),
+            playlists=Vector()
         )
-        config.frontPlaylistIndex = jd.get("frontPlaylistIndex", -1 if len(config.playlists) == 0 else 0)
+
+    def _loadConfig(self) -> Config:
+        self._logger.info("Load config")
+        text = Path("config.json").read_text() if Path("config.json").exists() else "{}"
+        jd = json.loads(text, object_pairs_hook=Config.fromJson)
+        config = Config(**{**self._getDefaultConfig().__dict__, **jd})
         self._logger.info("Loaded config: %s", config)
         return config
 
