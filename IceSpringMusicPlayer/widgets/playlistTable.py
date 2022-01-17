@@ -47,6 +47,7 @@ class PlaylistTable(IceTableView, ReplacerMixin):
         self._player.selectedMusicIndexesChanged.connect(self._onSelectedMusicIndexesChanged)
         self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
         self._player.musicsInserted.connect(self._onMusicsInserted)
+        self._selectAndFollowMusics(self._player.getSelectedMusicIndexes())
 
     def model(self) -> "PlaylistModel":
         return super().model()
@@ -68,6 +69,10 @@ class PlaylistTable(IceTableView, ReplacerMixin):
         if indexes == selectedIndexes:
             self._logger.info("Selection not changed, return")
             return
+        self._selectAndFollowMusics(indexes)
+
+    def _selectAndFollowMusics(self, indexes: typing.Set[int]) -> None:
+        self._logger.info("Select and follow musics: %s", indexes)
         self.selectionModel().blockSignals(True)
         self.model().endResetModel()
         self._selectRows(indexes)

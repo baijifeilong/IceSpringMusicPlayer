@@ -29,6 +29,7 @@ class Config(object):
     lyricSize: int
     volume: int
     frontPlaylistIndex: int
+    selectedMusicIndexes: typing.Set[int]
     layout: Element
     playlists: Vector[Playlist]
 
@@ -38,6 +39,8 @@ class Config(object):
             return obj.left(), obj.top(), obj.width(), obj.height()
         elif isinstance(obj, type):
             return ".".join((obj.__module__, obj.__name__))
+        elif isinstance(obj, set):
+            return sorted(obj)
         else:
             return obj.__dict__
 
@@ -52,6 +55,8 @@ class Config(object):
                 v = getattr(importlib.import_module(module), clazz)
             elif k in ("musics", "playlists") and isinstance(v, list):
                 v = Vector(v)
+            elif k == "selectedMusicIndexes":
+                v = set(v)
             jd[k] = v
         _type = dict
         if all(x in jd for x in ("clazz", "children")):

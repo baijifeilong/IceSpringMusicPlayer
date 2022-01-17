@@ -121,11 +121,11 @@ class App(QtWidgets.QApplication):
         self._player.insertMusics([x for i, x in enumerate(musics) if i % 6 in (5,)])
 
     def _persistConfig(self):
-        self._logger.info("Persist")
-        self._logger.info("Fetch latest layout")
+        self._logger.info("Persist, refresh current config")
         self._config.layout = self._widgetToElement(self._mainWindow.centralWidget())
-        self._logger.info("Refresh volume")
         self._config.volume = self._player.getVolume()
+        self._config.frontPlaylistIndex = self._player.getFrontPlaylistIndex()
+        self._config.selectedMusicIndexes = self._player.getSelectedMusicIndexes()
         self._logger.info("Save to config.json")
         Path("config.json").write_text(json.dumps(self._config, indent=4, ensure_ascii=False, default=Config.toJson))
 
@@ -148,6 +148,7 @@ class App(QtWidgets.QApplication):
             lyricSize=16,
             volume=50,
             frontPlaylistIndex=-1,
+            selectedMusicIndexes=set(),
             layout=self.getDefaultLayout(),
             playlists=Vector()
         )

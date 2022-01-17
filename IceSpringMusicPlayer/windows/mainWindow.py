@@ -137,6 +137,8 @@ class MainWindow(QtWidgets.QMainWindow):
         toolbar = self.addToolBar("Toolbar")
         toolbar.setMovable(False)
         playlistCombo = QtWidgets.QComboBox(toolbar)
+        playlistCombo.addItems([x.name for x in self._player.getPlaylists()])
+        playlistCombo.setCurrentIndex(self._player.getFrontPlaylistIndex())
         playlistCombo.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents)
         playlistCombo.activated.connect(self._onPlaylistComboActivated)
         toolbar.addWidget(QtWidgets.QLabel("Playlist: ", toolbar))

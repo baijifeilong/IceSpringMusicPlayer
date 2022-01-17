@@ -61,7 +61,7 @@ class Player(QtCore.QObject):
         self._playlists = self._config.playlists
         self._frontPlaylistIndex = self._config.frontPlaylistIndex
         self._currentPlaylistIndex = self._config.frontPlaylistIndex
-        self._selectedMusicIndexes = set()
+        self._selectedMusicIndexes = self._config.selectedMusicIndexes
         self._currentMusicIndex = -1
         self._histories = dict()
         self._historyPosition = -1
