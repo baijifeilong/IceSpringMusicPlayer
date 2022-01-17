@@ -37,12 +37,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._initPlayer()
         self._initMenu()
         self._initToolbar()
-        self._loadConfig()
-        self._initStatusBar()
-
-    def _loadConfig(self):
-        self._logger.info("Load config")
         self._loadLayout(self._config.layout)
+        self._initStatusBar()
 
     def _changeLayout(self, layout: Element) -> None:
         self._logger.info("Change layout")

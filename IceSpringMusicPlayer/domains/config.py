@@ -21,7 +21,6 @@ class Element(object):
 
 @dataclass
 class Config(object):
-    zoom: float
     geometry: QtCore.QRect
     fontSize: int
     iconSize: int

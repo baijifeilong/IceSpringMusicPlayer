@@ -31,8 +31,12 @@ class App(QtWidgets.QApplication):
 
     _logger: logging.Logger
     _config: Config
+    _zoom: float
     _player: Player
     _mainWindow: MainWindow
+
+    def getZoom(self) -> float:
+        return self._zoom
 
     def __init__(self):
         from IceSpringMusicPlayer.services.player import Player
@@ -40,6 +44,7 @@ class App(QtWidgets.QApplication):
         super().__init__()
         self._logger = logging.getLogger("app")
         self._config = self._loadConfig()
+        self._zoom = self._config.fontSize / QtWidgets.QApplication.font().pointSize()
         self._player = Player(self)
         self.setApplicationName("Ice Spring Music Player")
         self.setApplicationDisplayName(self.applicationName())
@@ -140,7 +145,6 @@ class App(QtWidgets.QApplication):
         diffSize = (screenSize - windowSize) / 2
         defaultGeometry = QtCore.QRect(QtCore.QPoint(diffSize.width(), diffSize.height()), windowSize)
         config = Config(
-            zoom=-1,
             geometry=QtCore.QRect(*jd.get("geometry")) if "geometry" in jd else defaultGeometry,
             fontSize=jd.get("fontSize", QtWidgets.QApplication.font().pointSize()),
             iconSize=jd.get("iconSize", 48),
@@ -152,7 +156,6 @@ class App(QtWidgets.QApplication):
                 musics=Vector(Music(**musicJd) for musicJd in playlistJd["musics"])
             ) for playlistJd in jd.get("playlists", [])),
         )
-        config.zoom = config.fontSize / QtWidgets.QApplication.font().pointSize()
         config.frontPlaylistIndex = jd.get("frontPlaylistIndex", -1 if len(config.playlists) == 0 else 0)
         self._logger.info("Loaded config: %s", config)
         return config

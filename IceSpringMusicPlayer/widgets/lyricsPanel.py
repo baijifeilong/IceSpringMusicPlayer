@@ -100,7 +100,7 @@ class LyricsPanel(QtWidgets.QScrollArea, ReplacerMixin):
             font.setFamily("等线")
             font.setPointSize(self._config.lyricSize)
             lyricLabel.setFont(font)
-            lyricLabel.setMargin(int(2 * self._config.zoom))
+            lyricLabel.setMargin(int(2 * self._app.getZoom()))
             self._layout.addWidget(lyricLabel)
         self._layout.addSpacing(self.height() // 2)
         self._logger.info("Lyrics layout has children: %d", self._layout.count())
