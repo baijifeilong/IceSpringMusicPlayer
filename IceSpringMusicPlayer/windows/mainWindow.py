@@ -25,6 +25,7 @@ class MainWindow(QtWidgets.QMainWindow):
     _player: Player
     _statusLabel: QtWidgets.QLabel
     _playlistCombo: QtWidgets.QComboBox
+    layoutChanged: QtCore.SignalInstance = QtCore.Signal()
 
     def __init__(self):
         super().__init__()
@@ -39,6 +40,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self._initToolbar()
         self._loadLayout(self._config.layout)
         self._initStatusBar()
+        self.layoutChanged.connect(self._onLayoutChanged)
+
+    def _onLayoutChanged(self):
+        self._logger.info("On layout changed")
+        newLayout = self._widgetToElement(self.centralWidget())
+        self._logger.info("New layout: %s", newLayout)
+        self._config.layout = newLayout
+
+    def _widgetToElement(self, widget: QtWidgets.QWidget) -> Element:
+        from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
+        assert isinstance(widget, (ReplacerMixin, QtWidgets.QWidget))
+        return Element(
+            clazz=type(widget),
+            vertical=isinstance(widget, QtWidgets.QSplitter) and widget.orientation() == QtCore.Qt.Orientation.Vertical,
+            weight=widget.height() if isinstance(widget.parentWidget(), QtWidgets.QSplitter) and gg(
+                widget.parentWidget()).orientation() == QtCore.Qt.Orientation.Vertical else widget.width(),
+            children=[self._widgetToElement(widget.widget(x)) for x in range(widget.count())] if isinstance(
+                widget, QtWidgets.QSplitter) else []
+        )
+
+    def calcLayout(self) -> Element:
+        return self._widgetToElement(self.centralWidget())
 
     def _changeLayout(self, layout: Element) -> None:
         self._logger.info("Change layout")

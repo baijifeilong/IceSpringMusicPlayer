@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import importlib
 import json
 import logging
 import typing
 
 from IceSpringPathLib import Path
 from IceSpringRealOptional.just import Just
-from IceSpringRealOptional.typingUtils import gg
 from IceSpringRealOptional.vector import Vector
 from PySide2 import QtWidgets, QtCore, QtGui
 
@@ -24,7 +22,6 @@ if typing.TYPE_CHECKING:
 class App(QtWidgets.QApplication):
     requestLocateCurrentMusic: QtCore.SignalInstance = QtCore.Signal()
     configChanged: QtCore.SignalInstance = QtCore.Signal()
-    layoutChanged: QtCore.SignalInstance = QtCore.Signal()
 
     _logger: logging.Logger
     _config: Config
@@ -49,25 +46,6 @@ class App(QtWidgets.QApplication):
         self._mainWindow = MainWindow()
         self.aboutToQuit.connect(self._onAboutToQuit)
         self.configChanged.connect(self._onConfigChanged)
-        self.layoutChanged.connect(self._onLayoutChanged)
-
-    def _onLayoutChanged(self):
-        self._logger.info("On layout changed")
-        newLayout = self._widgetToElement(self._mainWindow.centralWidget())
-        self._logger.info("New layout: %s", newLayout)
-        self._config.layout = newLayout
-
-    def _widgetToElement(self, widget: QtWidgets.QWidget) -> Element:
-        from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
-        assert isinstance(widget, (ReplacerMixin, QtWidgets.QWidget))
-        return Element(
-            clazz=type(widget),
-            vertical=isinstance(widget, QtWidgets.QSplitter) and widget.orientation() == QtCore.Qt.Orientation.Vertical,
-            weight=widget.height() if isinstance(widget.parentWidget(), QtWidgets.QSplitter) and gg(
-                widget.parentWidget()).orientation() == QtCore.Qt.Orientation.Vertical else widget.width(),
-            children=[self._widgetToElement(widget.widget(x)) for x in range(widget.count())] if isinstance(
-                widget, QtWidgets.QSplitter) else []
-        )
 
     def _onConfigChanged(self):
         self._logger.info("On config changed")
@@ -89,6 +67,9 @@ class App(QtWidgets.QApplication):
 
     def getPlayer(self) -> Player:
         return self._player
+
+    def getMainWindow(self) -> MainWindow:
+        return self._mainWindow
 
     @staticmethod
     def instance() -> App:
@@ -122,19 +103,20 @@ class App(QtWidgets.QApplication):
 
     def _persistConfig(self):
         self._logger.info("Persist, refresh current config")
-        self._config.layout = self._widgetToElement(self._mainWindow.centralWidget())
+        self._config.layout = self._mainWindow.calcLayout()
         self._config.volume = self._player.getVolume()
         self._config.frontPlaylistIndex = self._player.getFrontPlaylistIndex()
         self._config.selectedMusicIndexes = self._player.getSelectedMusicIndexes()
         self._logger.info("Save to config.json")
         Path("config.json").write_text(json.dumps(self._config, indent=4, ensure_ascii=False, default=Config.toJson))
 
-    def _parseLayout(self, jd: dict) -> Element:
-        module, clazz = jd["clazz"].rsplit(".", maxsplit=1)
-        return Element(**{**jd, **dict(
-            clazz=getattr(importlib.import_module(module), clazz),
-            children=[self._parseLayout(x) for x in jd["children"]]
-        )})
+    def _loadConfig(self) -> Config:
+        self._logger.info("Load config")
+        text = Path("config.json").read_text() if Path("config.json").exists() else "{}"
+        jd = json.loads(text, object_pairs_hook=Config.fromJson)
+        config = Config(**{**self._getDefaultConfig().__dict__, **jd})
+        self._logger.info("Loaded config: %s", config)
+        return config
 
     def _getDefaultConfig(self) -> Config:
         screenSize = QtGui.QGuiApplication.primaryScreen().size()
@@ -152,14 +134,6 @@ class App(QtWidgets.QApplication):
             layout=self.getDefaultLayout(),
             playlists=Vector()
         )
-
-    def _loadConfig(self) -> Config:
-        self._logger.info("Load config")
-        text = Path("config.json").read_text() if Path("config.json").exists() else "{}"
-        jd = json.loads(text, object_pairs_hook=Config.fromJson)
-        config = Config(**{**self._getDefaultConfig().__dict__, **jd})
-        self._logger.info("Loaded config: %s", config)
-        return config
 
     @staticmethod
     def getDefaultLayout() -> Element:

@@ -51,4 +51,4 @@ class ReplacerMixin(object):
             logger.info("Parent is others")
             parent.layout().replaceWidget(self, widget)
         self.setParent(gg(None))
-        App.instance().layoutChanged.emit()
+        App.instance().getMainWindow().layoutChanged.emit()
