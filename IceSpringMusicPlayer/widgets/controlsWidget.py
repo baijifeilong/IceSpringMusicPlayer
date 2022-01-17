@@ -15,7 +15,7 @@ from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
 
 
-class ControlsPanel(QtWidgets.QWidget, ReplacerMixin):
+class ControlsWidget(QtWidgets.QWidget, ReplacerMixin):
     _logger: logging.Logger
     _config: Config
     _player: Player

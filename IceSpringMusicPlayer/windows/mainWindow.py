@@ -12,8 +12,8 @@ from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.domains.config import Config, Element
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
-from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
-from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
+from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
+from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
 from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
 from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
 from IceSpringMusicPlayer.windows.playlistManagerDialog import PlaylistManagerDialog
@@ -108,9 +108,9 @@ class MainWindow(QtWidgets.QMainWindow):
         controlsDownLayout = Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
             Element(clazz=SplitterWidget, vertical=False, weight=7, children=[
                 Element(clazz=PlaylistTable, vertical=False, weight=1, children=[]),
-                Element(clazz=LyricsPanel, vertical=False, weight=1, children=[]),
+                Element(clazz=LyricsWidget, vertical=False, weight=1, children=[]),
             ]),
-            Element(clazz=ControlsPanel, vertical=False, weight=1, children=[]),
+            Element(clazz=ControlsWidget, vertical=False, weight=1, children=[]),
         ])
         controlsUpLayout = Just.of(copy.deepcopy(controlsDownLayout)).apply(lambda x: x.children.reverse()).value()
         layoutMenu = self.menuBar().addMenu("&Layout")

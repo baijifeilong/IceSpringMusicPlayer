@@ -167,34 +167,34 @@ class App(QtWidgets.QApplication):
     @staticmethod
     def getDefaultLayout() -> Element:
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
-        from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
-        from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
+        from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
+        from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
         from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
         return Element(clazz=SplitterWidget, vertical=False, weight=1, children=[
             Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
-                Element(clazz=ControlsPanel, vertical=False, weight=1, children=[]),
-                Element(clazz=LyricsPanel, vertical=False, weight=3, children=[]),
+                Element(clazz=ControlsWidget, vertical=False, weight=1, children=[]),
+                Element(clazz=LyricsWidget, vertical=False, weight=3, children=[]),
                 Element(clazz=PlaylistTable, vertical=False, weight=5, children=[]),
             ]),
             Element(clazz=SplitterWidget, vertical=True, weight=2, children=[
                 Element(clazz=PlaylistTable, vertical=False, weight=3, children=[]),
-                Element(clazz=LyricsPanel, vertical=False, weight=5, children=[]),
-                Element(clazz=ControlsPanel, vertical=False, weight=1, children=[]),
+                Element(clazz=LyricsWidget, vertical=False, weight=5, children=[]),
+                Element(clazz=ControlsWidget, vertical=False, weight=1, children=[]),
             ]),
         ])
 
     @staticmethod
     def getDemoLayout() -> Element:
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
-        from IceSpringMusicPlayer.widgets.lyricsPanel import LyricsPanel
-        from IceSpringMusicPlayer.widgets.controlsPanel import ControlsPanel
+        from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
+        from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
         from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
         from IceSpringMusicPlayer.widgets.configWidget import ConfigWidget
         from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
         return Element(clazz=SplitterWidget, vertical=False, weight=1, children=[
             Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
-                Element(clazz=ControlsPanel, vertical=False, weight=1, children=[]),
-                Element(clazz=LyricsPanel, vertical=False, weight=3, children=[]),
+                Element(clazz=ControlsWidget, vertical=False, weight=1, children=[]),
+                Element(clazz=LyricsWidget, vertical=False, weight=3, children=[]),
                 Element(clazz=PlaylistTable, vertical=False, weight=5, children=[]),
             ]),
             Element(clazz=SplitterWidget, vertical=True, weight=1, children=[

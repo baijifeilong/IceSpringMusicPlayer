@@ -16,7 +16,7 @@ from IceSpringMusicPlayer.utils.lyricUtils import LyricUtils
 from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
 
 
-class LyricsPanel(QtWidgets.QScrollArea, ReplacerMixin):
+class LyricsWidget(QtWidgets.QScrollArea, ReplacerMixin):
     _app: App
     _config: Config
     _player: Player
@@ -32,12 +32,11 @@ class LyricsPanel(QtWidgets.QScrollArea, ReplacerMixin):
         self._player = App.instance().getPlayer()
         self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
         self._player.positionChanged.connect(self._onPlayerPositionChanged)
-        widget = QtWidgets.QWidget(self)
-        layout = QtWidgets.QVBoxLayout(widget)
+        self.setWidget(QtWidgets.QWidget(self))
+        layout = QtWidgets.QVBoxLayout(self.widget())
         layout.setMargin(0)
         layout.setSpacing(1)
-        widget.setLayout(layout)
-        self.setWidget(widget)
+        self.widget().setLayout(layout)
         self.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
         self.setWidgetResizable(True)
         self.horizontalScrollBar().rangeChanged.connect(
