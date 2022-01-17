@@ -84,6 +84,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.centralWidget().setAutoFillBackground(True)
         self.centralWidget().setPalette(Just.of(QtGui.QPalette()).apply(
             lambda x: x.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor("white"))).value())
+        self._refreshSplitters()
+
+    def _refreshSplitters(self):
+        palette = Just.of(QtGui.QPalette()).apply(lambda x: x.setColor(QtGui.QPalette.ColorRole.Window,
+            QtGui.QColor("red" if self._layoutEditing else "#EEEEEE"))).value()
+        for handle in self.findChildren(QtWidgets.QSplitterHandle):
+            gg(handle, QtWidgets.QSplitterHandle).setPalette(palette)
 
     def _drawElement(self, element: Element, parent: QtWidgets.QWidget) -> None:
         self._logger.info("Draw element: %s to %s", element.clazz, parent)
@@ -183,6 +190,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._logger.info("On editing check box state changed: %s", state)
         assert state in (QtCore.Qt.CheckState.Checked, QtCore.Qt.CheckState.Unchecked)
         self._layoutEditing = state == QtCore.Qt.CheckState.Checked
+        self._logger.info("Refresh splitters")
+        self._refreshSplitters()
         self._logger.info("> Signal layoutEditingChanged emitting...")
         self.layoutEditingChanged.emit(self._layoutEditing)
         self._logger.info("< Signal layoutEditingChanged emitted...")
