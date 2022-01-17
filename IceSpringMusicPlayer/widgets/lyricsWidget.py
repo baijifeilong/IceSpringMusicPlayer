@@ -17,6 +17,9 @@ from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
 
 
 class LyricsWidget(QtWidgets.QScrollArea, ReplacerMixin):
+    def onCustomContextMenuRequested(self, position: QtCore.QPoint):
+        pass
+
     _app: App
     _config: Config
     _player: Player

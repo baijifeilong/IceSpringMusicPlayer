@@ -7,6 +7,9 @@ from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
 
 
 class SplitterWidget(QtWidgets.QSplitter, ReplacerMixin):
+    def onCustomContextMenuRequested(self, position: QtCore.QPoint):
+        pass
+
     def __init__(self, parent=None, vertical=False, children=0):
         orientation = QtCore.Qt.Orientation.Vertical if vertical else QtCore.Qt.Orientation.Horizontal
         super().__init__(orientation, parent)

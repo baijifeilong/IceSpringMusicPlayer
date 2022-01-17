@@ -2,12 +2,15 @@
 
 import typing
 
-from PySide2 import QtWidgets
+from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
 
 
 class BlankWidget(QtWidgets.QFrame, ReplacerMixin):
+    def onCustomContextMenuRequested(self, position: QtCore.QPoint):
+        pass
+
     def __init__(self, parent: typing.Optional[QtWidgets.QWidget]):
         super().__init__(parent)
         ReplacerMixin.__init__(self)

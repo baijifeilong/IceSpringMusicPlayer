@@ -6,7 +6,7 @@ import logging
 import typing
 
 import qtawesome
-from IceSpringRealOptional.typingUtils import gg, unused
+from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.app import App
@@ -37,9 +37,6 @@ class PlaylistTable(IceTableView, ReplacerMixin):
         self.setIconSize(QtCore.QSize(32, 32) * self._app.getZoom())
         self.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
         self.setSortingEnabled(True)
-        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        if not self._app.getMainWindow().getLayoutEditing():
-            self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
         self.selectionModel().selectionChanged.connect(self._onSelectionChanged)
         self._app.requestLocateCurrentMusic.connect(self._onRequestLocateCurrentMusic)
         self._player.stateChanged.connect(self._onPlayerStateChanged)
@@ -49,14 +46,6 @@ class PlaylistTable(IceTableView, ReplacerMixin):
         self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
         self._player.musicsInserted.connect(self._onMusicsInserted)
         self._selectAndFollowMusics(self._player.getSelectedMusicIndexes())
-        self._app.getMainWindow().layoutEditingChanged.connect(self._onLayoutEditingChanged)
-
-    def _onLayoutEditingChanged(self, editing: bool) -> None:
-        self._logger.info("On layout editing changed: %s", editing)
-        if editing:
-            self.customContextMenuRequested.disconnect(self._onCustomContextMenuRequested)
-        else:
-            self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
 
     def model(self) -> "PlaylistModel":
         return super().model()
@@ -115,8 +104,7 @@ class PlaylistTable(IceTableView, ReplacerMixin):
                 QtCore.QItemSelection(self.model().index(index, 0), self.model().index(index, 2)),
                 gg(QtCore.QItemSelectionModel.Select, typing.Any) | QtCore.QItemSelectionModel.Rows)
 
-    def _onCustomContextMenuRequested(self, position: QtCore.QPoint) -> None:
-        unused(position)
+    def onCustomContextMenuRequested(self, position: QtCore.QPoint) -> None:
         menu = QtWidgets.QMenu()
         menu.addAction("Remove", self._onRemove)
         menu.addAction("Add", self._app.addMusicsFromFileDialog)
