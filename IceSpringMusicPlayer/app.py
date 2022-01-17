@@ -59,6 +59,7 @@ class App(QtWidgets.QApplication):
         self._logger.info("Exec")
         self.setFont(Just.of(self.font()).apply(lambda x: x.setPointSize(self._config.fontSize)).value())
         self._mainWindow.setGeometry(self._config.geometry)
+        self._mainWindow.loadLayout(self._config.layout)
         self._mainWindow.show()
         return super().exec_()
 

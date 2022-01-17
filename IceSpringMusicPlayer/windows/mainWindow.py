@@ -20,12 +20,15 @@ from IceSpringMusicPlayer.windows.playlistManagerDialog import PlaylistManagerDi
 
 
 class MainWindow(QtWidgets.QMainWindow):
+    layoutChanged: QtCore.SignalInstance = QtCore.Signal()
+    layoutEditingChanged: QtCore.SignalInstance = QtCore.Signal(bool)
+
     _app: App
     _config: Config
     _player: Player
     _statusLabel: QtWidgets.QLabel
     _playlistCombo: QtWidgets.QComboBox
-    layoutChanged: QtCore.SignalInstance = QtCore.Signal()
+    _layoutEditing: bool
 
     def __init__(self):
         super().__init__()
@@ -35,12 +38,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self._app = App.instance()
         self._config = App.instance().getConfig()
         self._player = App.instance().getPlayer()
+        self._layoutEditing = False
         self._initPlayer()
         self._initMenu()
         self._initToolbar()
-        self._loadLayout(self._config.layout)
         self._initStatusBar()
         self.layoutChanged.connect(self._onLayoutChanged)
+
+    def getLayoutEditing(self) -> bool:
+        return self._layoutEditing
 
     def _onLayoutChanged(self):
         self._logger.info("On layout changed")
@@ -66,9 +72,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def _changeLayout(self, layout: Element) -> None:
         self._logger.info("Change layout")
         self._config.layout = layout
-        self._loadLayout(self._config.layout)
+        self.loadLayout(self._config.layout)
 
-    def _loadLayout(self, layout: Element) -> None:
+    def loadLayout(self, layout: Element) -> None:
         self._logger.info("Load layout")
         if self.centralWidget() is not None:
             self._logger.info("Central widget is not none, clear it")
@@ -168,7 +174,18 @@ class MainWindow(QtWidgets.QMainWindow):
         toolbar.addWidget(playlistCombo)
         toolbar.addAction(*gg(("One Key Add", self._app.addMusicsFromHomeFolder)))
         toolbar.addAction(*gg(("Play", self._player.play)))
+        editingCheck = QtWidgets.QCheckBox("Editing", self)
+        editingCheck.stateChanged.connect(self._onEditingCheckBoxStateChanged)
+        toolbar.addWidget(editingCheck)
         self._playlistCombo = playlistCombo
+
+    def _onEditingCheckBoxStateChanged(self, state: QtCore.Qt.CheckState):
+        self._logger.info("On editing check box state changed: %s", state)
+        assert state in (QtCore.Qt.CheckState.Checked, QtCore.Qt.CheckState.Unchecked)
+        self._layoutEditing = state == QtCore.Qt.CheckState.Checked
+        self._logger.info("> Signal layoutEditingChanged emitting...")
+        self.layoutEditingChanged.emit(self._layoutEditing)
+        self._logger.info("< Signal layoutEditingChanged emitted...")
 
     def _onPlaylistInserted(self, index: int) -> None:
         playlist = self._player.getPlaylists()[index]

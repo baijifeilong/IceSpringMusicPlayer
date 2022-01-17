@@ -15,11 +15,21 @@ class ReplacerMixin(object):
 
     def __init__(self: base):
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
         self.setMinimumWidth(30)
         self.setMinimumHeight(30)
+        if App.instance().getMainWindow().getLayoutEditing():
+            self.customContextMenuRequested.connect(self._replacerOnContextMenuRequested)
+        App.instance().getMainWindow().layoutEditingChanged.connect(self._replacerOnLayoutEditingChanged)
 
-    def _onCustomContextMenuRequested(self: base):
+    def _replacerOnLayoutEditingChanged(self: base, editing: bool) -> None:
+        logger = logging.getLogger("replacerMixin")
+        logger.info("On layout editing changed: %s", editing)
+        if editing:
+            self.customContextMenuRequested.connect(self._replacerOnContextMenuRequested)
+        else:
+            self.customContextMenuRequested.disconnect(self._replacerOnContextMenuRequested)
+
+    def _replacerOnContextMenuRequested(self: base):
         from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
         from IceSpringMusicPlayer.widgets.maskWidget import MaskWidget
         from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
