@@ -14,20 +14,29 @@ class ReplacerMixin(object):
     base = typing.Union[QtWidgets.QFrame, "ReplacerMixin"]
 
     def __init__(self: base):
-        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        for target in self._calcTargets():
+            target.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.setMinimumWidth(30)
         self.setMinimumHeight(30)
         if App.instance().getMainWindow().getLayoutEditing():
-            self.customContextMenuRequested.connect(self._replacerOnContextMenuRequested)
+            for target in self._calcTargets():
+                target.customContextMenuRequested.connect(self._replacerOnContextMenuRequested)
         App.instance().getMainWindow().layoutEditingChanged.connect(self._replacerOnLayoutEditingChanged)
+
+    def _calcTargets(self) -> typing.List[typing.Union["ReplacerMixin", QtWidgets.QWidget, QtWidgets.QTableView]]:
+        if isinstance(self, QtWidgets.QTableView):
+            return [self, self.horizontalHeader(), self.verticalHeader()]
+        return [self]
 
     def _replacerOnLayoutEditingChanged(self: base, editing: bool) -> None:
         logger = logging.getLogger("replacerMixin")
         logger.info("On layout editing changed: %s", editing)
         if editing:
-            self.customContextMenuRequested.connect(self._replacerOnContextMenuRequested)
+            for target in self._calcTargets():
+                target.customContextMenuRequested.connect(self._replacerOnContextMenuRequested)
         else:
-            self.customContextMenuRequested.disconnect(self._replacerOnContextMenuRequested)
+            for target in self._calcTargets():
+                target.customContextMenuRequested.disconnect(self._replacerOnContextMenuRequested)
 
     def _replacerOnContextMenuRequested(self: base):
         from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
