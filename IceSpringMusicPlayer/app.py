@@ -46,6 +46,7 @@ class App(QtWidgets.QApplication):
         self._config = self._loadConfig()
         self._zoom = self._config.fontSize / QtWidgets.QApplication.font().pointSize()
         self._player = Player(self)
+        self._player.setVolume(self._config.volume)
         self.setApplicationName("Ice Spring Music Player")
         self.setApplicationDisplayName(self.applicationName())
         self._mainWindow = MainWindow()
@@ -126,6 +127,8 @@ class App(QtWidgets.QApplication):
         self._logger.info("Persist")
         self._logger.info("Fetch latest layout")
         self._config.layout = self._widgetToElement(self._mainWindow.centralWidget())
+        self._logger.info("Refresh volume")
+        self._config.volume = self._player.getVolume()
         self._logger.info("Save to config.json")
         Path("config.json").write_text(json.dumps(self._config, indent=4, ensure_ascii=False, default=Config.toJson))
 
@@ -149,8 +152,9 @@ class App(QtWidgets.QApplication):
             fontSize=jd.get("fontSize", QtWidgets.QApplication.font().pointSize()),
             iconSize=jd.get("iconSize", 48),
             lyricSize=jd.get("lyricSize", 16),
-            layout=self._parseLayout(jd["layout"]) if "layout" in jd else self.getDefaultLayout(),
             frontPlaylistIndex=-1,
+            volume=jd.get("volume", 50),
+            layout=self._parseLayout(jd["layout"]) if "layout" in jd else self.getDefaultLayout(),
             playlists=Vector(Playlist(
                 name=playlistJd["name"],
                 musics=Vector(Music(**musicJd) for musicJd in playlistJd["musics"])

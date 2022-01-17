@@ -25,8 +25,9 @@ class Config(object):
     fontSize: int
     iconSize: int
     lyricSize: int
-    layout: Element
+    volume: int
     frontPlaylistIndex: int
+    layout: Element
     playlists: Vector[Playlist]
 
     @staticmethod
