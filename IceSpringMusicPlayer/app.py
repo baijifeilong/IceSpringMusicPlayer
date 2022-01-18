@@ -109,7 +109,6 @@ class App(QtWidgets.QApplication):
         self._config.volume = self._player.getVolume()
         self._config.playbackMode = self._player.getPlaybackMode()
         self._config.frontPlaylistIndex = self._player.getFrontPlaylistIndex()
-        self._config.selectedMusicIndexes = self._player.getSelectedMusicIndexes()
         self._logger.info("Save to config.json")
         Path("config.json").write_text(json.dumps(self._config, indent=4, ensure_ascii=False, default=Config.toJson))
 
@@ -134,7 +133,6 @@ class App(QtWidgets.QApplication):
             volume=50,
             playbackMode=PlaybackMode.LOOP,
             frontPlaylistIndex=-1,
-            selectedMusicIndexes=set(),
             layout=self.getDefaultLayout(),
             playlists=Vector()
         )

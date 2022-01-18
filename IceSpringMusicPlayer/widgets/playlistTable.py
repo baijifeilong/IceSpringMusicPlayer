@@ -53,8 +53,8 @@ class PlaylistTable(IceTableView, ReplaceableMixin):
 
     def _onSelectionChanged(self, selected: QtCore.QItemSelection, deselected: QtCore.QItemSelection) -> None:
         self._logger.info("On selection changed")
-        selectedIndexes = [x.row() for x in selected.indexes()]
-        deselectedIndexes = [x.row() for x in deselected.indexes()]
+        selectedIndexes = {x.row() for x in selected.indexes()}
+        deselectedIndexes = {x.row() for x in deselected.indexes()}
         oldSelectedIndexes = self._player.getSelectedMusicIndexes()
         newSelectedIndexes = oldSelectedIndexes.union(selectedIndexes).difference(deselectedIndexes)
         self.blockSignals(True)
@@ -131,12 +131,9 @@ class PlaylistTable(IceTableView, ReplaceableMixin):
             self._logger.info("Old front playlist index is -1, nothing to save, return")
             return
         playlist = self._player.getFrontPlaylist().orElseThrow(AssertionError)
-        selectedIndexes = {x.row() for x in self.selectionModel().selectedIndexes()}
-        self._logger.info("Save playlist selections: %s => %s", playlist.name, selectedIndexes)
-        playlist.setProperty("selectedIndexes", selectedIndexes)
         scrollLocation = self.verticalScrollBar().value()
         self._logger.info("Save scroll location: %s => %s", playlist.name, scrollLocation)
-        playlist.setProperty("scrollLocation", scrollLocation)
+        self.setProperty(f"scrollLocation_{oldIndex}", scrollLocation)
 
     def _onFrontPlaylistIndexChanged(self, oldIndex: int, newIndex: int) -> None:
         self._logger.info("On front playlist index changed: %d => %d", oldIndex, newIndex)
@@ -147,14 +144,12 @@ class PlaylistTable(IceTableView, ReplaceableMixin):
             self._logger.info("New front playlist index is -1, nothing to recover, return")
             return
         playlist = self._player.getFrontPlaylist().orElseThrow(AssertionError)
-        selectedIndexes: typing.Optional[typing.Set[int]] = playlist.property("selectedIndexes")
-        if selectedIndexes is None:
-            self._logger.info("No saved selections, nothing to recover, return")
-            return
+        selectedIndexes = self._player.getSelectedMusicIndexes()
         self._logger.info("Recover playlist selections: %s => %s", playlist.name, selectedIndexes)
+        self.selectionModel().blockSignals(True)
         self._selectRows(selectedIndexes)
-        scrollLocation: int = playlist.property("scrollLocation")
-        assert scrollLocation is not None
+        self.selectionModel().blockSignals(False)
+        scrollLocation = self.property(f"scrollLocation_{newIndex}") or 0
         self._logger.info("Recover scroll location: %s => %s", playlist.name, scrollLocation)
         self.verticalScrollBar().setMaximum(playlist.musics.size())
         self.verticalScrollBar().setValue(scrollLocation)

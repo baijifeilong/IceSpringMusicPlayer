@@ -11,9 +11,10 @@ from PySide2 import QtCore, QtWidgets, QtGui
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
 from IceSpringMusicPlayer.services.player import Player
+from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
-class PlaylistManagerTable(IceTableView):
+class PlaylistManagerTable(IceTableView, ReplaceableMixin):
     _logger: logging.Logger
     _player: Player
 

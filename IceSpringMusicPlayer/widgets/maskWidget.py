@@ -6,6 +6,7 @@ from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore, QtGui
 
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.widgets.playlistManagerTable import PlaylistManagerTable
 from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
@@ -52,6 +53,7 @@ class MaskWidget(QtWidgets.QWidget):
         menu.addAction("Replace by controls widget", lambda: self._doReplace(ControlsWidget(self)))
         menu.addAction("Replace by lyrics widget", lambda: self._doReplace(LyricsWidget(self)))
         menu.addAction("Replace by playlist widget", lambda: self._doReplace(PlaylistTable(self)))
+        menu.addAction("Replace by playlist manager", lambda: self._doReplace(PlaylistManagerTable(self)))
         menu.exec_(QtGui.QCursor.pos())
         self._setReplaceable(None)
 

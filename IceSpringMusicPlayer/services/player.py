@@ -61,7 +61,6 @@ class Player(QtCore.QObject):
         self._playlists = self._config.playlists
         self._frontPlaylistIndex = self._config.frontPlaylistIndex
         self._currentPlaylistIndex = self._config.frontPlaylistIndex
-        self._selectedMusicIndexes = self._config.selectedMusicIndexes
         self._currentMusicIndex = -1
         self._histories = dict()
         self._historyPosition = -1
@@ -168,7 +167,7 @@ class Player(QtCore.QObject):
         return self._playlists
 
     def insertPlaylist(self) -> int:
-        playlist = Playlist("Playlist {}".format(self._playlists.size() + 1))
+        playlist = Playlist("Playlist {}".format(self._playlists.size() + 1), Vector(), set())
         self._logger.info("Adding playlist: %s ...", playlist.name)
         self._playlists.append(playlist)
         self._logger.info("> Signal playlistInserted emitting...")
@@ -244,15 +243,16 @@ class Player(QtCore.QObject):
         return self._playlists.get(self._currentPlaylistIndex)
 
     def setSelectedMusicIndexes(self, indexes: typing.Set[int]) -> None:
+        assert isinstance(indexes, set)
         self._logger.info("Set selected music indexes to %s", indexes)
-        self._selectedMusicIndexes = indexes
+        self.getFrontPlaylist().orElseThrow(AssertionError).selectedIndexes = indexes
         self._logger.info("Selected music indexes set")
         self._logger.info("> Signal selectedMusicIndexesChanged emitting...")
         self.selectedMusicIndexesChanged.emit(indexes)
         self._logger.info("< Signal selectedMusicIndexesChanged emitted.")
 
     def getSelectedMusicIndexes(self) -> typing.Set[int]:
-        return self._selectedMusicIndexes
+        return self.getFrontPlaylist().map(lambda x: x.selectedIndexes).orElse(set())
 
     def setCurrentMusicIndex(self, index: int) -> None:
         oldIndex = self._currentMusicIndex

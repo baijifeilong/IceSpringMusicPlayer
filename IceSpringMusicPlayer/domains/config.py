@@ -32,7 +32,6 @@ class Config(object):
     volume: int
     playbackMode: PlaybackMode
     frontPlaylistIndex: int
-    selectedMusicIndexes: typing.Set[int]
     layout: Element
     playlists: Vector[Playlist]
 
@@ -60,7 +59,7 @@ class Config(object):
                 v = getattr(importlib.import_module(module), clazz)
             elif k in ("musics", "playlists") and isinstance(v, list):
                 v = Vector(v)
-            elif k == "selectedMusicIndexes":
+            elif k == "selectedIndexes":
                 v = set(v)
             elif k == "playbackMode":
                 v = PlaybackMode(v)
