@@ -24,7 +24,6 @@ class LyricsWidget(QtWidgets.QScrollArea, ReplaceableMixin):
 
     def __init__(self, parent: QtWidgets.QWidget):
         super().__init__(parent)
-        ReplaceableMixin.__init__(self)
         self._logger = logging.getLogger("lyricsPanel")
         self._logger.setLevel(logging.INFO)
         self._app = App.instance()

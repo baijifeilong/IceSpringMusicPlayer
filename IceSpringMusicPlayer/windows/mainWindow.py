@@ -46,7 +46,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._initMenu()
         self._initToolbar()
         self._initStatusBar()
-        self.setStyleSheet("QSplitterHandle { background: #EEEEEE }")
         self.layoutChanged.connect(self._onLayoutChanged)
 
     def getLayoutEditing(self) -> bool:
@@ -192,11 +191,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self._logger.info("Create mask widget")
             self._maskWidget = MaskWidget(self)
             self._maskWidget.show()
-            self.setStyleSheet("QSplitterHandle { background: red }")
         else:
             self._maskWidget.setParent(gg(None))
             self._maskWidget = None
-            self.setStyleSheet("QSplitterHandle { background: #EEEEEE }")
+        self._logger.info("Refresh splitter handles")
+        for widget in self.findChildren(SplitterWidget):
+            gg(widget, SplitterWidget).refreshHandles()
         self._logger.info("> Signal layoutEditingChanged emitting...")
         self.layoutEditingChanged.emit(self._layoutEditing)
         self._logger.info("< Signal layoutEditingChanged emitted...")

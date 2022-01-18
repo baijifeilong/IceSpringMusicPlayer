@@ -28,7 +28,6 @@ class ControlsWidget(QtWidgets.QWidget, ReplaceableMixin):
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
-        ReplaceableMixin.__init__(self)
         self._logger = logging.getLogger("controlsPanel")
         self._config = App.instance().getConfig()
         self._player = App.instance().getPlayer()
