@@ -3,7 +3,7 @@
 import typing
 
 from IceSpringRealOptional.typingUtils import gg
-from PySide2 import QtWidgets, QtGui
+from PySide2 import QtWidgets, QtGui, QtCore
 
 from IceSpringMusicPlayer.controls.noFocusDelegate import NoFocusDelegate
 
@@ -15,6 +15,8 @@ class IceTableView(QtWidgets.QTableView):
         self.setEditTriggers(gg(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers,
             QtWidgets.QAbstractItemView.EditTriggers))
         self.horizontalHeader().setStretchLastSection(True)
+        self.horizontalHeader().setDefaultAlignment(
+            gg(QtCore.Qt.AlignmentFlag.AlignLeft) | QtCore.Qt.AlignmentFlag.AlignVCenter)
         self.setAlternatingRowColors(True)
         self.setStyleSheet("alternate-background-color: rgb(245, 245, 245)")
         self.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
