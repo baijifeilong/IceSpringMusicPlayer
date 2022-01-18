@@ -30,6 +30,7 @@ class MainWindow(QtWidgets.QMainWindow):
     _statusLabel: QtWidgets.QLabel
     _playlistCombo: QtWidgets.QComboBox
     _layoutEditing: bool
+    _editingCheck: QtWidgets.QCheckBox
     _maskWidget: typing.Optional[MaskWidget]
 
     def __init__(self):
@@ -47,6 +48,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._initToolbar()
         self._initStatusBar()
         self.layoutChanged.connect(self._onLayoutChanged)
+        self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
 
     def getLayoutEditing(self) -> bool:
         return self._layoutEditing
@@ -180,26 +182,35 @@ class MainWindow(QtWidgets.QMainWindow):
         editingCheck = QtWidgets.QCheckBox("Editing", self)
         editingCheck.stateChanged.connect(self._onEditingCheckBoxStateChanged)
         toolbar.addWidget(editingCheck)
+        self._editingCheck = editingCheck
         self._playlistCombo = playlistCombo
 
-    def _onEditingCheckBoxStateChanged(self, state: QtCore.Qt.CheckState):
-        assert self._layoutEditing == (self._maskWidget is not None)
-        self._logger.info("On editing check box state changed: %s", state)
-        assert state in (QtCore.Qt.CheckState.Checked, QtCore.Qt.CheckState.Unchecked)
-        self._layoutEditing = state == QtCore.Qt.CheckState.Checked
-        if self._layoutEditing:
+    def setLayoutEditing(self, editing: bool) -> None:
+        self._layoutEditing = editing
+        self._logger.info("> Signal layoutEditingChanged emitting...")
+        self.layoutEditingChanged.emit(editing)
+        self._logger.info("< Signal layoutEditingChanged emitted...")
+
+    def _onLayoutEditingChanged(self, editing: bool) -> None:
+        if editing:
             self._logger.info("Create mask widget")
             self._maskWidget = MaskWidget(self)
             self._maskWidget.show()
         else:
             self._maskWidget.setParent(gg(None))
             self._maskWidget = None
+        self._editingCheck.blockSignals(True)
+        self._editingCheck.setChecked(editing)
+        self._editingCheck.blockSignals(False)
         self._logger.info("Refresh splitter handles")
         for widget in self.findChildren(SplitterWidget):
             gg(widget, SplitterWidget).refreshHandles()
-        self._logger.info("> Signal layoutEditingChanged emitting...")
-        self.layoutEditingChanged.emit(self._layoutEditing)
-        self._logger.info("< Signal layoutEditingChanged emitted...")
+
+    def _onEditingCheckBoxStateChanged(self, state: QtCore.Qt.CheckState):
+        assert self._layoutEditing == (self._maskWidget is not None)
+        self._logger.info("On editing check box state changed: %s", state)
+        assert state in (QtCore.Qt.CheckState.Checked, QtCore.Qt.CheckState.Unchecked)
+        self.setLayoutEditing(state == QtCore.Qt.CheckState.Checked)
 
     def _onPlaylistInserted(self, index: int) -> None:
         playlist = self._player.getPlaylists()[index]

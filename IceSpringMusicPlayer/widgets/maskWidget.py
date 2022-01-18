@@ -11,10 +11,12 @@ from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
 class MaskWidget(QtWidgets.QWidget):
+    _app: App
     _replaceable: typing.Union[ReplaceableMixin, QtWidgets.QWidget, None]
 
     def __init__(self, parent: QtWidgets.QMainWindow) -> None:
         super().__init__(parent)
+        self._app = App.instance()
         self._replaceable = None
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
@@ -54,8 +56,12 @@ class MaskWidget(QtWidgets.QWidget):
         menu.addAction("Replace by lyrics widget", lambda: self._doReplace(LyricsWidget(self)))
         menu.addAction("Replace by playlist widget", lambda: self._doReplace(PlaylistTable(self)))
         menu.addAction("Replace by playlist manager", lambda: self._doReplace(PlaylistManagerTable(self)))
+        menu.addAction("Quit editing", self._doQuitEditing)
         menu.exec_(QtGui.QCursor.pos())
         self._setReplaceable(None)
+
+    def _doQuitEditing(self):
+        self._app.getMainWindow().setLayoutEditing(False)
 
     def _doReplace(self, widget):
         logger = logging.getLogger("maskWidget")
@@ -73,7 +79,7 @@ class MaskWidget(QtWidgets.QWidget):
             parent.layout().replaceWidget(self._replaceable, widget)
         self._replaceable.setParent(gg(None))
         self.raise_()
-        App.instance().getMainWindow().layoutChanged.emit()
+        self._app.getMainWindow().layoutChanged.emit()
 
     def _calcReplaceable(self, pos) -> ReplaceableMixin:
         widget = self.parent().centralWidget().childAt(pos)
