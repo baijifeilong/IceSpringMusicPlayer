@@ -59,8 +59,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._config.layout = newLayout
 
     def _widgetToElement(self, widget: QtWidgets.QWidget) -> Element:
-        from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
-        assert isinstance(widget, (ReplacerMixin, QtWidgets.QWidget))
+        from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
+        assert isinstance(widget, (ReplaceableMixin, QtWidgets.QWidget))
         return Element(
             clazz=type(widget),
             vertical=isinstance(widget, QtWidgets.QSplitter) and widget.orientation() == QtCore.Qt.Orientation.Vertical,

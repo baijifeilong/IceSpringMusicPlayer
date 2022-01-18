@@ -4,13 +4,13 @@ import typing
 
 from PySide2 import QtWidgets
 
-from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
+from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
-class BlankWidget(QtWidgets.QFrame, ReplacerMixin):
+class BlankWidget(QtWidgets.QFrame, ReplaceableMixin):
     def __init__(self, parent: typing.Optional[QtWidgets.QWidget]):
         super().__init__(parent)
-        ReplacerMixin.__init__(self)
+        ReplaceableMixin.__init__(self)
         self.setLayout(QtWidgets.QGridLayout(self))
         label = QtWidgets.QLabel("BLANK", self)
         label.setSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)

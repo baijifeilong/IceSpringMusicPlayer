@@ -14,10 +14,10 @@ from IceSpringMusicPlayer.controls.iceTableView import IceTableView
 from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.services.player import Player
-from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
+from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
-class PlaylistTable(IceTableView, ReplacerMixin):
+class PlaylistTable(IceTableView, ReplaceableMixin):
     _logger: logging.Logger
     _app: App
     _config: Config
@@ -25,7 +25,7 @@ class PlaylistTable(IceTableView, ReplacerMixin):
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
-        ReplacerMixin.__init__(self)
+        ReplaceableMixin.__init__(self)
         self._logger = logging.getLogger("playlistTable")
         self._app = App.instance()
         self._config = App.instance().getConfig()

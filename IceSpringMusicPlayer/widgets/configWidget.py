@@ -5,10 +5,10 @@ from PySide2 import QtWidgets
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.domains.config import Config
-from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
+from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
-class ConfigWidget(QtWidgets.QFrame, ReplacerMixin):
+class ConfigWidget(QtWidgets.QFrame, ReplaceableMixin):
     _logger: logging.Logger
     _app: App
     _config: Config

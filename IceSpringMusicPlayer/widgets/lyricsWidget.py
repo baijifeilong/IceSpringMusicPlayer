@@ -13,10 +13,10 @@ from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.layoutUtils import LayoutUtils
 from IceSpringMusicPlayer.utils.lyricUtils import LyricUtils
-from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
+from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
-class LyricsWidget(QtWidgets.QScrollArea, ReplacerMixin):
+class LyricsWidget(QtWidgets.QScrollArea, ReplaceableMixin):
     _app: App
     _config: Config
     _player: Player
@@ -24,7 +24,7 @@ class LyricsWidget(QtWidgets.QScrollArea, ReplacerMixin):
 
     def __init__(self, parent: QtWidgets.QWidget):
         super().__init__(parent)
-        ReplacerMixin.__init__(self)
+        ReplaceableMixin.__init__(self)
         self._logger = logging.getLogger("lyricsPanel")
         self._logger.setLevel(logging.INFO)
         self._app = App.instance()

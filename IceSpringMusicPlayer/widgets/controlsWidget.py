@@ -12,10 +12,10 @@ from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
-from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
+from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
-class ControlsWidget(QtWidgets.QWidget, ReplacerMixin):
+class ControlsWidget(QtWidgets.QWidget, ReplaceableMixin):
     _logger: logging.Logger
     _config: Config
     _player: Player
@@ -28,7 +28,7 @@ class ControlsWidget(QtWidgets.QWidget, ReplacerMixin):
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
-        ReplacerMixin.__init__(self)
+        ReplaceableMixin.__init__(self)
         self._logger = logging.getLogger("controlsPanel")
         self._config = App.instance().getConfig()
         self._player = App.instance().getPlayer()

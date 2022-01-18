@@ -3,14 +3,14 @@
 from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
-from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
+from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
-class SplitterWidget(QtWidgets.QSplitter, ReplacerMixin):
+class SplitterWidget(QtWidgets.QSplitter, ReplaceableMixin):
     def __init__(self, parent=None, vertical=False, children=0):
         orientation = QtCore.Qt.Orientation.Vertical if vertical else QtCore.Qt.Orientation.Horizontal
         super().__init__(orientation, parent)
-        ReplacerMixin.__init__(self)
+        ReplaceableMixin.__init__(self)
         self.setHandleWidth(2)
         for _ in range(children):
             self.addWidget(BlankWidget(self))
