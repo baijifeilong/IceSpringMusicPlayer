@@ -14,6 +14,7 @@ from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
 from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
+from IceSpringMusicPlayer.widgets.maskWidget import MaskWidget
 from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
 from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
 from IceSpringMusicPlayer.windows.playlistManagerDialog import PlaylistManagerDialog
@@ -29,6 +30,7 @@ class MainWindow(QtWidgets.QMainWindow):
     _statusLabel: QtWidgets.QLabel
     _playlistCombo: QtWidgets.QComboBox
     _layoutEditing: bool
+    _maskWidget: typing.Optional[MaskWidget]
 
     def __init__(self):
         super().__init__()
@@ -39,10 +41,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._config = App.instance().getConfig()
         self._player = App.instance().getPlayer()
         self._layoutEditing = False
+        self._maskWidget = None
         self._initPlayer()
         self._initMenu()
         self._initToolbar()
         self._initStatusBar()
+        self.setStyleSheet("QSplitterHandle { background: #EEEEEE }")
         self.layoutChanged.connect(self._onLayoutChanged)
 
     def getLayoutEditing(self) -> bool:
@@ -84,13 +88,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.centralWidget().setAutoFillBackground(True)
         self.centralWidget().setPalette(Just.of(QtGui.QPalette()).apply(
             lambda x: x.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor("white"))).value())
-        self._refreshSplitters()
-
-    def _refreshSplitters(self):
-        palette = Just.of(QtGui.QPalette()).apply(lambda x: x.setColor(QtGui.QPalette.ColorRole.Window,
-            QtGui.QColor("red" if self._layoutEditing else "#EEEEEE"))).value()
-        for handle in self.findChildren(QtWidgets.QSplitterHandle):
-            gg(handle, QtWidgets.QSplitterHandle).setPalette(palette)
 
     def _drawElement(self, element: Element, parent: QtWidgets.QWidget) -> None:
         self._logger.info("Draw element: %s to %s", element.clazz, parent)
@@ -187,11 +184,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self._playlistCombo = playlistCombo
 
     def _onEditingCheckBoxStateChanged(self, state: QtCore.Qt.CheckState):
+        assert self._layoutEditing == (self._maskWidget is not None)
         self._logger.info("On editing check box state changed: %s", state)
         assert state in (QtCore.Qt.CheckState.Checked, QtCore.Qt.CheckState.Unchecked)
         self._layoutEditing = state == QtCore.Qt.CheckState.Checked
-        self._logger.info("Refresh splitters")
-        self._refreshSplitters()
+        if self._layoutEditing:
+            self._logger.info("Create mask widget")
+            self._maskWidget = MaskWidget(self)
+            self._maskWidget.show()
+            self.setStyleSheet("QSplitterHandle { background: red }")
+        else:
+            self._maskWidget.setParent(gg(None))
+            self._maskWidget = None
+            self.setStyleSheet("QSplitterHandle { background: #EEEEEE }")
         self._logger.info("> Signal layoutEditingChanged emitting...")
         self.layoutEditingChanged.emit(self._layoutEditing)
         self._logger.info("< Signal layoutEditingChanged emitted...")
@@ -236,6 +241,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         self._config.geometry = self.geometry()
+        if self._maskWidget is not None:
+            self._maskWidget.raise_()
+            self._maskWidget.setGeometry(self.centralWidget().geometry())
 
     def moveEvent(self, event: QtGui.QMoveEvent) -> None:
         self._config.geometry = self.geometry()

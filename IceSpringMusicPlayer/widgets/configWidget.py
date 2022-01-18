@@ -1,7 +1,7 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/16 8:24
 import logging
 
-from PySide2 import QtWidgets, QtCore
+from PySide2 import QtWidgets
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.domains.config import Config
@@ -9,9 +9,6 @@ from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
 
 
 class ConfigWidget(QtWidgets.QFrame, ReplacerMixin):
-    def onCustomContextMenuRequested(self, position: QtCore.QPoint):
-        pass
-
     _logger: logging.Logger
     _app: App
     _config: Config

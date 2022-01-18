@@ -16,9 +16,6 @@ from IceSpringMusicPlayer.widgets.replacerMixin import ReplacerMixin
 
 
 class ControlsWidget(QtWidgets.QWidget, ReplacerMixin):
-    def onCustomContextMenuRequested(self, position: QtCore.QPoint):
-        pass
-
     _logger: logging.Logger
     _config: Config
     _player: Player
