@@ -69,11 +69,14 @@ class MaskWidget(QtWidgets.QWidget):
             logger.info("Parent is others")
             parent.layout().replaceWidget(self._replacer, widget)
         self._replacer.setParent(gg(None))
+        self.raise_()
         App.instance().getMainWindow().layoutChanged.emit()
 
     def _calcReplacer(self, pos) -> ReplacerMixin:
         widget = self.parent().centralWidget().childAt(pos)
         while (not isinstance(widget, ReplacerMixin)) and (widget is not None):
             widget = widget.parentWidget()
-        assert widget is not None
+        if widget is None:
+            widget = self.parent().centralWidget()
+        assert isinstance(widget, ReplacerMixin)
         return widget
