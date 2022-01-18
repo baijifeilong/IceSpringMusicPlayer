@@ -46,7 +46,6 @@ class Player(QtCore.QObject):
     _playlists: Vector[Playlist]
     _frontPlaylistIndex: int
     _currentPlaylistIndex: int
-    _selectedMusicIndexes: typing.Set[int]
     _currentMusicIndex: int
     _histories: Dict[int, int]
     _historyPosition: int
@@ -118,7 +117,7 @@ class Player(QtCore.QObject):
         if self.getPlaylists().isEmpty():
             self._logger.info("No playlist to play, return")
             return
-        selectedMusicIndex = -1 if len(self._selectedMusicIndexes) == 0 else sorted(self._selectedMusicIndexes)[0]
+        selectedMusicIndex = sorted(self.getSelectedMusicIndexes())[0] if len(self.getSelectedMusicIndexes()) else -1
         if self.getState().isPlaying():
             self._logger.info("Already in playing, nothing to do")
         elif self.getState().isPaused():

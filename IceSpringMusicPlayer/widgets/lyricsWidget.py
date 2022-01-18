@@ -41,8 +41,16 @@ class LyricsWidget(QtWidgets.QScrollArea, ReplaceableMixin):
         self.horizontalScrollBar().rangeChanged.connect(
             lambda *args, bar=self.horizontalScrollBar(): bar.setValue((bar.maximum() + bar.minimum()) // 2))
         self._layout = layout
+        self._resetLayout()
         self._setupLyrics()
         self._app.configChanged.connect(self._onConfigChanged)
+
+    def _resetLayout(self):
+        LayoutUtils.clearLayout(self._layout)
+        self._layout.addStretch()
+        self._layout.addWidget(QtWidgets.QLabel("Lyrics Show", self.widget()), 0,
+            gg(QtCore.Qt.AlignmentFlag.AlignCenter))
+        self._layout.addStretch()
 
     def _onConfigChanged(self):
         self._logger.info("On config changed, force refresh lyrics")
@@ -61,7 +69,7 @@ class LyricsWidget(QtWidgets.QScrollArea, ReplaceableMixin):
         self._logger.info("On current music index changed: %d=>%d", oldIndex, newIndex)
         if newIndex == -1:
             self._logger.info("New music index is -1, clear lyrics")
-            LayoutUtils.clearLayout(self._layout)
+            self._resetLayout()
         else:
             self._logger.info("New music index not -1, setup lyrics")
             self._setupLyrics()
