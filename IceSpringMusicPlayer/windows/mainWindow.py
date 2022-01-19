@@ -155,6 +155,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self._languageMenu.setTitle(tt.Menu_Language)
         self._languageEnglishAction.setText(tt.Menu_Language_English)
         self._languageChineseAction.setText(tt.Menu_Language_Chinese)
+        self._testMenu.setTitle(tt.Menu_Test)
+        self._testOneKeyAddAction.setText(tt.Menu_Test_OneKeyAdd)
+        self._testLoadTestDataAction.setText(tt.Menu_Test_LoadTestData)
+        self._playlistLabel.setText(tt.Toolbar_Playlist)
+        self._editingCheck.setText(tt.Toolbar_Editing)
         self._logger.info("View refreshed")
 
     def _initMenu(self):
@@ -182,6 +187,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._languageChineseAction = self._languageMenu.addAction(
             tt.Menu_Language_Chinese, lambda: self._changeLanguage("zh_CN"))
 
+        self._testMenu = self.menuBar().addMenu(tt.Menu_Test)
+        self._testOneKeyAddAction = self._testMenu.addAction(
+            tt.Menu_Test_OneKeyAdd, lambda: self._app.addMusicsFromHomeFolder())
+        self._testLoadTestDataAction = self._testMenu.addAction(
+            tt.Menu_Test_LoadTestData, lambda: self._app.loadTestData())
+
     def _onPlaylistComboActivated(self, index: int) -> None:
         self._logger.info("On playlist combo activated at index %d", index)
         self._player.setFrontPlaylistIndex(index)
@@ -204,14 +215,14 @@ class MainWindow(QtWidgets.QMainWindow):
         playlistCombo.setCurrentIndex(self._player.getFrontPlaylistIndex())
         playlistCombo.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents)
         playlistCombo.activated.connect(self._onPlaylistComboActivated)
-        toolbar.addWidget(QtWidgets.QLabel("Playlist: ", toolbar))
+        self._playlistLabel = QtWidgets.QLabel(tt.Toolbar_Playlist, toolbar)
+        toolbar.addWidget(self._playlistLabel)
         toolbar.addWidget(playlistCombo)
-        toolbar.addAction(*gg(("One Key Add", self._app.addMusicsFromHomeFolder)))
-        toolbar.addAction(*gg(("Play", self._player.play)))
-        editingCheck = QtWidgets.QCheckBox("Editing", self)
-        editingCheck.stateChanged.connect(self._onEditingCheckBoxStateChanged)
-        toolbar.addWidget(editingCheck)
-        self._editingCheck = editingCheck
+        toolbar.addAction(self._testOneKeyAddAction)
+        toolbar.addAction(self._testLoadTestDataAction)
+        self._editingCheck = QtWidgets.QCheckBox(tt.Toolbar_Editing, self)
+        self._editingCheck.stateChanged.connect(self._onEditingCheckBoxStateChanged)
+        toolbar.addWidget(self._editingCheck)
         self._playlistCombo = playlistCombo
 
     def setLayoutEditing(self, editing: bool) -> None:

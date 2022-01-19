@@ -41,6 +41,21 @@ Menu_Language_English.zh_CN = "英文"
 Menu_Language_Chinese = _TT()
 Menu_Language_Chinese.en_US = "&Chinese (Simplified)"
 Menu_Language_Chinese.zh_CN = "简体中文"
+Menu_Test = _TT()
+Menu_Test.en_US = "Test"
+Menu_Test.zh_CN = "测试"
+Menu_Test_OneKeyAdd = _TT()
+Menu_Test_OneKeyAdd.en_US = "One Key Add Musics"
+Menu_Test_OneKeyAdd.zh_CN = "一键添加音乐"
+Menu_Test_LoadTestData = _TT()
+Menu_Test_LoadTestData.en_US = "Load Test Data"
+Menu_Test_LoadTestData.zh_CN = "加载测试数据"
+Toolbar_Playlist = _TT()
+Toolbar_Playlist.en_US = "Playlist: "
+Toolbar_Playlist.zh_CN = "播放列表："
+Toolbar_Editing = _TT()
+Toolbar_Editing.en_US = "Layout Editing"
+Toolbar_Editing.zh_CN = "布局编辑"
 
 
 def setupLanguage(language: str):
