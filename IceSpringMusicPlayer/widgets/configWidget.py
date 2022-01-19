@@ -3,6 +3,7 @@ import logging
 
 from PySide2 import QtWidgets, QtGui
 
+from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
@@ -45,7 +46,8 @@ class ConfigWidget(QtWidgets.QFrame, ReplaceableMixin):
         self._applicationFontButton.clicked.connect(self._onApplicationFontButtonClicked)
         self._applicationFontPreviewLabel = QtWidgets.QLabel(self._getQuickBrownFox(), self)
         self._applicationFontPreviewLabel.setFont(self._config.applicationFont)
-        layout.addRow("Application Font", self._applicationFontButton)
+        self._applicationFontLabel = QtWidgets.QLabel(tt.Config_ApplicationFont, self)
+        layout.addRow(self._applicationFontLabel, self._applicationFontButton)
         layout.addWidget(self._applicationFontPreviewLabel)
 
         self._lyricFontButton = QtWidgets.QPushButton(self)
@@ -53,12 +55,19 @@ class ConfigWidget(QtWidgets.QFrame, ReplaceableMixin):
         self._lyricFontButton.clicked.connect(self._onLyricFontButtonClicked)
         self._lyricFontPreviewLabel = QtWidgets.QLabel(self._getQuickBrownFox(), self)
         self._lyricFontPreviewLabel.setFont(self._config.lyricFont)
-        layout.addRow("Lyric Font", self._lyricFontButton)
+        self._lyricFontLabel = QtWidgets.QLabel(tt.Config_LyricFont, self)
+        layout.addRow(self._lyricFontLabel, self._lyricFontButton)
         layout.addWidget(self._lyricFontPreviewLabel)
 
         applyButton = QtWidgets.QPushButton("Apply", self)
         applyButton.clicked.connect(self._onApply)
         layout.addRow(applyButton)
+        self._app.languageChanged.connect(self._onLanguageChanged)
+
+    def _onLanguageChanged(self, language: str):
+        self._logger.info("On language changed: %s", language)
+        self._applicationFontLabel.setText(tt.Config_ApplicationFont)
+        self._lyricFontLabel.setText(tt.Config_LyricFont)
 
     def _onApplicationFontButtonClicked(self) -> None:
         self._logger.info("On application font button clicked.")

@@ -138,9 +138,8 @@ class LyricsWidget(QtWidgets.QScrollArea, ReplaceableMixin):
             lyricLabel.setPalette(palette)
             originalValue = self.verticalScrollBar().value()
             targetValue = lyricLabel.pos().y() - self.height() // 2 + lyricLabel.height() // 2
-            # noinspection PyTypeChecker
             index == lyricIndex and (lambda animation=QtCore.QPropertyAnimation(
-                self.verticalScrollBar(), b"value", self): [
+                self.verticalScrollBar(), gg(b"value"), self): [
                 animation.setStartValue(originalValue),
                 animation.setEndValue(targetValue),
                 animation.start(QtCore.QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)

@@ -56,6 +56,12 @@ Toolbar_Playlist.zh_CN = "播放列表："
 Toolbar_Editing = _TT()
 Toolbar_Editing.en_US = "Layout Editing"
 Toolbar_Editing.zh_CN = "布局编辑"
+Config_ApplicationFont = _TT()
+Config_ApplicationFont.en_US = "Application Font"
+Config_ApplicationFont.zh_CN = "应用程序字体"
+Config_LyricFont = _TT()
+Config_LyricFont.en_US = "Lyric Font"
+Config_LyricFont.zh_CN = "歌词字体"
 
 
 def setupLanguage(language: str):
