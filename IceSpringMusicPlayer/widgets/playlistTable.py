@@ -37,6 +37,7 @@ class PlaylistTable(IceTableView, ReplaceableMixin):
         self.setIconSize(QtCore.QSize(32, 32) * self._app.getZoom())
         self.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
         self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        self.setWordWrap(False)
         self.setSortingEnabled(True)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
