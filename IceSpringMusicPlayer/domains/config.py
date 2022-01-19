@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import copy
 import enum
 import importlib
 import typing
 from dataclasses import dataclass
 
+from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.vector import Vector
 from PySide2 import QtCore, QtGui, QtWidgets
 
@@ -25,6 +27,7 @@ class Element(object):
 
 @dataclass
 class Config(object):
+    language: str
     geometry: QtCore.QRect
     iconSize: int
     applicationFont: QtGui.QFont
@@ -102,6 +105,7 @@ class Config(object):
         diffSize = (screenSize - windowSize) / 2
         defaultGeometry = QtCore.QRect(QtCore.QPoint(diffSize.width(), diffSize.height()), windowSize)
         return Config(
+            language="en_US",
             geometry=defaultGeometry,
             iconSize=48,
             applicationFont=QtWidgets.QApplication.font(),
@@ -151,3 +155,21 @@ class Config(object):
                 Element(clazz=BlankWidget, vertical=False, weight=3, children=[]),
             ]),
         ])
+
+    @staticmethod
+    def getControlsDownLayout():
+        from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
+        from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
+        from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
+        from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
+        return Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
+            Element(clazz=SplitterWidget, vertical=False, weight=7, children=[
+                Element(clazz=PlaylistTable, vertical=False, weight=1, children=[]),
+                Element(clazz=LyricsWidget, vertical=False, weight=1, children=[]),
+            ]),
+            Element(clazz=ControlsWidget, vertical=False, weight=1, children=[]),
+        ])
+
+    @classmethod
+    def getControlsUpLayout(cls):
+        return Just.of(copy.deepcopy(cls.getControlsDownLayout())).apply(lambda x: x.children.reverse()).value()

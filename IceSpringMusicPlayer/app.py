@@ -9,6 +9,7 @@ import typing
 from IceSpringPathLib import Path
 from PySide2 import QtWidgets, QtCore
 
+from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 
@@ -20,6 +21,7 @@ if typing.TYPE_CHECKING:
 class App(QtWidgets.QApplication):
     requestLocateCurrentMusic: QtCore.SignalInstance = QtCore.Signal()
     configChanged: QtCore.SignalInstance = QtCore.Signal()
+    languageChanged: QtCore.SignalInstance = QtCore.Signal(str)
 
     _logger: logging.Logger
     _config: Config
@@ -36,6 +38,7 @@ class App(QtWidgets.QApplication):
         super().__init__()
         self._logger = logging.getLogger("app")
         self._config = self._loadConfig()
+        tt.setupLanguage(self._config.language)
         self._player = Player(self)
         self._player.setVolume(self._config.volume)
         self._zoom = self._config.applicationFont.pointSize() / self.font().pointSize()

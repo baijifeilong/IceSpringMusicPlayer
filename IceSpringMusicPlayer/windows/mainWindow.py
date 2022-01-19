@@ -1,5 +1,4 @@
 # Created by BaiJiFeiLong@gmail.com at 2022-01-03 11:06:37
-import copy
 import logging
 import typing
 from pathlib import Path
@@ -8,14 +7,12 @@ from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtGui, QtWidgets
 
+from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.domains.config import Config, Element
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
-from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
-from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
 from IceSpringMusicPlayer.widgets.maskWidget import MaskWidget
-from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
 from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
 from IceSpringMusicPlayer.windows.playlistManagerDialog import PlaylistManagerDialog
 
@@ -32,6 +29,7 @@ class MainWindow(QtWidgets.QMainWindow):
     _layoutEditing: bool
     _editingCheck: QtWidgets.QCheckBox
     _maskWidget: typing.Optional[MaskWidget]
+    _fileMenu: QtWidgets.QMenu
 
     def __init__(self):
         super().__init__()
@@ -49,6 +47,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._initStatusBar()
         self.layoutChanged.connect(self._onLayoutChanged)
         self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
+        self._app.languageChanged.connect(self._onLanguageChanged)
 
     def getLayoutEditing(self) -> bool:
         return self._layoutEditing
@@ -133,25 +132,55 @@ class MainWindow(QtWidgets.QMainWindow):
         self._app.requestLocateCurrentMusic.emit()
         self._logger.info("> Signal app.requestLocateCurrentMusic emitted.")
 
-    def _initMenu(self):
-        fileMenu = self.menuBar().addMenu("&File")
-        fileMenu.addAction("&Open", self._app.addMusicsFromFileDialog)
-        viewMenu = self.menuBar().addMenu("&View")
-        viewMenu.addAction("&Playlist Manager", lambda: PlaylistManagerDialog(self).show())
+    def _changeLanguage(self, language: str):
+        self._logger.info("Change language: %s", language)
+        self._config.language = language
+        tt.setupLanguage(language)
+        self._logger.info("> Signal app.languageChanged emitting...")
+        self._app.languageChanged.emit(language)
+        self._logger.info("< Signal app.languageChanged emitted.")
 
-        controlsDownLayout = Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
-            Element(clazz=SplitterWidget, vertical=False, weight=7, children=[
-                Element(clazz=PlaylistTable, vertical=False, weight=1, children=[]),
-                Element(clazz=LyricsWidget, vertical=False, weight=1, children=[]),
-            ]),
-            Element(clazz=ControlsWidget, vertical=False, weight=1, children=[]),
-        ])
-        controlsUpLayout = Just.of(copy.deepcopy(controlsDownLayout)).apply(lambda x: x.children.reverse()).value()
-        layoutMenu = self.menuBar().addMenu("&Layout")
-        layoutMenu.addAction("&Playlist+Lyrics+Controls", lambda: self._changeLayout(controlsDownLayout))
-        layoutMenu.addAction("&Controls+Playlist+Lyrics", lambda: self._changeLayout(controlsUpLayout))
-        layoutMenu.addAction("&Default Layout", lambda: self._changeLayout(self._config.getDefaultLayout()))
-        layoutMenu.addAction("De&mo Layout", lambda: self._changeLayout(self._config.getDemoLayout()))
+    def _onLanguageChanged(self, language: str):
+        self._logger.info("On language changed: %s", language)
+        self._logger.info("Refresh view")
+        self._fileMenu.setTitle(tt.Menu_File)
+        self._fileOpenAction.setText(tt.Menu_File_Open)
+        self._viewMenu.setTitle(tt.Menu_View)
+        self._viewPlaylistManagerAction.setText(tt.Menu_View_PlaylistManager)
+        self._layoutMenu.setTitle(tt.Menu_Layout)
+        self._layoutControlsDownAction.setText(tt.Menu_Layout_ControlsDown)
+        self._layoutControlsUpAction.setText(tt.Menu_Layout_ControlsUp)
+        self._layoutDefaultAction.setText(tt.Menu_Layout_Default)
+        self._layoutDemoAction.setText(tt.Menu_Layout_Demo)
+        self._languageMenu.setTitle(tt.Menu_Language)
+        self._languageEnglishAction.setText(tt.Menu_Language_English)
+        self._languageChineseAction.setText(tt.Menu_Language_Chinese)
+        self._logger.info("View refreshed")
+
+    def _initMenu(self):
+        self._fileMenu = self.menuBar().addMenu(tt.Menu_File)
+        self._fileOpenAction = self._fileMenu.addAction(tt.Menu_File_Open)
+        self._fileOpenAction.triggered.connect(self._app.addMusicsFromFileDialog)
+
+        self._viewMenu = self.menuBar().addMenu(tt.Menu_View)
+        self._viewPlaylistManagerAction = self._viewMenu.addAction(
+            tt.Menu_View_PlaylistManager, lambda: PlaylistManagerDialog(self).show())
+
+        self._layoutMenu = self.menuBar().addMenu(tt.Menu_Layout)
+        self._layoutControlsDownAction = self._layoutMenu.addAction(
+            tt.Menu_Layout_ControlsDown, lambda: self._changeLayout(self._config.getControlsDownLayout()))
+        self._layoutControlsUpAction = self._layoutMenu.addAction(
+            tt.Menu_Layout_ControlsUp, lambda: self._changeLayout(self._config.getControlsUpLayout()))
+        self._layoutDefaultAction = self._layoutMenu.addAction(
+            tt.Menu_Layout_Default, lambda: self._changeLayout(self._config.getDefaultLayout()))
+        self._layoutDemoAction = self._layoutMenu.addAction(
+            tt.Menu_Layout_Demo, lambda: self._changeLayout(self._config.getDemoLayout()))
+
+        self._languageMenu = self.menuBar().addMenu(tt.Menu_Language)
+        self._languageEnglishAction = self._languageMenu.addAction(
+            tt.Menu_Language_English, lambda: self._changeLanguage("en_US"))
+        self._languageChineseAction = self._languageMenu.addAction(
+            tt.Menu_Language_Chinese, lambda: self._changeLanguage("zh_CN"))
 
     def _onPlaylistComboActivated(self, index: int) -> None:
         self._logger.info("On playlist combo activated at index %d", index)
