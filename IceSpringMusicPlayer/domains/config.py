@@ -38,7 +38,7 @@ class Config(object):
     @staticmethod
     def toJson(obj: typing.Any) -> typing.Any:
         if isinstance(obj, QtCore.QRect):
-            return obj.left(), obj.top(), obj.width(), obj.height()
+            return dict(left=obj.left(), top=obj.top(), width=obj.width(), height=obj.height())
         elif isinstance(obj, enum.Enum):
             return obj.value
         elif isinstance(obj, type):
@@ -61,9 +61,7 @@ class Config(object):
     def fromJson(cls, pairs: typing.List[typing.Tuple[str, typing.Any]]):
         jd = dict()
         for k, v in pairs:
-            if k == "geometry" and len(v) == 4:
-                v = QtCore.QRect(*v)
-            elif k == "clazz" and "." in v:
+            if k == "clazz" and "." in v:
                 module, clazz = v.rsplit(".", maxsplit=1)
                 v = getattr(importlib.import_module(module), clazz)
             elif k in ("musics", "playlists") and isinstance(v, list):
@@ -79,11 +77,13 @@ class Config(object):
             return Music(**jd)
         elif all(x in jd for x in ("name", "musics")):
             return Playlist(**jd)
-        elif all(x in jd for x in ("geometry", "layout")):
+        elif all(x in jd for x in ("layout", "playlists")):
             return Config(**{
                 **cls.getDefaultConfig().__dict__,
                 **{k: v for k, v in jd.items() if k in Config.__annotations__}
             })
+        elif all(x in jd for x in ("left", "top", "width", "height")):
+            return QtCore.QRect(jd["left"], jd["top"], jd["width"], jd["height"])
         elif all(x in jd for x in ("family", "pointSize")):
             font = QtGui.QFont()
             font.setFamily(jd["family"])
