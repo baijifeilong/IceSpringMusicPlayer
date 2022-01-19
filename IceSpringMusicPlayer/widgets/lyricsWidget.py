@@ -31,6 +31,7 @@ class LyricsWidget(QtWidgets.QScrollArea, ReplaceableMixin):
         self._player = App.instance().getPlayer()
         self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
         self._player.positionChanged.connect(self._onPlayerPositionChanged)
+        self.setFont(self._config.lyricFont)
         self.setWidget(QtWidgets.QWidget(self))
         layout = QtWidgets.QVBoxLayout(self.widget())
         layout.setMargin(0)
@@ -53,8 +54,9 @@ class LyricsWidget(QtWidgets.QScrollArea, ReplaceableMixin):
         self._layout.addStretch()
 
     def _onConfigChanged(self):
-        self._logger.info("On config changed, force refresh lyrics")
-        self._refreshLyrics(forceRefresh=True)
+        self._logger.info("On config changed, Update font to: %s", self._config.lyricFont)
+        self.setFont(self._config.lyricFont)
+        # self._refreshLyrics(forceRefresh=True)
 
     def _onPlayerPositionChanged(self, position: int) -> None:
         self._logger.debug("Player position changed: %d", position)
@@ -102,10 +104,6 @@ class LyricsWidget(QtWidgets.QScrollArea, ReplaceableMixin):
                 gg(QtCore.Qt.AlignmentFlag.AlignCenter, Any) | QtCore.Qt.AlignmentFlag.AlignVCenter)
             lyricLabel.clicked.connect(
                 lambda _, position=position: self._player.setPosition(position))
-            font = lyricLabel.font()
-            font.setFamily("等线")
-            font.setPointSize(self._config.lyricSize)
-            lyricLabel.setFont(font)
             lyricLabel.setMargin(int(2 * self._app.getZoom()))
             self._layout.addWidget(lyricLabel)
         self._layout.addSpacing(self.height() // 2)
@@ -134,11 +132,10 @@ class LyricsWidget(QtWidgets.QScrollArea, ReplaceableMixin):
         self.setProperty("previousLyricIndex", lyricIndex)
         for index in range(len(lyrics)):
             lyricLabel: QtWidgets.QLabel = self._layout.itemAt(index + 1).widget()
-            font = lyricLabel.font()
-            font.setFamily("等线")
-            font.setPointSize(self._config.lyricSize)
-            lyricLabel.setFont(font)
-            lyricLabel.setStyleSheet("color:rgb(225,65,60)" if index == lyricIndex else "color:rgb(35,85,125)")
+            color = QtGui.QColor("#e1413c" if index == lyricIndex else "#23557d")
+            palette = lyricLabel.palette()
+            palette.setColor(QtGui.QPalette.ColorRole.WindowText, color)
+            lyricLabel.setPalette(palette)
             originalValue = self.verticalScrollBar().value()
             targetValue = lyricLabel.pos().y() - self.height() // 2 + lyricLabel.height() // 2
             # noinspection PyTypeChecker

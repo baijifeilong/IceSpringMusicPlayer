@@ -26,10 +26,9 @@ class Element(object):
 @dataclass
 class Config(object):
     geometry: QtCore.QRect
-    fontSize: int
     iconSize: int
-    lyricSize: int
     applicationFont: QtGui.QFont
+    lyricFont: QtGui.QFont
     volume: int
     playbackMode: PlaybackMode
     frontPlaylistIndex: int
@@ -74,7 +73,6 @@ class Config(object):
             elif k == "playbackMode":
                 v = PlaybackMode(v)
             jd[k] = v
-        print(jd)
         if all(x in jd for x in ("clazz", "children")):
             return Element(**jd)
         elif all(x in jd for x in ("filename", "filesize")):
@@ -82,7 +80,10 @@ class Config(object):
         elif all(x in jd for x in ("name", "musics")):
             return Playlist(**jd)
         elif all(x in jd for x in ("geometry", "layout")):
-            return Config(**{**cls.getDefaultConfig().__dict__, **jd})
+            return Config(**{
+                **cls.getDefaultConfig().__dict__,
+                **{k: v for k, v in jd.items() if k in Config.__annotations__}
+            })
         elif all(x in jd for x in ("family", "pointSize")):
             font = QtGui.QFont()
             font.setFamily(jd["family"])
@@ -102,10 +103,9 @@ class Config(object):
         defaultGeometry = QtCore.QRect(QtCore.QPoint(diffSize.width(), diffSize.height()), windowSize)
         return Config(
             geometry=defaultGeometry,
-            fontSize=QtWidgets.QApplication.font().pointSize(),
             iconSize=48,
-            lyricSize=16,
             applicationFont=QtWidgets.QApplication.font(),
+            lyricFont=QtWidgets.QApplication.font(),
             volume=50,
             playbackMode=PlaybackMode.LOOP,
             frontPlaylistIndex=-1,
