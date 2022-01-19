@@ -121,3 +121,14 @@ class App(QtWidgets.QApplication):
         config = json.loads(path.read_text(), object_pairs_hook=Config.fromJson)
         self._logger.info("Loaded config: %s", config)
         return config
+
+    def changeLanguage(self, language: str):
+        self._logger.info("Change language: %s", language)
+        if language == self._config.language:
+            self._logger.info("Language not changed, return")
+            return
+        self._config.language = language
+        tt.setupLanguage(language)
+        self._logger.info("> Signal app.languageChanged emitting...")
+        self.languageChanged.emit(language)
+        self._logger.info("< Signal app.languageChanged emitted.")

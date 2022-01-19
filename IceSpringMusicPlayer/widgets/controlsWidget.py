@@ -18,6 +18,7 @@ from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 class ControlsWidget(QtWidgets.QWidget, ReplaceableMixin):
     _logger: logging.Logger
     _config: Config
+    _app: App
     _player: Player
     _layout: QtWidgets.QHBoxLayout
     _playButton: QtWidgets.QToolButton
@@ -30,6 +31,7 @@ class ControlsWidget(QtWidgets.QWidget, ReplaceableMixin):
         super().__init__(parent)
         self._logger = logging.getLogger("controlsPanel")
         self._config = App.instance().getConfig()
+        self._app = App.instance()
         self._player = App.instance().getPlayer()
         layout = QtWidgets.QHBoxLayout(self)
         layout.setSpacing(5)
@@ -48,15 +50,12 @@ class ControlsWidget(QtWidgets.QWidget, ReplaceableMixin):
         playbackButton = QtWidgets.QToolButton(self)
         playbackButton.setIcon(qtawesome.icon("mdi.repeat"))
         playbackButton.clicked.connect(self._onPlaybackButtonClicked)
-        iconSize = self._config.iconSize
         for button in playButton, stopButton, previousButton, nextButton, playbackButton:
-            button.setIconSize(QtCore.QSize(iconSize, iconSize))
             button.setAutoRaise(True)
         progressSlider = FluentSlider(QtCore.Qt.Orientation.Horizontal, self)
         progressSlider.valueChanged.connect(self._onProgressSliderValueChanged)
         progressLabel = QtWidgets.QLabel("00:00/00:00", self)
         volumeDial = QtWidgets.QDial(self)
-        volumeDial.setFixedSize(QtCore.QSize(iconSize, iconSize))
         volumeDial.valueChanged.connect(self._onVolumeDialValueChanged)
         layout.addWidget(playButton)
         layout.addWidget(stopButton)
@@ -71,6 +70,7 @@ class ControlsWidget(QtWidgets.QWidget, ReplaceableMixin):
         self._progressSlider = progressSlider
         self._progressLabel = progressLabel
         self._volumeDial = volumeDial
+        self._refreshIcons()
         self._refreshView()
         self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
         self._player.stateChanged.connect(self._onPlayerStateChanged)
@@ -78,6 +78,19 @@ class ControlsWidget(QtWidgets.QWidget, ReplaceableMixin):
         self._player.positionChanged.connect(self._onPlayerPositionChanged)
         self._player.playbackModeChanged.connect(self._onPlaybackModeChanged)
         self._player.volumeChanged.connect(self._onPlayerVolumeChanged)
+        self._app.configChanged.connect(self._onConfigChanged)
+
+    def _refreshIcons(self):
+        size = QtCore.QSize(self._config.iconSize, self._config.iconSize)
+        for widget in self.findChildren(QtWidgets.QWidget):
+            if isinstance(widget, QtWidgets.QToolButton):
+                widget.setIconSize(size)
+            elif isinstance(widget, QtWidgets.QDial):
+                widget.setFixedSize(size)
+
+    def _onConfigChanged(self):
+        self._logger.info("On config changed")
+        self._refreshIcons()
 
     def _onProgressSliderValueChanged(self, value: int) -> None:
         self._logger.info("On progress slider value changed: %d", value)

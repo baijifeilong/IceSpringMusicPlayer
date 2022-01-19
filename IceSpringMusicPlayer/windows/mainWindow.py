@@ -132,14 +132,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._app.requestLocateCurrentMusic.emit()
         self._logger.info("> Signal app.requestLocateCurrentMusic emitted.")
 
-    def _changeLanguage(self, language: str):
-        self._logger.info("Change language: %s", language)
-        self._config.language = language
-        tt.setupLanguage(language)
-        self._logger.info("> Signal app.languageChanged emitting...")
-        self._app.languageChanged.emit(language)
-        self._logger.info("< Signal app.languageChanged emitted.")
-
     def _onLanguageChanged(self, language: str):
         self._logger.info("On language changed: %s", language)
         self._logger.info("Refresh view")
@@ -160,6 +152,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._testLoadTestDataAction.setText(tt.Menu_Test_LoadTestData)
         self._playlistLabel.setText(tt.Toolbar_Playlist)
         self._editingCheck.setText(tt.Toolbar_Editing)
+        self._toggleLanguageAction.setText(tt.Toolbar_ToggleLanguage)
         self._logger.info("View refreshed")
 
     def _initMenu(self):
@@ -183,9 +176,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._languageMenu = self.menuBar().addMenu(tt.Menu_Language)
         self._languageEnglishAction = self._languageMenu.addAction(
-            tt.Menu_Language_English, lambda: self._changeLanguage("en_US"))
+            tt.Menu_Language_English, lambda: self._app.changeLanguage("en_US"))
         self._languageChineseAction = self._languageMenu.addAction(
-            tt.Menu_Language_Chinese, lambda: self._changeLanguage("zh_CN"))
+            tt.Menu_Language_Chinese, lambda: self._app.changeLanguage("zh_CN"))
 
         self._testMenu = self.menuBar().addMenu(tt.Menu_Test)
         self._testOneKeyAddAction = self._testMenu.addAction(
@@ -223,6 +216,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._editingCheck = QtWidgets.QCheckBox(tt.Toolbar_Editing, self)
         self._editingCheck.stateChanged.connect(self._onEditingCheckBoxStateChanged)
         toolbar.addWidget(self._editingCheck)
+        self._toggleLanguageAction = toolbar.addAction(tt.Toolbar_ToggleLanguage)
+        self._toggleLanguageAction.triggered.connect(
+            lambda: self._app.changeLanguage("zh_CN" if self._config.language == "en_US" else "en_US"))
         self._playlistCombo = playlistCombo
 
     def setLayoutEditing(self, editing: bool) -> None:
