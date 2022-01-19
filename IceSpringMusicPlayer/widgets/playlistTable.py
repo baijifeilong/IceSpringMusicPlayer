@@ -9,6 +9,7 @@ import qtawesome
 from IceSpringRealOptional.typingUtils import gg, unused
 from PySide2 import QtCore, QtGui, QtWidgets
 
+from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
 from IceSpringMusicPlayer.domains.config import Config
@@ -195,12 +196,19 @@ class PlaylistTable(IceTableView, ReplaceableMixin):
 
 class PlaylistModel(QtCore.QAbstractTableModel):
     _logger: logging.Logger
+    _app: App
     _player: Player
 
     def __init__(self, parent: QtCore.QObject) -> None:
         super().__init__(parent)
         self._logger = logging.getLogger("playlistModel")
+        self._app = App.instance()
         self._player = App.instance().getPlayer()
+        self._app.languageChanged.connect(self._onLanguageChanged)
+
+    def _onLanguageChanged(self, language: str):
+        self._logger.info("On language changed: %s", language)
+        self.headerDataChanged.emit(QtCore.Qt.Orientation.Horizontal, 0, self.columnCount() - 1)
 
     def rowCount(self, parent: QtCore.QModelIndex = ...) -> int:
         return self._player.getFrontPlaylist().map(lambda x: x.musics.size()).orElse(0)
@@ -223,7 +231,7 @@ class PlaylistModel(QtCore.QAbstractTableModel):
 
     def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role: int = ...) -> typing.Any:
         if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
-            return ["", "Artist", "Title"][section]
+            return ["", tt.Music_Artist, tt.Music_Title][section]
         return super().headerData(section, orientation, role)
 
     def sort(self, column: int, order: QtCore.Qt.SortOrder = ...) -> None:

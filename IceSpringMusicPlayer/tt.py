@@ -62,6 +62,12 @@ Config_ApplicationFont.zh_CN = "应用程序字体"
 Config_LyricFont = _TT()
 Config_LyricFont.en_US = "Lyric Font"
 Config_LyricFont.zh_CN = "歌词字体"
+Music_Artist = _TT()
+Music_Artist.en_US = "Artist"
+Music_Artist.zh_CN = "艺术家"
+Music_Title = _TT()
+Music_Title.en_US = "Title"
+Music_Title.zh_CN = "标题"
 
 
 def setupLanguage(language: str):
