@@ -7,12 +7,9 @@ import logging
 import typing
 
 from IceSpringPathLib import Path
-from IceSpringRealOptional.just import Just
-from IceSpringRealOptional.vector import Vector
-from PySide2 import QtWidgets, QtCore, QtGui
+from PySide2 import QtWidgets, QtCore
 
-from IceSpringMusicPlayer.domains.config import Config, Element
-from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
+from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 
 if typing.TYPE_CHECKING:
@@ -39,18 +36,20 @@ class App(QtWidgets.QApplication):
         super().__init__()
         self._logger = logging.getLogger("app")
         self._config = self._loadConfig()
-        self._zoom = self._config.fontSize / QtWidgets.QApplication.font().pointSize()
         self._player = Player(self)
         self._player.setVolume(self._config.volume)
+        self._zoom = self._config.applicationFont.pointSize() / self.font().pointSize()
+        self.setFont(self._config.applicationFont)
         self.setApplicationName("Ice Spring Music Player")
         self.setApplicationDisplayName(self.applicationName())
         self._mainWindow = MainWindow()
+        self._mainWindow.setGeometry(self._config.geometry)
         self.aboutToQuit.connect(self._onAboutToQuit)
         self.configChanged.connect(self._onConfigChanged)
 
     def _onConfigChanged(self):
         self._logger.info("On config changed")
-        self.setFont(Just.of(self.font()).apply(lambda x: x.setPointSize(self._config.fontSize)).value())
+        self.setFont(self._config.applicationFont)
 
     def _onAboutToQuit(self):
         self._logger.info("On about to quit")
@@ -58,8 +57,6 @@ class App(QtWidgets.QApplication):
 
     def exec_(self) -> int:
         self._logger.info("Exec")
-        self.setFont(Just.of(self.font()).apply(lambda x: x.setPointSize(self._config.fontSize)).value())
-        self._mainWindow.setGeometry(self._config.geometry)
         self._mainWindow.loadLayout(self._config.layout)
         self._mainWindow.show()
         return super().exec_()
@@ -114,64 +111,10 @@ class App(QtWidgets.QApplication):
 
     def _loadConfig(self) -> Config:
         self._logger.info("Load config")
-        text = Path("config.json").read_text() if Path("config.json").exists() else "{}"
-        jd = json.loads(text, object_pairs_hook=Config.fromJson)
-        config = Config(**{**self._getDefaultConfig().__dict__, **jd})
+        path = Path("config.json")
+        if not path.exists():
+            self._logger.info("No config.json file, return default config")
+            return Config.getDefaultConfig()
+        config = json.loads(path.read_text(), object_pairs_hook=Config.fromJson)
         self._logger.info("Loaded config: %s", config)
         return config
-
-    def _getDefaultConfig(self) -> Config:
-        screenSize = QtGui.QGuiApplication.primaryScreen().size()
-        windowSize = screenSize / 1.5
-        diffSize = (screenSize - windowSize) / 2
-        defaultGeometry = QtCore.QRect(QtCore.QPoint(diffSize.width(), diffSize.height()), windowSize)
-        return Config(
-            geometry=defaultGeometry,
-            fontSize=QtWidgets.QApplication.font().pointSize(),
-            iconSize=48,
-            lyricSize=16,
-            volume=50,
-            playbackMode=PlaybackMode.LOOP,
-            frontPlaylistIndex=-1,
-            layout=self.getDefaultLayout(),
-            playlists=Vector()
-        )
-
-    @staticmethod
-    def getDefaultLayout() -> Element:
-        from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
-        from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
-        from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
-        from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
-        return Element(clazz=SplitterWidget, vertical=False, weight=1, children=[
-            Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
-                Element(clazz=ControlsWidget, vertical=False, weight=1, children=[]),
-                Element(clazz=LyricsWidget, vertical=False, weight=3, children=[]),
-                Element(clazz=PlaylistTable, vertical=False, weight=5, children=[]),
-            ]),
-            Element(clazz=SplitterWidget, vertical=True, weight=2, children=[
-                Element(clazz=PlaylistTable, vertical=False, weight=3, children=[]),
-                Element(clazz=LyricsWidget, vertical=False, weight=5, children=[]),
-                Element(clazz=ControlsWidget, vertical=False, weight=1, children=[]),
-            ]),
-        ])
-
-    @staticmethod
-    def getDemoLayout() -> Element:
-        from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
-        from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
-        from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
-        from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
-        from IceSpringMusicPlayer.widgets.configWidget import ConfigWidget
-        from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
-        return Element(clazz=SplitterWidget, vertical=False, weight=1, children=[
-            Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
-                Element(clazz=ControlsWidget, vertical=False, weight=1, children=[]),
-                Element(clazz=LyricsWidget, vertical=False, weight=3, children=[]),
-                Element(clazz=PlaylistTable, vertical=False, weight=5, children=[]),
-            ]),
-            Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
-                Element(clazz=ConfigWidget, vertical=False, weight=1, children=[]),
-                Element(clazz=BlankWidget, vertical=False, weight=3, children=[]),
-            ]),
-        ])

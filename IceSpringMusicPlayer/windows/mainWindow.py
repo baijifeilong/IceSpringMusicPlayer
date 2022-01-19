@@ -150,8 +150,8 @@ class MainWindow(QtWidgets.QMainWindow):
         layoutMenu = self.menuBar().addMenu("&Layout")
         layoutMenu.addAction("&Playlist+Lyrics+Controls", lambda: self._changeLayout(controlsDownLayout))
         layoutMenu.addAction("&Controls+Playlist+Lyrics", lambda: self._changeLayout(controlsUpLayout))
-        layoutMenu.addAction("&Default Layout", lambda: self._changeLayout(self._app.getDefaultLayout()))
-        layoutMenu.addAction("De&mo Layout", lambda: self._changeLayout(self._app.getDemoLayout()))
+        layoutMenu.addAction("&Default Layout", lambda: self._changeLayout(self._config.getDefaultLayout()))
+        layoutMenu.addAction("De&mo Layout", lambda: self._changeLayout(self._config.getDemoLayout()))
 
     def _onPlaylistComboActivated(self, index: int) -> None:
         self._logger.info("On playlist combo activated at index %d", index)
