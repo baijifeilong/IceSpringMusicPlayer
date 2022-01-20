@@ -8,28 +8,17 @@ from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
-class FinalMeta(type(QtWidgets.QWidget), type(PluginMixin)):
-    pass
-
-
-class DemoWidget(QtWidgets.QWidget, PluginMixin, ReplaceableMixin, metaclass=FinalMeta):
-    @classmethod
-    def id(cls) -> str:
-        return "IceSpringDemoPlugin"
-
-    @classmethod
-    def name(cls) -> Text:
-        text = Text()
-        text.en_US = "Demo Plugin"
-        return text
-
-    @classmethod
-    def replaceableWidgets(cls) -> typing.Dict[Text, typing.Callable[[QtWidgets.QWidget], ReplaceableMixin]]:
-        return {
-            cls.name(): lambda parent: cls(parent)
-        }
-
+class DemoWidget(QtWidgets.QWidget, PluginMixin):
     def __init__(self, parent):
         super().__init__(parent)
         self.setLayout(QtWidgets.QGridLayout(self))
         self.layout().addWidget(QtWidgets.QLabel("OK", self))
+
+    @classmethod
+    def replaceableWidgets(cls: typing.Type[typing.Union[PluginMixin, QtWidgets.QWidget]]) \
+            -> typing.Dict[Text, typing.Callable[[QtWidgets.QWidget], ReplaceableMixin]]:
+        from IceSpringDemoWidget.demoConfigWidget import DemoConfigWidget
+        return {
+            **super().replaceableWidgets(),
+            Text.of(en_US="DemoConfigWidget", zh_CN="玳瑁"): lambda parent: DemoConfigWidget(parent)
+        }

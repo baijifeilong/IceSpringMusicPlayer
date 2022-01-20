@@ -1,25 +1,32 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/20 10:01
+
+from __future__ import annotations
+
 import abc
 import typing
 
-from PySide2 import QtWidgets
+from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
-class PluginMixin(object, metaclass=abc.ABCMeta):
+class PluginMeta(type(QtCore.QObject), abc.ABCMeta):
+    pass
+
+
+class PluginMixin(ReplaceableMixin, metaclass=PluginMeta):
     @classmethod
-    @abc.abstractmethod
     def id(cls) -> str:
-        pass
+        return cls.__name__
 
     @classmethod
-    @abc.abstractmethod
     def name(cls) -> Text:
-        pass
+        return Text.of(cls.id())
 
     @classmethod
-    @abc.abstractmethod
-    def replaceableWidgets(cls) -> typing.Dict[Text, typing.Callable[[QtWidgets.QWidget], ReplaceableMixin]]:
-        pass
+    def replaceableWidgets(cls: typing.Type[typing.Union[PluginMixin, QtWidgets.QWidget]]) \
+            -> typing.Dict[Text, typing.Callable[[QtWidgets.QWidget], ReplaceableMixin]]:
+        return {
+            cls.name(): lambda parent: cls(parent)
+        }

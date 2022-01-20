@@ -4,6 +4,14 @@ class Text(str):
     en_US: str
     zh_CN: str
 
+    @classmethod
+    def of(cls, en_US, **kwargs):
+        text = cls(f"en_US={en_US}")
+        text.en_US = en_US
+        for k, v in kwargs.items():
+            setattr(text, k, v)
+        return text
+
 
 Menu_File = Text()
 Menu_File.en_US = "&File"
