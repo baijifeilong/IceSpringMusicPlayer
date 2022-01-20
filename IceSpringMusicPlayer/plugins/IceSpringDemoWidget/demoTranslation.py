@@ -9,10 +9,10 @@ if typing.TYPE_CHECKING:
 
 Demo_Prefix = Text()
 Demo_Prefix.en_US = "Prefix is "
-Demo_Prefix.zh_CN = "前缀是"
+Demo_Prefix.zh_CN = "前缀是 "
 Demo_Suffix = Text()
 Demo_Suffix.en_US = "Suffix is "
-Demo_Suffix.zh_CN = "后缀是"
+Demo_Suffix.zh_CN = "后缀是 "
 
 
 def __getattr__(name):

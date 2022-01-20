@@ -66,11 +66,11 @@ class DemoWidget(QtWidgets.QWidget, PluginMixin, metaclass=PluginMixin.Meta):
 
     def _onMasterConfigChanged(self) -> None:
         self._logger.info("On global config changed")
-        self._prefixButton.setText(self._masterConfig.prefix)
+        self._prefixButton.setText(tt.Demo_Prefix + self._masterConfig.prefix)
 
     def _onSlaveConfigChanged(self) -> None:
         self._logger.info("On local config changed")
-        self._suffixButton.setText(self._slaveConfig.suffix)
+        self._suffixButton.setText(tt.Demo_Suffix + self._slaveConfig.suffix)
 
     @classmethod
     def getReplaceableWidgets(cls) -> typing.List[PluginMixin.ReplaceableWidget]:
