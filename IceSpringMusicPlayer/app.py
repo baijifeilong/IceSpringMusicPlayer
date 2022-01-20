@@ -12,13 +12,13 @@ from IceSpringPathLib import Path
 from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer import tt
-from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
 from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 
 if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.services.player import Player
     from IceSpringMusicPlayer.windows.mainWindow import MainWindow
+    from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
 
 
 class App(QtWidgets.QApplication):
@@ -122,6 +122,20 @@ class App(QtWidgets.QApplication):
             self._logger.info("No config.json file, return default config")
             return Config.getDefaultConfig()
         config = json.loads(path.read_text(), object_pairs_hook=Config.fromJson)
+        plugins = self.getPlugins()
+        self._logger.info("Process plugin configs (%d plugins)", len(plugins))
+        for plugin in plugins:
+            _id = ".".join((plugin.__module__, plugin.__name__))
+            self._logger.info("Current plugin: %s", _id)
+            if _id in config.plugins:
+                self._logger.info("Plugin have config, load it")
+                pluginConfig = json.loads(json.dumps(config.plugins[_id]), object_pairs_hook=plugin.configFromJson)
+                self._logger.info("Plugin config: %s", pluginConfig)
+                config.plugins[_id] = pluginConfig
+            else:
+                self._logger.info("Plugin have not config, load default one")
+                config.plugins[_id] = plugin.getDefaultConfig()
+                self._logger.info("Plugin config: %s", config.plugins[_id])
         self._logger.info("Loaded config: %s", config)
         return config
 
@@ -137,7 +151,7 @@ class App(QtWidgets.QApplication):
         self._logger.info("< Signal app.languageChanged emitted.")
 
     @staticmethod
-    def getEnabledPlugins() -> typing.List[typing.Type[PluginMixin]]:
+    def getPlugins() -> typing.List[typing.Type[PluginMixin]]:
         sys.path.append("IceSpringMusicPlayer/plugins")
         demoWidgetType = getattr(importlib.import_module("IceSpringDemoWidget.demoWidget"), "DemoWidget")
         return [demoWidgetType]

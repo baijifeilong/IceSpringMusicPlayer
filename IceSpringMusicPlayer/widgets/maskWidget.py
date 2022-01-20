@@ -60,9 +60,9 @@ class MaskWidget(QtWidgets.QWidget):
         menu.addAction("Replace by config widget", lambda: self._doReplace(ConfigWidget(self)))
         menu.addAction("Quit editing", self._doQuitEditing)
         menu.addSeparator()
-        for plugin in self._app.getEnabledPlugins():
+        for plugin in self._app.getPlugins():
             for k, v in plugin.replaceableWidgets().items():
-                menu.addAction(k.en_US, lambda: self._doReplace(v(self)))
+                menu.addAction(k.en_US, lambda v=v: self._doReplace(v(self)))
         menu.exec_(QtGui.QCursor.pos())
         self._setReplaceable(None)
 

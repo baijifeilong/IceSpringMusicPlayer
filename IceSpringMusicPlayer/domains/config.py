@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import enum
 import importlib
+import json
 import typing
 from dataclasses import dataclass
 
@@ -36,6 +37,7 @@ class Config(object):
     playbackMode: PlaybackMode
     frontPlaylistIndex: int
     layout: Element
+    plugins: typing.Dict
     playlists: Vector[Playlist]
 
     @staticmethod
@@ -114,6 +116,7 @@ class Config(object):
             playbackMode=PlaybackMode.LOOP,
             frontPlaylistIndex=-1,
             layout=cls.getDefaultLayout(),
+            plugins=dict(),
             playlists=Vector()
         )
 
