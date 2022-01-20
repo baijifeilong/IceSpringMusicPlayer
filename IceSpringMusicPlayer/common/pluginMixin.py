@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import abc
 import dataclasses
+import types
 import typing
 
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore
 
+from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
@@ -41,6 +43,10 @@ class PluginMixin(ReplaceableMixin, metaclass=abc.ABCMeta):
 
     def getSlaveConfig(self) -> JsonSupport:
         return self.getSlaveConfigType().getDefaultInstance()
+
+    @classmethod
+    def getTranslationModule(cls) -> types.ModuleType:
+        return tt
 
 
 class NoConfig(JsonSupport):

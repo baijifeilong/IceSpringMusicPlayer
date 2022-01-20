@@ -2,12 +2,12 @@
 
 import uuid
 
+from IceSpringRealOptional.just import Just
 from PySide2 import QtCore
 
 
 class SignalUtils(object):
     @classmethod
     def createSignal(cls, *args):
-        holder = type("", (QtCore.QObject,), dict(signal=QtCore.Signal(*args)))()
-        setattr(cls, str(uuid.uuid4()), holder)
-        return holder.signal
+        return Just.of(type("", (QtCore.QObject,), dict(signal=QtCore.Signal(*args)))()) \
+            .apply(lambda x: setattr(cls, str(uuid.uuid4()), x)).value().signal

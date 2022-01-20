@@ -41,7 +41,7 @@ class App(QtWidgets.QApplication):
         super().__init__()
         self._logger = logging.getLogger("app")
         self._config = self._loadConfig()
-        tt.setupLanguage(self._config.language)
+        self._setupLanguage(self._config.language)
         self._player = Player(self)
         self._player.setVolume(self._config.volume)
         self._zoom = self._config.applicationFont.pointSize() / self.font().pointSize()
@@ -52,6 +52,12 @@ class App(QtWidgets.QApplication):
         self._mainWindow.setGeometry(self._config.geometry)
         self.aboutToQuit.connect(self._onAboutToQuit)
         self.configChanged.connect(self._onConfigChanged)
+
+    def _setupLanguage(self, language: str):
+        self._logger.info("Setup language: %s", language)
+        for module in {tt, *{x.getTranslationModule() for x in self.getPlugins()}}:
+            self._logger.info("Setup language for module: %s", module)
+            tt.setupLanguage(language, module=module)
 
     def _onConfigChanged(self):
         self._logger.info("On config changed")
@@ -159,7 +165,9 @@ class App(QtWidgets.QApplication):
             self._logger.info("Language not changed, return")
             return
         self._config.language = language
-        tt.setupLanguage(language)
+        for module in {tt, *{x.getTranslationModule() for x in self.getPlugins()}}:
+            self._logger.info("Change language for module: %s", module)
+            tt.setupLanguage(language, module=module)
         self._logger.info("> Signal app.languageChanged emitting...")
         self.languageChanged.emit(language)
         self._logger.info("< Signal app.languageChanged emitted.")

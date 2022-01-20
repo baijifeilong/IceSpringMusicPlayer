@@ -1,5 +1,9 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/19 13:44
 
+import types
+import typing
+
+
 class Text(str):
     en_US: str
     zh_CN: str
@@ -87,12 +91,13 @@ Music_Title.en_US = "Title"
 Music_Title.zh_CN = "标题"
 
 
-def setupLanguage(language: str):
+def setupLanguage(language: str, module: typing.Optional[types.ModuleType] = None):
     assert language in Text.__annotations__
-    entries = {k: v for k, v in globals().items() if isinstance(v, Text)}
+    env = globals() if module is None else module.__dict__
+    entries = {k: v for k, v in env.items() if isinstance(v, Text)}
     for k, v in entries.items():
         tt = Text(getattr(v, language, getattr(v, "en_US")))
         for lang in Text.__annotations__:
             if hasattr(v, lang):
                 setattr(tt, lang, getattr(v, lang))
-        globals()[k] = tt
+        env[k] = tt
