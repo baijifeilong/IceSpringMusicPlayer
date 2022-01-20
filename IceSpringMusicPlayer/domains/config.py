@@ -109,6 +109,11 @@ class Config(object):
         windowSize = screenSize / 1.5
         diffSize = (screenSize - windowSize) / 2
         defaultGeometry = QtCore.QRect(QtCore.QPoint(diffSize.width(), diffSize.height()), windowSize)
+        from IceSpringMusicPlayer.app import App
+        pluginsJd = dict()
+        for plugin in App.instance().getPlugins():
+            pluginsJd[".".join((plugin.__module__, plugin.__name__))] \
+                = plugin.getMasterConfigType().getDefaultInstance()
         return Config(
             language="en_US",
             geometry=defaultGeometry,
@@ -119,7 +124,7 @@ class Config(object):
             playbackMode=PlaybackMode.LOOP,
             frontPlaylistIndex=-1,
             layout=cls.getDefaultLayout(),
-            plugins=dict(),
+            plugins=pluginsJd,
             playlists=Vector()
         )
 

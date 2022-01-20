@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import abc
+import dataclasses
 import typing
 
+from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
-from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
@@ -17,10 +18,14 @@ class PluginMixin(ReplaceableMixin, metaclass=abc.ABCMeta):
     class Meta(type(QtCore.QObject), abc.ABCMeta):
         pass
 
+    @dataclasses.dataclass
+    class ReplaceableWidget(object):
+        title: str
+        maker: typing.Callable[[QtWidgets.QWidget], ReplaceableMixin]
+
     @classmethod
-    def getReplaceableWidgets(cls: typing.Type[typing.Union[PluginMixin, QtWidgets.QWidget]]) \
-            -> typing.Dict[Text, typing.Callable[[QtWidgets.QWidget], ReplaceableMixin]]:
-        return {cls.__name__: lambda parent: cls(parent)}
+    def getReplaceableWidgets(cls) -> typing.List[PluginMixin.ReplaceableWidget]:
+        return [cls.ReplaceableWidget(cls.__name__, lambda parent: gg(cls)(parent))]
 
     @classmethod
     def getMasterConfigType(cls) -> typing.Type[JsonSupport]:

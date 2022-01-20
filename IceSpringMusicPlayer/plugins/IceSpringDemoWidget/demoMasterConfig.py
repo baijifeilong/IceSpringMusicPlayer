@@ -23,4 +23,5 @@ class DemoMasterConfig(JsonSupport):
 
     @classmethod
     def getDefaultInstance(cls) -> JsonSupport:
-        return super().getDefaultInstance()
+        from IceSpringDemoWidget.demoWidget import DemoWidget
+        return DemoMasterConfig(id=".".join((DemoWidget.__module__, DemoWidget.__name__)), prefix="Prefix1")

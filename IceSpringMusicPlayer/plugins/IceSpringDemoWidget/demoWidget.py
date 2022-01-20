@@ -9,8 +9,6 @@ from IceSpringDemoWidget.demoMasterConfig import DemoMasterConfig
 from IceSpringDemoWidget.demoSlaveConfig import DemoSlaveConfig
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
-from IceSpringMusicPlayer.tt import Text
-from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
 class DemoWidget(QtWidgets.QWidget, PluginMixin, metaclass=PluginMixin.Meta):
@@ -58,13 +56,10 @@ class DemoWidget(QtWidgets.QWidget, PluginMixin, metaclass=PluginMixin.Meta):
         self._suffixButton.setText(self._slaveConfig.suffix)
 
     @classmethod
-    def getReplaceableWidgets(cls: typing.Type[typing.Union[PluginMixin, QtWidgets.QWidget]]) \
-            -> typing.Dict[Text, typing.Callable[[QtWidgets.QWidget], ReplaceableMixin]]:
+    def getReplaceableWidgets(cls) -> typing.List[PluginMixin.ReplaceableWidget]:
         from IceSpringDemoWidget.demoConfigWidget import DemoConfigWidget
-        return {
-            **super().getReplaceableWidgets(),
-            Text.of(en_US="DemoConfigWidget"): lambda parent: DemoConfigWidget(parent)
-        }
+        return super().getReplaceableWidgets() + [
+            PluginMixin.ReplaceableWidget("Demo Config Widget", lambda parent: DemoConfigWidget(parent))]
 
     @classmethod
     def getMasterConfigType(cls) -> typing.Type[JsonSupport]:

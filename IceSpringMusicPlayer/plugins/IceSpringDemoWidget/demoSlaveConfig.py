@@ -24,5 +24,4 @@ class DemoSlaveConfig(JsonSupport):
     @classmethod
     def getDefaultInstance(cls) -> JsonSupport:
         from IceSpringDemoWidget.demoWidget import DemoWidget
-        clazz = DemoWidget
-        return DemoSlaveConfig(id=".".join((clazz.__module__, clazz.__name__)), suffix="Suffix1")
+        return DemoSlaveConfig(id=".".join((DemoWidget.__module__, DemoWidget.__name__)), suffix="Suffix1")
