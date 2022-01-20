@@ -1,4 +1,7 @@
 # Created by BaiJiFeiLong@gmail.com at 2022-01-03 12:55:48
+import sys
+
+from IceSpringPathLib import Path
 
 __import__("os").environ.update(dict(
     QT_API="pyside2",
@@ -10,5 +13,6 @@ from IceSpringMusicPlayer.utils.logUtils import LogUtils
 
 
 def run() -> None:
+    sys.path.append(str(Path(__file__).parent / "plugins"))
     LogUtils.initLogging()
     App().exec_()

@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import logging
+import sys
 import typing
 
 from IceSpringPathLib import Path
 from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer import tt
+from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
 from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 
@@ -132,3 +135,9 @@ class App(QtWidgets.QApplication):
         self._logger.info("> Signal app.languageChanged emitting...")
         self.languageChanged.emit(language)
         self._logger.info("< Signal app.languageChanged emitted.")
+
+    @staticmethod
+    def getEnabledPlugins() -> typing.List[typing.Type[PluginMixin]]:
+        sys.path.append("IceSpringMusicPlayer/plugins")
+        demoWidgetType = getattr(importlib.import_module("IceSpringDemoWidget.demoWidget"), "DemoWidget")
+        return [demoWidgetType]
