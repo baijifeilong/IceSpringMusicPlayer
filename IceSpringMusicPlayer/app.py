@@ -12,7 +12,7 @@ from IceSpringPathLib import Path
 from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer import tt
-from IceSpringMusicPlayer.domains.config import Config
+from IceSpringMusicPlayer.domains.config import Config, Element
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 
 if typing.TYPE_CHECKING:
@@ -129,15 +129,29 @@ class App(QtWidgets.QApplication):
             self._logger.info("Current plugin: %s", _id)
             if _id in config.plugins:
                 self._logger.info("Plugin have config, load it")
-                pluginConfig = json.loads(json.dumps(config.plugins[_id]), object_pairs_hook=plugin.configFromJson)
+                pluginConfig = json.loads(
+                    json.dumps(config.plugins[_id], default=plugin.getMasterConfigType().pythonToJson),
+                    object_pairs_hook=plugin.getMasterConfigType().jsonToPython)
                 self._logger.info("Plugin config: %s", pluginConfig)
                 config.plugins[_id] = pluginConfig
             else:
                 self._logger.info("Plugin have not config, load default one")
-                config.plugins[_id] = plugin.getDefaultConfig()
+                config.plugins[_id] = plugin.getMasterConfigType().getDefaultInstance()
                 self._logger.info("Plugin config: %s", config.plugins[_id])
+        self._logger.info("Load layout config")
+        self._loadElementConfig(config.layout)
         self._logger.info("Loaded config: %s", config)
         return config
+
+    def _loadElementConfig(self, element: Element):
+        from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
+        if issubclass(element.clazz, PluginMixin):
+            self._logger.info("Load element config: %s", element)
+            element.config = json.loads(
+                json.dumps(element.config, default=element.clazz.getSlaveConfigType().pythonToJson),
+                object_pairs_hook=element.clazz.getSlaveConfigType().jsonToPython)
+        for child in element.children:
+            self._loadElementConfig(child)
 
     def changeLanguage(self, language: str):
         self._logger.info("Change language: %s", language)

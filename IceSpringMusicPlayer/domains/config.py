@@ -5,7 +5,6 @@ from __future__ import annotations
 import copy
 import enum
 import importlib
-import json
 import typing
 from dataclasses import dataclass
 
@@ -13,6 +12,7 @@ from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.vector import Vector
 from PySide2 import QtCore, QtGui, QtWidgets
 
+from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.domains.playlist import Playlist
 from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
@@ -23,6 +23,7 @@ class Element(object):
     clazz: typing.Type
     vertical: bool
     weight: float
+    config: typing.Any
     children: typing.List[Element]
 
 
@@ -59,6 +60,8 @@ class Config(object):
                 underline=obj.underline(),
                 strikeOut=obj.strikeOut(),
             )
+        elif isinstance(obj, JsonSupport):
+            return obj.__class__.pythonToJson(obj)
         else:
             return obj.__dict__
 
@@ -98,7 +101,7 @@ class Config(object):
             font.setUnderline(jd["underline"])
             font.setStrikeOut(jd["strikeOut"])
             return font
-        return dict(**jd)
+        return jd
 
     @classmethod
     def getDefaultConfig(cls) -> Config:
@@ -126,16 +129,16 @@ class Config(object):
         from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
         from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
         from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
-        return Element(clazz=SplitterWidget, vertical=False, weight=1, children=[
-            Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
-                Element(clazz=ControlsWidget, vertical=False, weight=1, children=[]),
-                Element(clazz=LyricsWidget, vertical=False, weight=3, children=[]),
-                Element(clazz=PlaylistTable, vertical=False, weight=5, children=[]),
+        return Element(clazz=SplitterWidget, vertical=False, weight=1, config=dict(), children=[
+            Element(clazz=SplitterWidget, vertical=True, weight=1, config=dict(), children=[
+                Element(clazz=ControlsWidget, vertical=False, weight=1, config=dict(), children=[]),
+                Element(clazz=LyricsWidget, vertical=False, weight=3, config=dict(), children=[]),
+                Element(clazz=PlaylistTable, vertical=False, weight=5, config=dict(), children=[]),
             ]),
-            Element(clazz=SplitterWidget, vertical=True, weight=2, children=[
-                Element(clazz=PlaylistTable, vertical=False, weight=3, children=[]),
-                Element(clazz=LyricsWidget, vertical=False, weight=5, children=[]),
-                Element(clazz=ControlsWidget, vertical=False, weight=1, children=[]),
+            Element(clazz=SplitterWidget, vertical=True, weight=2, config=dict(), children=[
+                Element(clazz=PlaylistTable, vertical=False, weight=3, config=dict(), children=[]),
+                Element(clazz=LyricsWidget, vertical=False, weight=5, config=dict(), children=[]),
+                Element(clazz=ControlsWidget, vertical=False, weight=1, config=dict(), children=[]),
             ]),
         ])
 
@@ -147,15 +150,15 @@ class Config(object):
         from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
         from IceSpringMusicPlayer.widgets.configWidget import ConfigWidget
         from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
-        return Element(clazz=SplitterWidget, vertical=False, weight=1, children=[
-            Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
-                Element(clazz=ControlsWidget, vertical=False, weight=1, children=[]),
-                Element(clazz=LyricsWidget, vertical=False, weight=3, children=[]),
-                Element(clazz=PlaylistTable, vertical=False, weight=5, children=[]),
+        return Element(clazz=SplitterWidget, vertical=False, weight=1, config=dict(), children=[
+            Element(clazz=SplitterWidget, vertical=True, weight=1, config=dict(), children=[
+                Element(clazz=ControlsWidget, vertical=False, weight=2, config=dict(), children=[]),
+                Element(clazz=LyricsWidget, vertical=False, weight=3, config=dict(), children=[]),
+                Element(clazz=PlaylistTable, vertical=False, weight=5, config=dict(), children=[]),
             ]),
-            Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
-                Element(clazz=ConfigWidget, vertical=False, weight=1, children=[]),
-                Element(clazz=BlankWidget, vertical=False, weight=3, children=[]),
+            Element(clazz=SplitterWidget, vertical=True, weight=1, config=dict(), children=[
+                Element(clazz=ConfigWidget, vertical=False, weight=1, config=dict(), children=[]),
+                Element(clazz=BlankWidget, vertical=False, weight=3, config=dict(), children=[]),
             ]),
         ])
 
@@ -165,12 +168,12 @@ class Config(object):
         from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
         from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
         from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
-        return Element(clazz=SplitterWidget, vertical=True, weight=1, children=[
-            Element(clazz=SplitterWidget, vertical=False, weight=7, children=[
-                Element(clazz=PlaylistTable, vertical=False, weight=1, children=[]),
-                Element(clazz=LyricsWidget, vertical=False, weight=1, children=[]),
+        return Element(clazz=SplitterWidget, vertical=True, weight=1, config=dict(), children=[
+            Element(clazz=SplitterWidget, vertical=False, weight=7, config=dict(), children=[
+                Element(clazz=PlaylistTable, vertical=False, weight=1, config=dict(), children=[]),
+                Element(clazz=LyricsWidget, vertical=False, weight=1, config=dict(), children=[]),
             ]),
-            Element(clazz=ControlsWidget, vertical=False, weight=1, children=[]),
+            Element(clazz=ControlsWidget, vertical=False, weight=1, config=dict(), children=[]),
         ])
 
     @classmethod

@@ -9,6 +9,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
 from IceSpringMusicPlayer.domains.config import Config, Element
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
@@ -66,6 +67,7 @@ class MainWindow(QtWidgets.QMainWindow):
             vertical=isinstance(widget, QtWidgets.QSplitter) and widget.orientation() == QtCore.Qt.Orientation.Vertical,
             weight=widget.height() if isinstance(widget.parentWidget(), QtWidgets.QSplitter) and gg(
                 widget.parentWidget()).orientation() == QtCore.Qt.Orientation.Vertical else widget.width(),
+            config=widget.getSlaveConfig() if isinstance(widget, PluginMixin) else dict(),
             children=[self._widgetToElement(widget.widget(x)) for x in range(widget.count())] if isinstance(
                 widget, QtWidgets.QSplitter) else []
         )
@@ -91,7 +93,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _drawElement(self, element: Element, parent: QtWidgets.QWidget) -> None:
         self._logger.info("Draw element: %s to %s", element.clazz, parent)
-        widget = element.clazz(parent)
+        if issubclass(element.clazz, PluginMixin):
+            widget = gg(element.clazz)(parent, element.config)
+        else:
+            widget = element.clazz(parent)
         if isinstance(widget, QtWidgets.QSplitter) and element.vertical:
             widget.setOrientation(QtCore.Qt.Orientation.Vertical)
         if isinstance(parent, QtWidgets.QMainWindow):

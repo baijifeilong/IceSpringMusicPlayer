@@ -2,67 +2,81 @@
 import logging
 import typing
 
+from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore
 
-from IceSpringDemoWidget.demoGlobalConfig import DemoGlobalConfig
+from IceSpringDemoWidget.demoMasterConfig import DemoMasterConfig
+from IceSpringDemoWidget.demoSlaveConfig import DemoSlaveConfig
+from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
 from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
-class DemoWidget(QtWidgets.QWidget, PluginMixin):
-    globalConfigChanged: QtCore.SignalInstance = QtCore.Signal()
+class DemoWidget(QtWidgets.QWidget, PluginMixin, metaclass=PluginMixin.Meta):
+    masterConfigChanged: QtCore.SignalInstance = QtCore.Signal()
+    slaveConfigChanged: QtCore.SignalInstance = QtCore.Signal()
 
-    def __init__(self, parent):
+    _masterConfig: DemoMasterConfig
+    _slaveConfig: DemoSlaveConfig
+
+    def __init__(self, parent: QtWidgets.QWidget, slaveConfig: DemoSlaveConfig = None):
         super().__init__(parent)
         self._logger = logging.getLogger("demoWidget")
-        self._globalConfig = self.getGlobalConfig()
-        self._button = QtWidgets.QPushButton(self._globalConfig.prefix, self)
+        self._masterConfig = gg(self.getMasterConfig())
+        self._slaveConfig = slaveConfig or self.getSlaveConfigType().getDefaultInstance()
+        self._prefixButton = QtWidgets.QPushButton(self._masterConfig.prefix, self)
+        self._suffixButton = QtWidgets.QPushButton(self._slaveConfig.suffix, self)
         self.setLayout(QtWidgets.QGridLayout(self))
-        self.layout().addWidget(self._button)
-        self._button.clicked.connect(self._onButtonClicked)
-        self.globalConfigChanged.connect(self._onGlobalConfigChanged)
+        self.layout().addWidget(self._prefixButton)
+        self.layout().addWidget(self._suffixButton)
+        self._prefixButton.clicked.connect(self._onPrefixButtonClicked)
+        self._suffixButton.clicked.connect(self._onSuffixButtonClicked)
+        self.masterConfigChanged.connect(self._onMasterConfigChanged)
+        self.slaveConfigChanged.connect(self._onSlaveConfigChanged)
 
-    def _onButtonClicked(self) -> None:
-        self._logger.info("On button clicked")
-        self._globalConfig.prefix = "Prefix" + str(int(self._globalConfig.prefix[len("Prefix"):]) + 1)
-        self._logger.info("> Signal globalConfigChanged emitting...")
-        self.globalConfigChanged.emit()
-        self._logger.info("< Signal globalConfigChanged emitted.")
+    def _onPrefixButtonClicked(self) -> None:
+        self._logger.info("On prefix button clicked")
+        self._masterConfig.prefix = "Prefix" + str(int(self._masterConfig.prefix[len("Prefix"):]) + 1)
+        self._logger.info("> Signal masterConfigChanged emitting...")
+        self.masterConfigChanged.emit()
+        self._logger.info("< Signal masterConfigChanged emitted.")
 
-    def _onGlobalConfigChanged(self) -> None:
+    def _onSuffixButtonClicked(self) -> None:
+        self._logger.info("On suffix button clicked")
+        self._slaveConfig.suffix = "Suffix" + str(int(self._slaveConfig.suffix[len("Suffix"):]) + 1)
+        self._logger.info("> Signal slaveConfigChanged emitting...")
+        self.slaveConfigChanged.emit()
+        self._logger.info("> Signal slaveConfigChanged emitted...")
+
+    def _onMasterConfigChanged(self) -> None:
         self._logger.info("On global config changed")
-        self._button.setText(self._globalConfig.prefix)
+        self._prefixButton.setText(self._masterConfig.prefix)
+
+    def _onSlaveConfigChanged(self) -> None:
+        self._logger.info("On local config changed")
+        self._suffixButton.setText(self._slaveConfig.suffix)
 
     @classmethod
-    def replaceableWidgets(cls: typing.Type[typing.Union[PluginMixin, QtWidgets.QWidget]]) \
+    def getReplaceableWidgets(cls: typing.Type[typing.Union[PluginMixin, QtWidgets.QWidget]]) \
             -> typing.Dict[Text, typing.Callable[[QtWidgets.QWidget], ReplaceableMixin]]:
         from IceSpringDemoWidget.demoConfigWidget import DemoConfigWidget
         return {
-            **super().replaceableWidgets(),
+            **super().getReplaceableWidgets(),
             Text.of(en_US="DemoConfigWidget"): lambda parent: DemoConfigWidget(parent)
         }
 
     @classmethod
-    def configFromJson(cls, pairs: typing.List[typing.Tuple[str, typing.Any]]) -> typing.Any:
-        jd = dict(pairs)
-        if jd.get("id", None) == ".".join((cls.__module__, cls.__name__)):
-            return DemoGlobalConfig(**jd)
-        return dict(**jd)
+    def getMasterConfigType(cls) -> typing.Type[JsonSupport]:
+        return DemoMasterConfig
 
     @classmethod
-    def configToJson(cls, obj: typing.Any) -> typing.Any:
-        if isinstance(obj, type):
-            return ".".join((obj.__module__, obj.__name__))
-        return obj.__dict__
+    def getSlaveConfigType(cls) -> typing.Type[JsonSupport]:
+        return DemoSlaveConfig
 
     @classmethod
-    def getDefaultConfig(cls) -> DemoGlobalConfig:
-        return DemoGlobalConfig(
-            id=".".join((cls.__module__, cls.__name__)),
-            prefix="Prefix1"
-        )
+    def getMasterConfig(cls) -> JsonSupport:
+        return super().getMasterConfig()
 
-    @classmethod
-    def getGlobalConfig(cls) -> DemoGlobalConfig:
-        return super().getGlobalConfig()
+    def getSlaveConfig(self) -> JsonSupport:
+        return self._slaveConfig

@@ -8,43 +8,45 @@ import typing
 from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
-class PluginMeta(type(QtCore.QObject), abc.ABCMeta):
-    pass
-
-
-class PluginMixin(ReplaceableMixin, metaclass=PluginMeta):
-    @classmethod
-    def id(cls) -> str:
-        return cls.__name__
+class PluginMixin(ReplaceableMixin, metaclass=abc.ABCMeta):
+    class Meta(type(QtCore.QObject), abc.ABCMeta):
+        pass
 
     @classmethod
-    def name(cls) -> Text:
-        return Text.of(cls.id())
-
-    @classmethod
-    def replaceableWidgets(cls: typing.Type[typing.Union[PluginMixin, QtWidgets.QWidget]]) \
+    def getReplaceableWidgets(cls: typing.Type[typing.Union[PluginMixin, QtWidgets.QWidget]]) \
             -> typing.Dict[Text, typing.Callable[[QtWidgets.QWidget], ReplaceableMixin]]:
-        return {
-            cls.name(): lambda parent: cls(parent)
-        }
+        return {cls.__name__: lambda parent: cls(parent)}
 
     @classmethod
-    def configFromJson(cls, pairs: typing.List[typing.Tuple[str, typing.Any]]) -> typing.Any:
-        return dict(pairs)
+    def getMasterConfigType(cls) -> typing.Type[JsonSupport]:
+        return NoConfig
 
     @classmethod
-    def configToJson(cls, obj: typing.Any) -> typing.Any:
-        return obj.__dict__
+    def getSlaveConfigType(cls) -> typing.Type[JsonSupport]:
+        return NoConfig
 
     @classmethod
-    def getDefaultConfig(cls) -> typing.Any:
-        return dict()
+    def getMasterConfig(cls) -> JsonSupport:
+        return App.instance().getConfig().plugins[".".join((cls.__module__, cls.__name__))]
+
+    def getSlaveConfig(self) -> JsonSupport:
+        return self.getSlaveConfigType().getDefaultInstance()
+
+
+class NoConfig(JsonSupport):
+    @classmethod
+    def pythonToJson(cls, obj: typing.Any) -> typing.Any:
+        return super().pythonToJson(obj)
 
     @classmethod
-    def getGlobalConfig(cls) -> typing.Any:
-        _id = ".".join((cls.__module__, cls.__name__))
-        return App.instance().getConfig().plugins[_id]
+    def jsonToPython(cls, pairs: typing.List[typing.Tuple[str, typing.Any]]) -> typing.Any:
+        return super().jsonToPython(pairs)
+
+    @classmethod
+    def getDefaultInstance(cls) -> JsonSupport:
+        return super().getDefaultInstance()
