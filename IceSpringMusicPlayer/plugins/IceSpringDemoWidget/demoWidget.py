@@ -9,10 +9,11 @@ from IceSpringDemoWidget.demoMasterConfig import DemoMasterConfig
 from IceSpringDemoWidget.demoSlaveConfig import DemoSlaveConfig
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
+from IceSpringMusicPlayer.utils.signalUtils import SignalUtils
 
 
 class DemoWidget(QtWidgets.QWidget, PluginMixin, metaclass=PluginMixin.Meta):
-    masterConfigChanged: QtCore.SignalInstance = QtCore.Signal()
+    masterConfigChanged: QtCore.SignalInstance = SignalUtils.createSignal()
     slaveConfigChanged: QtCore.SignalInstance = QtCore.Signal()
 
     _masterConfig: DemoMasterConfig
