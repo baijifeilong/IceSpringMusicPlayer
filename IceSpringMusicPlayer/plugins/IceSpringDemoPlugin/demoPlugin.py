@@ -22,7 +22,8 @@ class DemoPlugin(PluginMixin):
     def getWidgetClasses(cls) -> typing.List[typing.Type[PluginWidgetMixin]]:
         from IceSpringDemoPlugin.demoWidget import DemoWidget
         from IceSpringDemoPlugin.demoPluginConfigWidget import DemoPluginConfigWidget
-        return [DemoWidget, DemoPluginConfigWidget]
+        from IceSpringDemoPlugin.demoBetaWidget import DemoBetaWidget
+        return [DemoWidget, DemoPluginConfigWidget, DemoBetaWidget]
 
     @classmethod
     def getName(cls) -> Text:
