@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import typing
 
-from IceSpringMusicPlayer.common.emptyJsonSupport import EmptyJsonSupport
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
@@ -17,7 +16,7 @@ class PluginWidgetMixin(ReplaceableMixin):
 
     @classmethod
     def getWidgetConfigClass(cls) -> typing.Type[JsonSupport]:
-        return EmptyJsonSupport
+        return JsonSupport
 
     def getWidgetConfig(self) -> JsonSupport:
-        return self.getWidgetConfigClass().getDefaultInstance()
+        return self.getWidgetConfigClass().getDefaultObject()

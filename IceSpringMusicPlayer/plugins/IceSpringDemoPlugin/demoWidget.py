@@ -3,7 +3,8 @@ import logging
 import types
 import typing
 
-from PySide2 import QtWidgets, QtCore
+from IceSpringRealOptional.typingUtils import gg
+from PySide2 import QtWidgets, QtCore, QtGui
 
 import IceSpringDemoPlugin.demoPluginTranslation as tt
 from IceSpringDemoPlugin.demoPlugin import DemoPlugin
@@ -13,6 +14,7 @@ from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.tt import Text
+from IceSpringMusicPlayer.utils.dialogUtils import DialogUtils
 
 
 class DemoWidget(QtWidgets.QWidget, PluginWidgetMixin):
@@ -26,50 +28,48 @@ class DemoWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._logger = logging.getLogger("demoWidget")
         self._app = App.instance()
         self._pluginConfig = DemoPlugin.getPluginConfig()
-        self._widgetConfig = config or self.getWidgetConfigClass().getDefaultInstance()
-        self._prefixButton = QtWidgets.QPushButton(self)
-        self._suffixButton = QtWidgets.QPushButton(self)
-        self._artistButton = QtWidgets.QPushButton(self)
-        self._prefixButton.setText(tt.Demo_Prefix + self._pluginConfig.prefix)
-        self._suffixButton.setText(tt.Demo_Suffix + self._widgetConfig.suffix)
-        self._artistButton.setText(tt.Music_Artist)
-        self.setLayout(QtWidgets.QGridLayout(self))
-        self.layout().addWidget(self._prefixButton)
-        self.layout().addWidget(self._suffixButton)
-        self.layout().addWidget(self._artistButton)
-        self._prefixButton.clicked.connect(self._onPrefixButtonClicked)
-        self._suffixButton.clicked.connect(self._onSuffixButtonClicked)
+        self._widgetConfig = config or self.getWidgetConfigClass().getDefaultObject()
+        self._pluginCounterLabel = QtWidgets.QLabel()
+        self._widgetCounterLabel = QtWidgets.QLabel()
+        layout = QtWidgets.QVBoxLayout()
+        layout.setSpacing(15)
+        layout.addStretch()
+        layout.addWidget(self._pluginCounterLabel, 0, gg(QtCore.Qt.AlignCenter))
+        layout.addWidget(self._widgetCounterLabel, 0, gg(QtCore.Qt.AlignCenter))
+        layout.addStretch()
+        self.setLayout(layout)
         DemoPlugin.pluginConfigChanged.connect(self._onPluginConfigChanged)
-        self.widgetConfigChanged.connect(self._onSlaveConfigChanged)
+        self.widgetConfigChanged.connect(self._onWidgetConfigChanged)
         self._app.languageChanged.connect(self.onLanguageChanged)
+        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
+        self._refreshWidget()
+
+    def _refreshWidget(self):
+        self._pluginCounterLabel.setText(tt.Demo_PluginCounter + str(self._pluginConfig.pluginCounter))
+        self._widgetCounterLabel.setText(tt.Demo_WidgetCounter + str(self._widgetConfig.widgetCounter))
+
+    def _onCustomContextMenuRequested(self):
+        from IceSpringDemoPlugin.demoPluginConfigWidget import DemoPluginConfigWidget
+        from IceSpringDemoPlugin.demoWidgetConfigWidget import DemoWidgetConfigWidget
+        menu = QtWidgets.QMenu(self)
+        menu.addAction("Plugin Config",
+            lambda: DialogUtils.execWidget(DemoPluginConfigWidget(), parent=self, size=QtCore.QSize(854, 480)))
+        menu.addAction("Widget Config",
+            lambda: DialogUtils.execWidget(DemoWidgetConfigWidget(self), parent=self, size=QtCore.QSize(854, 480)))
+        menu.exec_(QtGui.QCursor.pos())
 
     def onLanguageChanged(self, language: str) -> None:
         self._logger.info("On language changed: %s", language)
-        self._prefixButton.setText(tt.Demo_Prefix + self._pluginConfig.prefix)
-        self._suffixButton.setText(tt.Demo_Suffix + self._widgetConfig.suffix)
-        self._artistButton.setText(tt.Music_Artist)
-
-    def _onPrefixButtonClicked(self) -> None:
-        self._logger.info("On prefix button clicked")
-        self._pluginConfig.prefix = "Prefix" + str(int(self._pluginConfig.prefix[len("Prefix"):]) + 1)
-        self._logger.info("> Signal DemoPlugin.pluginConfigChanged emitting...")
-        DemoPlugin.pluginConfigChanged.emit()
-        self._logger.info("< Signal DemoPlugin.pluginConfigChanged emitted.")
-
-    def _onSuffixButtonClicked(self) -> None:
-        self._logger.info("On suffix button clicked")
-        self._widgetConfig.suffix = "Suffix" + str(int(self._widgetConfig.suffix[len("Suffix"):]) + 1)
-        self._logger.info("> Signal widgetConfigChanged emitting...")
-        self.widgetConfigChanged.emit()
-        self._logger.info("> Signal widgetConfigChanged emitted...")
+        self._refreshWidget()
 
     def _onPluginConfigChanged(self) -> None:
         self._logger.info("On global config changed")
-        self._prefixButton.setText(tt.Demo_Prefix + self._pluginConfig.prefix)
+        self._refreshWidget()
 
-    def _onSlaveConfigChanged(self) -> None:
+    def _onWidgetConfigChanged(self) -> None:
         self._logger.info("On local config changed")
-        self._suffixButton.setText(tt.Demo_Suffix + self._widgetConfig.suffix)
+        self._refreshWidget()
 
     @classmethod
     def getWidgetName(cls) -> Text:

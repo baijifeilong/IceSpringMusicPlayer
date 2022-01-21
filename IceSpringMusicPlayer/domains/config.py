@@ -113,7 +113,7 @@ class Config(object):
         pluginsJd = dict()
         for plugin in App.instance().getPlugins():
             pluginsJd[".".join((plugin.__module__, plugin.__name__))] \
-                = plugin.getPluginConfigClass().getDefaultInstance()
+                = plugin.getPluginConfigClass().getDefaultObject()
         return Config(
             language="en_US",
             geometry=defaultGeometry,

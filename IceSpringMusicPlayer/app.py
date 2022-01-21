@@ -8,6 +8,7 @@ import logging
 import typing
 
 from IceSpringPathLib import Path
+from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer import tt
@@ -134,14 +135,15 @@ class App(QtWidgets.QApplication):
             self._logger.info("Current plugin: %s", _id)
             if _id in config.plugins:
                 self._logger.info("Plugin have config, load it")
-                pluginConfig = json.loads(
+                pluginConfigJd = json.loads(
                     json.dumps(config.plugins[_id], default=plugin.getPluginConfigClass().pythonToJson),
                     object_pairs_hook=plugin.getPluginConfigClass().jsonToPython)
+                pluginConfig = gg(plugin.getPluginConfigClass())(**pluginConfigJd)
                 self._logger.info("Plugin config: %s", pluginConfig)
                 config.plugins[_id] = pluginConfig
             else:
                 self._logger.info("Plugin have not config, load default one")
-                config.plugins[_id] = plugin.getPluginConfigClass().getDefaultInstance()
+                config.plugins[_id] = plugin.getPluginConfigClass().getDefaultObject()
                 self._logger.info("Plugin config: %s", config.plugins[_id])
         self._logger.info("Load layout config")
         self._loadElementConfig(config.layout)
@@ -152,10 +154,12 @@ class App(QtWidgets.QApplication):
         from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
         if issubclass(element.clazz, PluginWidgetMixin):
             self._logger.info("Load element config: %s", element)
-            element.config = json.loads(
+            elementConfigJd = json.loads(
                 json.dumps(element.config, default=element.clazz.getWidgetConfigClass().pythonToJson),
                 object_pairs_hook=element.clazz.getWidgetConfigClass().jsonToPython)
-            self._logger.info("Loaded element config: %s", element.config)
+            elementConfig = gg(element.clazz.getWidgetConfigClass())(**elementConfigJd)
+            self._logger.info("Loaded element config: %s", elementConfig)
+            element.config = elementConfig
         for child in element.children:
             self._loadElementConfig(child)
 

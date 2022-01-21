@@ -10,7 +10,6 @@ from PySide2 import QtWidgets
 
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.common.emptyJsonSupport import EmptyJsonSupport
 from IceSpringMusicPlayer.common.emptyPluginWidget import EmptyPluginWidget
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
@@ -51,7 +50,7 @@ class PluginMixin(object):
 
     @classmethod
     def getPluginConfigClass(cls) -> typing.Type[JsonSupport]:
-        return EmptyJsonSupport
+        return JsonSupport
 
     @classmethod
     def getPluginConfig(cls) -> JsonSupport:
