@@ -5,7 +5,6 @@ from __future__ import annotations
 import importlib
 import json
 import logging
-import sys
 import typing
 
 from IceSpringPathLib import Path
@@ -175,6 +174,12 @@ class App(QtWidgets.QApplication):
 
     @staticmethod
     def getPlugins() -> typing.List[typing.Type[PluginMixin]]:
-        sys.path.append("IceSpringMusicPlayer/plugins")
-        demoPlugin = getattr(importlib.import_module("IceSpringDemoPlugin.demoPlugin"), "DemoPlugin")
-        return [demoPlugin]
+        from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
+        plugins = set()
+        root = Path("IceSpringMusicPlayer/plugins")
+        for path in root.glob("**/*.py"):
+            package = ".".join([x for x in path.relative_to(root).parts if x != "__init__.py"]).rstrip(".py")
+            for x in importlib.import_module(package).__dict__.values():
+                if isinstance(x, type) and issubclass(x, PluginMixin) and x != PluginMixin:
+                    plugins.add(x)
+        return sorted(plugins, key=lambda x: x.__module__ + "." + x.__name__)
