@@ -28,7 +28,7 @@ class PluginMixin(ReplaceableMixin, metaclass=abc.ABCMeta):
 
     @classmethod
     def getReplaceableWidgets(cls) -> typing.List[PluginMixin.ReplaceableWidget]:
-        return [cls.ReplaceableWidget(cls.__name__, lambda parent: gg(cls)(parent))]
+        return [cls.ReplaceableWidget(cls.getPluginName(), lambda parent: gg(cls)(parent))]
 
     @classmethod
     def getPluginName(cls) -> Text:

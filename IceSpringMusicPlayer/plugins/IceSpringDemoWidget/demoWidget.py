@@ -27,7 +27,7 @@ class DemoWidget(QtWidgets.QWidget, PluginMixin, metaclass=PluginMixin.Meta):
         super().__init__(parent)
         self._logger = logging.getLogger("demoWidget")
         self._app = App.instance()
-        self._masterConfig = gg(self.getMasterConfig())
+        self._masterConfig = self.getMasterConfig()
         self._slaveConfig = slaveConfig or self.getSlaveConfigType().getDefaultInstance()
         self._prefixButton = QtWidgets.QPushButton(self)
         self._suffixButton = QtWidgets.QPushButton(self)
@@ -75,9 +75,9 @@ class DemoWidget(QtWidgets.QWidget, PluginMixin, metaclass=PluginMixin.Meta):
 
     @classmethod
     def getReplaceableWidgets(cls) -> typing.List[PluginMixin.ReplaceableWidget]:
-        from IceSpringDemoWidget.demoConfigWidget import DemoConfigWidget
+        from IceSpringDemoWidget.demoMasterWidget import DemoMasterWidget
         return super().getReplaceableWidgets() + [
-            PluginMixin.ReplaceableWidget("Demo Config Widget", lambda parent: DemoConfigWidget(parent))]
+            PluginMixin.ReplaceableWidget("Demo Config Widget", lambda parent: DemoMasterWidget(parent))]
 
     @classmethod
     def getPluginName(cls) -> Text:
@@ -96,8 +96,8 @@ class DemoWidget(QtWidgets.QWidget, PluginMixin, metaclass=PluginMixin.Meta):
         return DemoSlaveConfig
 
     @classmethod
-    def getMasterConfig(cls) -> JsonSupport:
-        return super().getMasterConfig()
+    def getMasterConfig(cls) -> DemoMasterConfig:
+        return gg(super().getMasterConfig())
 
     def getSlaveConfig(self) -> JsonSupport:
         return self._slaveConfig

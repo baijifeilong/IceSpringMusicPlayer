@@ -4,6 +4,18 @@ import types
 import typing
 
 
+def setupLanguage(language: str, module: typing.Optional[types.ModuleType] = None):
+    assert language in Text.__annotations__
+    env = globals() if module is None else module.__dict__
+    entries = {k: v for k, v in env.items() if isinstance(v, Text)}
+    for k, v in entries.items():
+        tt = Text(getattr(v, language, getattr(v, "en_US")))
+        for lang in Text.__annotations__:
+            if hasattr(v, lang):
+                setattr(tt, lang, getattr(v, lang))
+        env[k] = tt
+
+
 class Text(str):
     en_US: str
     zh_CN: str
@@ -95,15 +107,3 @@ Music_Artist.zh_CN = "艺术家"
 Music_Title = Text()
 Music_Title.en_US = "Title"
 Music_Title.zh_CN = "标题"
-
-
-def setupLanguage(language: str, module: typing.Optional[types.ModuleType] = None):
-    assert language in Text.__annotations__
-    env = globals() if module is None else module.__dict__
-    entries = {k: v for k, v in env.items() if isinstance(v, Text)}
-    for k, v in entries.items():
-        tt = Text(getattr(v, language, getattr(v, "en_US")))
-        for lang in Text.__annotations__:
-            if hasattr(v, lang):
-                setattr(tt, lang, getattr(v, lang))
-        env[k] = tt
