@@ -13,6 +13,7 @@ from PySide2 import QtWidgets, QtCore
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
+from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
@@ -30,10 +31,18 @@ class PluginMixin(ReplaceableMixin, metaclass=abc.ABCMeta):
         return [cls.ReplaceableWidget(cls.__name__, lambda parent: gg(cls)(parent))]
 
     @classmethod
+    def getPluginName(cls) -> Text:
+        return Text.of(cls.__name__)
+
+    @classmethod
+    def getPluginDescription(cls) -> Text:
+        return Text.of(f"This is {cls.getPluginName()}")
+
+    @classmethod
     def getPluginActions(cls, parentMenu: QtWidgets.QMenu, parentWidget: QtWidgets.QWidget):
-        action = QtWidgets.QAction("About Plugin", parentMenu)
+        action = QtWidgets.QAction(tt.Menu_Plugins_AboutPlugin, parentMenu)
         action.triggered.connect(
-            lambda: QtWidgets.QMessageBox.information(parentWidget, "About Plugin", f"This is {cls.__name__}"))
+            lambda: QtWidgets.QMessageBox.information(parentWidget, action.text(), cls.getPluginDescription()))
         return [action]
 
     @classmethod

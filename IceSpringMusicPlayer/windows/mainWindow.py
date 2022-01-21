@@ -152,6 +152,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._languageMenu.setTitle(tt.Menu_Language)
         self._languageEnglishAction.setText(tt.Menu_Language_English)
         self._languageChineseAction.setText(tt.Menu_Language_Chinese)
+        self._pluginsMenu.setTitle(tt.Menu_Plugins)
+        self._pluginsMenu.clear()
+        for clazz in self._app.getPlugins():
+            pluginMenu = self._pluginsMenu.addMenu(clazz.getPluginName())
+            for action in clazz.getPluginActions(pluginMenu, self):
+                pluginMenu.addAction(action)
         self._testMenu.setTitle(tt.Menu_Test)
         self._testOneKeyAddAction.setText(tt.Menu_Test_OneKeyAdd)
         self._testLoadTestDataAction.setText(tt.Menu_Test_LoadTestData)
@@ -185,9 +191,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._languageChineseAction = self._languageMenu.addAction(
             tt.Menu_Language_Chinese, lambda: self._app.changeLanguage("zh_CN"))
 
-        self._pluginMenu = self.menuBar().addMenu(tt.Menu_Plugins)
+        self._pluginsMenu = self.menuBar().addMenu(tt.Menu_Plugins)
         for clazz in self._app.getPlugins():
-            pluginMenu = self._pluginMenu.addMenu(clazz.__name__)
+            pluginMenu = self._pluginsMenu.addMenu(clazz.getPluginName())
             for action in clazz.getPluginActions(pluginMenu, self):
                 pluginMenu.addAction(action)
 

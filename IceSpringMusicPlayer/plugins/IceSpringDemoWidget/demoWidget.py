@@ -12,6 +12,7 @@ from IceSpringDemoWidget.demoSlaveConfig import DemoSlaveConfig
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
+from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.utils.signalUtils import SignalUtils
 
 
@@ -77,6 +78,14 @@ class DemoWidget(QtWidgets.QWidget, PluginMixin, metaclass=PluginMixin.Meta):
         from IceSpringDemoWidget.demoConfigWidget import DemoConfigWidget
         return super().getReplaceableWidgets() + [
             PluginMixin.ReplaceableWidget("Demo Config Widget", lambda parent: DemoConfigWidget(parent))]
+
+    @classmethod
+    def getPluginName(cls) -> Text:
+        return tt.Demo_Name
+
+    @classmethod
+    def getPluginDescription(cls) -> Text:
+        return tt.Demo_Description
 
     @classmethod
     def getMasterConfigType(cls) -> typing.Type[JsonSupport]:
