@@ -30,6 +30,13 @@ class PluginMixin(ReplaceableMixin, metaclass=abc.ABCMeta):
         return [cls.ReplaceableWidget(cls.__name__, lambda parent: gg(cls)(parent))]
 
     @classmethod
+    def getPluginActions(cls, parentMenu: QtWidgets.QMenu, parentWidget: QtWidgets.QWidget):
+        action = QtWidgets.QAction("About Plugin", parentMenu)
+        action.triggered.connect(
+            lambda: QtWidgets.QMessageBox.information(parentWidget, "About Plugin", f"This is {cls.__name__}"))
+        return [action]
+
+    @classmethod
     def getMasterConfigType(cls) -> typing.Type[JsonSupport]:
         return NoConfig
 

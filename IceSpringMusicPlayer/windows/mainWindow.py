@@ -185,6 +185,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._languageChineseAction = self._languageMenu.addAction(
             tt.Menu_Language_Chinese, lambda: self._app.changeLanguage("zh_CN"))
 
+        self._pluginMenu = self.menuBar().addMenu(tt.Menu_Plugins)
+        for clazz in self._app.getPlugins():
+            pluginMenu = self._pluginMenu.addMenu(clazz.__name__)
+            for action in clazz.getPluginActions(pluginMenu, self):
+                pluginMenu.addAction(action)
+
         self._testMenu = self.menuBar().addMenu(tt.Menu_Test)
         self._testOneKeyAddAction = self._testMenu.addAction(
             tt.Menu_Test_OneKeyAdd, lambda: self._app.addMusicsFromHomeFolder())
