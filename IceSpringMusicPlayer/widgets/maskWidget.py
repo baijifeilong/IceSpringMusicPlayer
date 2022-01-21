@@ -50,30 +50,30 @@ class MaskWidget(QtWidgets.QWidget):
         from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         menu = QtWidgets.QMenu(self)
-        menu.addAction("Replace by horizontal splitter", lambda: self._doReplace(SplitterWidget(self, False, 2)))
-        menu.addAction("Replace by vertical splitter", lambda: self._doReplace(SplitterWidget(self, True, 2)))
-        menu.addAction("Replace by blank widget", lambda: self._doReplace(BlankWidget(self)))
-        menu.addAction("Replace by controls widget", lambda: self._doReplace(ControlsWidget(self)))
-        menu.addAction("Replace by lyrics widget", lambda: self._doReplace(LyricsWidget(self)))
-        menu.addAction("Replace by playlist widget", lambda: self._doReplace(PlaylistTable(self)))
-        menu.addAction("Replace by playlist manager", lambda: self._doReplace(PlaylistManagerTable(self)))
-        menu.addAction("Replace by config widget", lambda: self._doReplace(ConfigWidget(self)))
-        menu.addAction("Quit editing", self._doQuitEditing)
+        menu.addAction("Replace by horizontal splitter", lambda: self.doReplace(lambda: SplitterWidget(None, False, 2)))
+        menu.addAction("Replace by vertical splitter", lambda: self.doReplace(lambda: SplitterWidget(None, True, 2)))
+        menu.addAction("Replace by blank widget", lambda: self.doReplace(lambda: BlankWidget(None)))
+        menu.addAction("Replace by controls widget", lambda: self.doReplace(lambda: ControlsWidget(None)))
+        menu.addAction("Replace by lyrics widget", lambda: self.doReplace(lambda: LyricsWidget(None)))
+        menu.addAction("Replace by playlist widget", lambda: self.doReplace(lambda: PlaylistTable(None)))
+        menu.addAction("Replace by playlist manager", lambda: self.doReplace(lambda: PlaylistManagerTable(None)))
+        menu.addAction("Replace by config widget", lambda: self.doReplace(lambda: ConfigWidget(None)))
         menu.addSeparator()
         for plugin in self._app.getPlugins():
-            for widget in plugin.getReplaceableWidgets():
-                menu.addAction(widget.title, lambda maker=widget.maker: self._doReplace(maker(self)))
+            menu.addMenu(plugin.getLayoutMenu(menu, self))
+        menu.addAction("Quit editing", self._doQuitEditing)
         menu.exec_(QtGui.QCursor.pos())
         self._setReplaceable(None)
 
     def _doQuitEditing(self):
         self._app.getMainWindow().setLayoutEditing(False)
 
-    def _doReplace(self, widget):
+    def doReplace(self, maker: typing.Callable[[], QtWidgets.QWidget]):
         logger = logging.getLogger("maskWidget")
+        parent = self._replaceable.parentWidget()
+        widget = maker()
         logger.info("Replacing %s with %s", self._replaceable, widget)
         assert isinstance(widget, (QtWidgets.QWidget, ReplaceableMixin))
-        parent = self._replaceable.parentWidget()
         if isinstance(parent, QtWidgets.QMainWindow):
             logger.info("Parent is main window")
             parent.setCentralWidget(widget)

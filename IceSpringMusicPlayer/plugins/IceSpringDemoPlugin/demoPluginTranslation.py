@@ -14,7 +14,7 @@ def __getattr__(name):
 
 
 Demo_Name = Text()
-Demo_Name.en_US = "Demo Widget"
+Demo_Name.en_US = "Demo Plugin"
 Demo_Name.zh_CN = "演示插件"
 Demo_AboutMe = Text()
 Demo_AboutMe.en_US = "About Demo Widget"
@@ -28,3 +28,6 @@ Demo_Prefix.zh_CN = "前缀是 "
 Demo_Suffix = Text()
 Demo_Suffix.en_US = "Suffix is "
 Demo_Suffix.zh_CN = "后缀是 "
+DemoWidget_Name = Text()
+DemoWidget_Name.en_US = "Demo Widget"
+DemoWidget_Name.zh_CN = "演示组件"

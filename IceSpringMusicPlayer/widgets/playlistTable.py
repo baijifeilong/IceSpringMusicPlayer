@@ -24,7 +24,7 @@ class PlaylistTable(IceTableView, ReplaceableMixin):
     _config: Config
     _player: Player
 
-    def __init__(self, parent: QtWidgets.QWidget) -> None:
+    def __init__(self, parent: typing.Optional[QtWidgets.QWidget]) -> None:
         super().__init__(parent)
         self._logger = logging.getLogger("playlistTable")
         self._app = App.instance()

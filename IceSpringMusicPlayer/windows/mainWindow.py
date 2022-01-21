@@ -9,7 +9,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
+from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.domains.config import Config, Element
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
@@ -67,7 +67,7 @@ class MainWindow(QtWidgets.QMainWindow):
             vertical=isinstance(widget, QtWidgets.QSplitter) and widget.orientation() == QtCore.Qt.Orientation.Vertical,
             weight=widget.height() if isinstance(widget.parentWidget(), QtWidgets.QSplitter) and gg(
                 widget.parentWidget()).orientation() == QtCore.Qt.Orientation.Vertical else widget.width(),
-            config=widget.getSlaveConfig() if isinstance(widget, PluginMixin) else dict(),
+            config=widget.getWidgetConfig() if isinstance(widget, PluginWidgetMixin) else dict(),
             children=[self._widgetToElement(widget.widget(x)) for x in range(widget.count())] if isinstance(
                 widget, QtWidgets.QSplitter) else []
         )
@@ -93,7 +93,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _drawElement(self, element: Element, parent: QtWidgets.QWidget) -> None:
         self._logger.info("Draw element: %s to %s", element.clazz, parent)
-        if issubclass(element.clazz, PluginMixin):
+        if issubclass(element.clazz, PluginWidgetMixin):
             widget = gg(element.clazz)(parent, element.config)
         else:
             widget = element.clazz(parent)
@@ -155,9 +155,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._pluginsMenu.setTitle(tt.Menu_Plugins)
         self._pluginsMenu.clear()
         for clazz in self._app.getPlugins():
-            pluginMenu = self._pluginsMenu.addMenu(clazz.getPluginName())
-            for action in clazz.getPluginActions(pluginMenu, self):
-                pluginMenu.addAction(action)
+            self._pluginsMenu.addMenu(clazz.getMainMenu(self._pluginsMenu, self))
         self._testMenu.setTitle(tt.Menu_Test)
         self._testOneKeyAddAction.setText(tt.Menu_Test_OneKeyAdd)
         self._testLoadTestDataAction.setText(tt.Menu_Test_LoadTestData)
@@ -193,9 +191,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._pluginsMenu = self.menuBar().addMenu(tt.Menu_Plugins)
         for clazz in self._app.getPlugins():
-            pluginMenu = self._pluginsMenu.addMenu(clazz.getPluginName())
-            for action in clazz.getPluginActions(pluginMenu, self):
-                pluginMenu.addAction(action)
+            self._pluginsMenu.addMenu(clazz.getMainMenu(self._pluginsMenu, self))
 
         self._testMenu = self.menuBar().addMenu(tt.Menu_Test)
         self._testOneKeyAddAction = self._testMenu.addAction(

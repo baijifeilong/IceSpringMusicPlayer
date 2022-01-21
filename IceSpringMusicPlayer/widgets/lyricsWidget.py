@@ -22,7 +22,7 @@ class LyricsWidget(QtWidgets.QScrollArea, ReplaceableMixin):
     _player: Player
     _layout: QtWidgets.QVBoxLayout
 
-    def __init__(self, parent: QtWidgets.QWidget):
+    def __init__(self, parent: typing.Optional[QtWidgets.QWidget]):
         super().__init__(parent)
         self._logger = logging.getLogger("lyricsPanel")
         self._logger.setLevel(logging.INFO)

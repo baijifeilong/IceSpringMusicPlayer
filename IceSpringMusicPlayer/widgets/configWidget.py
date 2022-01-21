@@ -1,5 +1,6 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/16 8:24
 import logging
+import typing
 
 from PySide2 import QtWidgets, QtGui
 
@@ -33,7 +34,7 @@ class ConfigWidget(QtWidgets.QFrame, ReplaceableMixin):
         features.append(f"{font.pointSize()} pt")
         return " ".join(features)
 
-    def __init__(self, parent: QtWidgets.QWidget):
+    def __init__(self, parent: typing.Optional[QtWidgets.QWidget]):
         super().__init__(parent)
         self._logger = logging.getLogger("configsWidget")
         self._app = App.instance()
@@ -101,6 +102,6 @@ class ConfigWidget(QtWidgets.QFrame, ReplaceableMixin):
         self._config.applicationFont = self._applicationFontPreviewLabel.font()
         self._config.lyricFont = self._lyricFontPreviewLabel.font()
         self._config.iconSize = int(self._iconSizeCombo.currentText())
-        self._logger.info("> Signal app.configChanged emitting...")
+        self._logger.info("> Signal app.pluginConfigChanged emitting...")
         self._app.configChanged.emit()
-        self._logger.info("< Signal app.configChanged emitted.")
+        self._logger.info("< Signal app.pluginConfigChanged emitted.")

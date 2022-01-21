@@ -1,5 +1,6 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/12 21:22
 import logging
+import typing
 
 import qtawesome
 from IceSpringRealOptional.just import Just
@@ -27,7 +28,7 @@ class ControlsWidget(QtWidgets.QWidget, ReplaceableMixin):
     _progressLabel: QtWidgets.QLabel
     _volumeDial: QtWidgets.QDial
 
-    def __init__(self, parent: QtWidgets.QWidget) -> None:
+    def __init__(self, parent: typing.Optional[QtWidgets.QWidget]) -> None:
         super().__init__(parent)
         self._logger = logging.getLogger("controlsPanel")
         self._config = App.instance().getConfig()

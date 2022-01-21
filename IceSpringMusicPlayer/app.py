@@ -136,13 +136,13 @@ class App(QtWidgets.QApplication):
             if _id in config.plugins:
                 self._logger.info("Plugin have config, load it")
                 pluginConfig = json.loads(
-                    json.dumps(config.plugins[_id], default=plugin.getMasterConfigType().pythonToJson),
-                    object_pairs_hook=plugin.getMasterConfigType().jsonToPython)
+                    json.dumps(config.plugins[_id], default=plugin.getPluginConfigClass().pythonToJson),
+                    object_pairs_hook=plugin.getPluginConfigClass().jsonToPython)
                 self._logger.info("Plugin config: %s", pluginConfig)
                 config.plugins[_id] = pluginConfig
             else:
                 self._logger.info("Plugin have not config, load default one")
-                config.plugins[_id] = plugin.getMasterConfigType().getDefaultInstance()
+                config.plugins[_id] = plugin.getPluginConfigClass().getDefaultInstance()
                 self._logger.info("Plugin config: %s", config.plugins[_id])
         self._logger.info("Load layout config")
         self._loadElementConfig(config.layout)
@@ -150,12 +150,13 @@ class App(QtWidgets.QApplication):
         return config
 
     def _loadElementConfig(self, element: Element):
-        from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
-        if issubclass(element.clazz, PluginMixin):
+        from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
+        if issubclass(element.clazz, PluginWidgetMixin):
             self._logger.info("Load element config: %s", element)
             element.config = json.loads(
-                json.dumps(element.config, default=element.clazz.getSlaveConfigType().pythonToJson),
-                object_pairs_hook=element.clazz.getSlaveConfigType().jsonToPython)
+                json.dumps(element.config, default=element.clazz.getWidgetConfigClass().pythonToJson),
+                object_pairs_hook=element.clazz.getWidgetConfigClass().jsonToPython)
+            self._logger.info("Loaded element config: %s", element.config)
         for child in element.children:
             self._loadElementConfig(child)
 
@@ -175,5 +176,5 @@ class App(QtWidgets.QApplication):
     @staticmethod
     def getPlugins() -> typing.List[typing.Type[PluginMixin]]:
         sys.path.append("IceSpringMusicPlayer/plugins")
-        demoWidgetType = getattr(importlib.import_module("IceSpringDemoWidget.demoWidget"), "DemoWidget")
-        return [demoWidgetType]
+        demoPlugin = getattr(importlib.import_module("IceSpringDemoPlugin.demoPlugin"), "DemoPlugin")
+        return [demoPlugin]

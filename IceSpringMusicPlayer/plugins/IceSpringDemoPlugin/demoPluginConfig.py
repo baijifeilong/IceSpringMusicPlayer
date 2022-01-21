@@ -6,7 +6,7 @@ from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 
 
 @dataclasses.dataclass
-class DemoMasterConfig(JsonSupport):
+class DemoPluginConfig(JsonSupport):
     id: str
     prefix: str
 
@@ -23,5 +23,5 @@ class DemoMasterConfig(JsonSupport):
 
     @classmethod
     def getDefaultInstance(cls) -> JsonSupport:
-        from IceSpringDemoWidget.demoWidget import DemoWidget
-        return DemoMasterConfig(id=".".join((DemoWidget.__module__, DemoWidget.__name__)), prefix="Prefix1")
+        from IceSpringDemoPlugin.demoWidget import DemoWidget
+        return DemoPluginConfig(id=".".join((DemoWidget.__module__, DemoWidget.__name__)), prefix="Prefix1")
