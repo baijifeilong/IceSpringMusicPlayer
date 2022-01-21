@@ -72,7 +72,7 @@ class DemoWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._suffixButton.setText(tt.Demo_Suffix + self._widgetConfig.suffix)
 
     @classmethod
-    def getName(cls) -> Text:
+    def getWidgetName(cls) -> Text:
         return tt.DemoWidget_Name
 
     @classmethod

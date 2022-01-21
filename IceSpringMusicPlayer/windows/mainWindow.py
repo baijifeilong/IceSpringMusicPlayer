@@ -155,7 +155,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._pluginsMenu.setTitle(tt.Menu_Plugins)
         self._pluginsMenu.clear()
         for clazz in self._app.getPlugins():
-            self._pluginsMenu.addMenu(clazz.getMainMenu(self._pluginsMenu, self))
+            self._pluginsMenu.addMenu(clazz.getPluginMainMenu(self._pluginsMenu, self))
         self._testMenu.setTitle(tt.Menu_Test)
         self._testOneKeyAddAction.setText(tt.Menu_Test_OneKeyAdd)
         self._testLoadTestDataAction.setText(tt.Menu_Test_LoadTestData)
@@ -191,7 +191,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._pluginsMenu = self.menuBar().addMenu(tt.Menu_Plugins)
         for clazz in self._app.getPlugins():
-            self._pluginsMenu.addMenu(clazz.getMainMenu(self._pluginsMenu, self))
+            self._pluginsMenu.addMenu(clazz.getPluginMainMenu(self._pluginsMenu, self))
 
         self._testMenu = self.menuBar().addMenu(tt.Menu_Test)
         self._testOneKeyAddAction = self._testMenu.addAction(

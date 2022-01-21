@@ -19,18 +19,18 @@ class DemoPlugin(PluginMixin):
     pluginConfigChanged: QtCore.SignalInstance = SignalUtils.createSignal()
 
     @classmethod
-    def getWidgetClasses(cls) -> typing.List[typing.Type[PluginWidgetMixin]]:
+    def getPluginWidgetClasses(cls) -> typing.List[typing.Type[PluginWidgetMixin]]:
         from IceSpringDemoPlugin.demoWidget import DemoWidget
         from IceSpringDemoPlugin.demoPluginConfigWidget import DemoPluginConfigWidget
         from IceSpringDemoPlugin.demoBetaWidget import DemoBetaWidget
         return [DemoWidget, DemoPluginConfigWidget, DemoBetaWidget]
 
     @classmethod
-    def getName(cls) -> Text:
+    def getPluginName(cls) -> Text:
         return tt.Demo_Name
 
     @classmethod
-    def getDescription(cls) -> Text:
+    def getPluginDescription(cls) -> Text:
         return tt.Demo_Description
 
     @classmethod
@@ -42,5 +42,5 @@ class DemoPlugin(PluginMixin):
         return gg(super().getPluginConfig())
 
     @classmethod
-    def getTranslationModule(cls) -> types.ModuleType:
+    def getPluginTranslationModule(cls) -> types.ModuleType:
         return tt

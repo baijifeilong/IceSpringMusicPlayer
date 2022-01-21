@@ -12,7 +12,7 @@ from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 class PluginWidgetMixin(ReplaceableMixin):
     @classmethod
-    def getName(cls) -> Text:
+    def getWidgetName(cls) -> Text:
         return Text.of(cls.__name__)
 
     @classmethod

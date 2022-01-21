@@ -22,29 +22,30 @@ if typing.TYPE_CHECKING:
 
 class PluginMixin(object):
     @classmethod
-    def getName(cls) -> Text:
+    def getPluginName(cls) -> Text:
         return Text.of(cls.__name__)
 
     @classmethod
-    def getDescription(cls) -> Text:
-        return Text.of(f"This is {cls.getName()}")
+    def getPluginDescription(cls) -> Text:
+        return Text.of(f"This is {cls.getPluginName()}")
 
     @classmethod
-    def getWidgetClasses(cls) -> typing.List[typing.Type[PluginWidgetMixin]]:
+    def getPluginWidgetClasses(cls) -> typing.List[typing.Type[PluginWidgetMixin]]:
         return [EmptyPluginWidget]
 
     @classmethod
-    def getMainMenu(cls, parentMenu: QtWidgets.QMenu, parentWidget: QtWidgets.QWidget) -> QtWidgets.QMenu:
-        menu = QtWidgets.QMenu(cls.getName(), parentMenu)
+    def getPluginMainMenu(cls, parentMenu: QtWidgets.QMenu, parentWidget: QtWidgets.QWidget) -> QtWidgets.QMenu:
+        menu = QtWidgets.QMenu(cls.getPluginName(), parentMenu)
         menu.addAction(tt.Menu_Plugins_AboutPlugin,
-            lambda: QtWidgets.QMessageBox.information(parentWidget, tt.Menu_Plugins_AboutPlugin, cls.getDescription()))
+            lambda: QtWidgets.QMessageBox.information(parentWidget, tt.Menu_Plugins_AboutPlugin,
+                cls.getPluginDescription()))
         return menu
 
     @classmethod
-    def getLayoutMenu(cls, parentMenu: QtWidgets.QMenu, maskWidget: MaskWidget) -> QtWidgets.QMenu:
-        menu = QtWidgets.QMenu(cls.getName(), parentMenu)
-        for clazz in cls.getWidgetClasses():
-            menu.addAction(f"Replace By {clazz.getName()}",
+    def getPluginLayoutMenu(cls, parentMenu: QtWidgets.QMenu, maskWidget: MaskWidget) -> QtWidgets.QMenu:
+        menu = QtWidgets.QMenu(cls.getPluginName(), parentMenu)
+        for clazz in cls.getPluginWidgetClasses():
+            menu.addAction(f"Replace By {clazz.getWidgetName()}",
                 lambda clazz=clazz: maskWidget.doReplace(lambda: gg(clazz)(None, None)))
         return menu
 
@@ -57,5 +58,5 @@ class PluginMixin(object):
         return App.instance().getConfig().plugins[".".join((cls.__module__, cls.__name__))]
 
     @classmethod
-    def getTranslationModule(cls) -> types.ModuleType:
+    def getPluginTranslationModule(cls) -> types.ModuleType:
         return tt

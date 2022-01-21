@@ -11,7 +11,7 @@ from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 
 class HelloWorldPlugin(QtWidgets.QWidget, PluginMixin, PluginWidgetMixin):
     @classmethod
-    def getWidgetClasses(cls) -> typing.List[typing.Type[PluginWidgetMixin]]:
+    def getPluginWidgetClasses(cls) -> typing.List[typing.Type[PluginWidgetMixin]]:
         return [cls]
 
     def __init__(self, parent, config):

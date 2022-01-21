@@ -54,7 +54,7 @@ class App(QtWidgets.QApplication):
 
     def _setupLanguage(self, language: str):
         self._logger.info("Setup language: %s", language)
-        for module in {tt, *{x.getTranslationModule() for x in self.getPlugins()}}:
+        for module in {tt, *{x.getPluginTranslationModule() for x in self.getPlugins()}}:
             self._logger.info("Setup language for module: %s", module)
             tt.setupLanguage(language, module=module)
 
@@ -165,7 +165,7 @@ class App(QtWidgets.QApplication):
             self._logger.info("Language not changed, return")
             return
         self._config.language = language
-        for module in {tt, *{x.getTranslationModule() for x in self.getPlugins()}}:
+        for module in {tt, *{x.getPluginTranslationModule() for x in self.getPlugins()}}:
             self._logger.info("Change language for module: %s", module)
             tt.setupLanguage(language, module=module)
         self._logger.info("> Signal app.languageChanged emitting...")
