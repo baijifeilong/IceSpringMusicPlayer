@@ -59,8 +59,9 @@ class MaskWidget(QtWidgets.QWidget):
         menu.addAction("Replace by playlist manager", lambda: self.doReplace(lambda: PlaylistManagerTable(None)))
         menu.addAction("Replace by config widget", lambda: self.doReplace(lambda: ConfigWidget(None)))
         menu.addSeparator()
-        for plugin in self._app.getPlugins():
-            menu.addMenu(plugin.getPluginLayoutMenu(menu, self))
+        for plugin in self._app.getConfig().plugins:
+            if not plugin.disabled:
+                menu.addMenu(plugin.clazz.getPluginLayoutMenu(menu, self))
         menu.addSeparator()
         menu.addAction("Quit editing", self._doQuitEditing)
         menu.exec_(QtGui.QCursor.pos())

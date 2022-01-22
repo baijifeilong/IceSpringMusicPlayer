@@ -59,7 +59,11 @@ class PluginMixin(object):
 
     @classmethod
     def getPluginConfig(cls) -> JsonSupport:
-        return App.instance().getConfig().plugins[".".join((cls.__module__, cls.__name__))]
+        plugins = App.instance().getConfig().plugins
+        for plugin in plugins:
+            if plugin.clazz == cls:
+                return plugin.config
+        raise RuntimeError("Impossible")
 
     @classmethod
     def getPluginTranslationModule(cls) -> types.ModuleType:

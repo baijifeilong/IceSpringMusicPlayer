@@ -13,6 +13,7 @@ from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.domains.config import Config, Element
+from IceSpringMusicPlayer.domains.plugin import Plugin
 from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 
 if typing.TYPE_CHECKING:
@@ -25,6 +26,7 @@ class App(QtWidgets.QApplication):
     requestLocateCurrentMusic: QtCore.SignalInstance = QtCore.Signal()
     configChanged: QtCore.SignalInstance = QtCore.Signal()
     languageChanged: QtCore.SignalInstance = QtCore.Signal(str)
+    pluginStateChanged: QtCore.SignalInstance = QtCore.Signal()
 
     _logger: logging.Logger
     _config: Config
@@ -55,7 +57,7 @@ class App(QtWidgets.QApplication):
 
     def _setupLanguage(self, language: str):
         self._logger.info("Setup language: %s", language)
-        for module in {tt, *{x.getPluginTranslationModule() for x in self.getPlugins()}}:
+        for module in {tt, *{x.getPluginTranslationModule() for x in self.getPluginClasses()}}:
             self._logger.info("Setup language for module: %s", module)
             tt.setupLanguage(language, module=module)
 
@@ -127,24 +129,23 @@ class App(QtWidgets.QApplication):
         if not path.exists():
             self._logger.info("No config.json file, return default config")
             return Config.getDefaultConfig()
-        config = json.loads(path.read_text(), object_pairs_hook=Config.fromJson)
-        plugins = self.getPlugins()
-        self._logger.info("Process plugin configs (%d plugins)", len(plugins))
-        for plugin in plugins:
-            _id = ".".join((plugin.__module__, plugin.__name__))
-            self._logger.info("Current plugin: %s", _id)
-            if _id in config.plugins:
-                self._logger.info("Plugin have config, load it")
-                pluginConfigJd = json.loads(
-                    json.dumps(config.plugins[_id], default=plugin.getPluginConfigClass().pythonToJson),
-                    object_pairs_hook=plugin.getPluginConfigClass().jsonToPython)
-                pluginConfig = gg(plugin.getPluginConfigClass())(**pluginConfigJd)
-                self._logger.info("Plugin config: %s", pluginConfig)
-                config.plugins[_id] = pluginConfig
-            else:
-                self._logger.info("Plugin have not config, load default one")
-                config.plugins[_id] = plugin.getPluginConfigClass().getDefaultObject()
-                self._logger.info("Plugin config: %s", config.plugins[_id])
+        config: Config = json.loads(path.read_text(), object_pairs_hook=Config.fromJson)
+        self._logger.info("Process plugin configs (%d plugins)", len(self.getPluginClasses()))
+        for plugin in config.plugins:
+            self._logger.info("Plugin in config: %s", plugin)
+            jd = json.loads(
+                json.dumps(plugin.config, default=plugin.clazz.getPluginConfigClass().pythonToJson),
+                object_pairs_hook=plugin.clazz.getPluginConfigClass().jsonToPython)
+            plugin.config = gg(plugin.clazz.getPluginConfigClass())(**jd)
+        self._logger.info("Process plugins not in config")
+        loadedClasses = [x.clazz for x in config.plugins]
+        for clazz in self.getPluginClasses():
+            if clazz not in loadedClasses:
+                self._logger.info("Plugin not in config: %s", clazz)
+                config.plugins.append(
+                    Plugin(clazz=clazz, disabled=False, config=clazz.getPluginConfigClass().getDefaultObject()))
+        self._logger.info("Sort plugins")
+        config.plugins.sort(key=lambda x: x.clazz.__module__ + "." + x.clazz.__name__)
         self._logger.info("Load layout config")
         self._loadElementConfig(config.layout)
         self._logger.info("Loaded config: %s", config)
@@ -169,7 +170,7 @@ class App(QtWidgets.QApplication):
             self._logger.info("Language not changed, return")
             return
         self._config.language = language
-        for module in {tt, *{x.getPluginTranslationModule() for x in self.getPlugins()}}:
+        for module in {tt, *{x.getPluginTranslationModule() for x in self.getPluginClasses()}}:
             self._logger.info("Change language for module: %s", module)
             tt.setupLanguage(language, module=module)
         self._logger.info("> Signal app.languageChanged emitting...")
@@ -177,7 +178,7 @@ class App(QtWidgets.QApplication):
         self._logger.info("< Signal app.languageChanged emitted.")
 
     @staticmethod
-    def getPlugins() -> typing.List[typing.Type[PluginMixin]]:
+    def getPluginClasses() -> typing.List[typing.Type[PluginMixin]]:
         from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
         plugins = set()
         root = Path("IceSpringMusicPlayer/plugins")

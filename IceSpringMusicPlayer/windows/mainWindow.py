@@ -50,6 +50,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.layoutChanged.connect(self._onLayoutChanged)
         self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
         self._app.languageChanged.connect(self._onLanguageChanged)
+        self._app.pluginStateChanged.connect(self._onPluginStateChanged)
 
     def _initPalette(self):
         self.setPalette(Just.of(QtGui.QPalette()).apply(
@@ -74,7 +75,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 widget.parentWidget()).orientation() == QtCore.Qt.Orientation.Vertical else widget.width(),
             config=widget.getWidgetConfig() if isinstance(widget, PluginWidgetMixin) else dict(),
             children=[self._widgetToElement(widget.widget(x)) for x in range(widget.count())] if isinstance(
-                widget, QtWidgets.QSplitter) else []
+                widget, SplitterWidget) else []
         )
 
     def calcLayout(self) -> Element:
@@ -144,7 +145,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _onLanguageChanged(self, language: str):
         self._logger.info("On language changed: %s", language)
-        self._logger.info("Refresh view")
+        self._refreshMenuBar()
+        self._refreshToolBar()
+
+    def _onPluginStateChanged(self):
+        self._logger.info("On plugin state changed")
+        self._refreshMenuBar()
+        self._refreshToolBar()
+
+    def _refreshMenuBar(self):
+        self._logger.info("Refresh menu bar")
         self._fileMenu.setTitle(tt.Menu_File)
         self._fileOpenAction.setText(tt.Menu_File_Open)
         self._viewMenu.setTitle(tt.Menu_View)
@@ -156,18 +166,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self._layoutDemoAction.setText(tt.Menu_Layout_Demo)
         self._pluginsMenu.setTitle(tt.Menu_Plugins)
         self._pluginsMenu.clear()
-        for clazz in self._app.getPlugins():
-            self._pluginsMenu.addMenu(clazz.getPluginMainMenu(self._pluginsMenu, self))
+        for plugin in self._config.plugins:
+            if not plugin.disabled:
+                self._pluginsMenu.addMenu(plugin.clazz.getPluginMainMenu(self._pluginsMenu, self))
         self._languageMenu.setTitle(tt.Menu_Language)
         self._languageEnglishAction.setText(tt.Menu_Language_English)
         self._languageChineseAction.setText(tt.Menu_Language_Chinese)
         self._testMenu.setTitle(tt.Menu_Test)
         self._testOneKeyAddAction.setText(tt.Menu_Test_OneKeyAdd)
         self._testLoadTestDataAction.setText(tt.Menu_Test_LoadTestData)
+
+    def _refreshToolBar(self):
+        self._logger.info("Refresh tool bar")
         self._playlistLabel.setText(tt.Toolbar_Playlist)
         self._editingCheck.setText(tt.Toolbar_Editing)
         self._toggleLanguageAction.setText(tt.Toolbar_ToggleLanguage)
-        self._logger.info("View refreshed")
 
     def _initMenu(self):
         self._fileMenu = self.menuBar().addMenu(tt.Menu_File)
@@ -189,8 +202,9 @@ class MainWindow(QtWidgets.QMainWindow):
             tt.Menu_Layout_Demo, lambda: self._changeLayout(self._config.getDemoLayout()))
 
         self._pluginsMenu = self.menuBar().addMenu(tt.Menu_Plugins)
-        for clazz in self._app.getPlugins():
-            self._pluginsMenu.addMenu(clazz.getPluginMainMenu(self._pluginsMenu, self))
+        for plugin in self._config.plugins:
+            if not plugin.disabled:
+                self._pluginsMenu.addMenu(plugin.clazz.getPluginMainMenu(self._pluginsMenu, self))
 
         self._languageMenu = self.menuBar().addMenu(tt.Menu_Language)
         self._languageEnglishAction = self._languageMenu.addAction(

@@ -15,6 +15,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.domains.playlist import Playlist
+from IceSpringMusicPlayer.domains.plugin import Plugin
 from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 
 
@@ -38,7 +39,7 @@ class Config(object):
     playbackMode: PlaybackMode
     frontPlaylistIndex: int
     layout: Element
-    plugins: typing.Dict
+    plugins: typing.List[Plugin]
     playlists: Vector[Playlist]
 
     @staticmethod
@@ -101,6 +102,8 @@ class Config(object):
             font.setUnderline(jd["underline"])
             font.setStrikeOut(jd["strikeOut"])
             return font
+        elif all(x in jd for x in ("clazz", "disabled")):
+            return Plugin(**jd)
         return jd
 
     @classmethod
@@ -110,10 +113,13 @@ class Config(object):
         diffSize = (screenSize - windowSize) / 2
         defaultGeometry = QtCore.QRect(QtCore.QPoint(diffSize.width(), diffSize.height()), windowSize)
         from IceSpringMusicPlayer.app import App
-        pluginsJd = dict()
-        for plugin in App.instance().getPlugins():
-            pluginsJd[".".join((plugin.__module__, plugin.__name__))] \
-                = plugin.getPluginConfigClass().getDefaultObject()
+        plugins = []
+        for clazz in App.instance().getPluginClasses():
+            plugins.append(Plugin(
+                clazz=clazz,
+                disabled=False,
+                config=clazz.getPluginConfigClass().getDefaultObject()
+            ))
         return Config(
             language="en_US",
             geometry=defaultGeometry,
@@ -124,7 +130,7 @@ class Config(object):
             playbackMode=PlaybackMode.LOOP,
             frontPlaylistIndex=-1,
             layout=cls.getDefaultLayout(),
-            plugins=pluginsJd,
+            plugins=plugins,
             playlists=Vector()
         )
 
