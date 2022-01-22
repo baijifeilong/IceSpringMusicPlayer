@@ -61,6 +61,7 @@ class MaskWidget(QtWidgets.QWidget):
         menu.addSeparator()
         for plugin in self._app.getPlugins():
             menu.addMenu(plugin.getPluginLayoutMenu(menu, self))
+        menu.addSeparator()
         menu.addAction("Quit editing", self._doQuitEditing)
         menu.exec_(QtGui.QCursor.pos())
         self._setReplaceable(None)
