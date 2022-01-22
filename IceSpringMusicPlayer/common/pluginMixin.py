@@ -26,6 +26,10 @@ class PluginMixin(object):
         return Text.of(StringUtils.camelToTitle(cls.__name__))
 
     @classmethod
+    def getPluginVersion(cls) -> str:
+        return "0.0.1"
+
+    @classmethod
     def getPluginDescription(cls) -> Text:
         return Text.of(f"This is {cls.getPluginName()}")
 

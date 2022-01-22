@@ -35,23 +35,27 @@ class PluginManagerModel(QtCore.QAbstractTableModel):
     def __init__(self, parent: QtCore.QObject) -> None:
         super().__init__(parent)
         self._plugins = App.instance().getPlugins()
+        self._fields = ["Name", "Version", "ID"]
 
     def rowCount(self, parent: QtCore.QModelIndex = ...) -> int:
         return len(self._plugins)
 
     def columnCount(self, parent: QtCore.QModelIndex = ...) -> int:
-        return 2
+        return len(self._fields)
 
     def headerData(self, section: int, orientation: PySide2.QtCore.Qt.Orientation, role: int = ...) -> typing.Any:
         if role == QtCore.Qt.ItemDataRole.DisplayRole and orientation == QtCore.Qt.Orientation.Horizontal:
-            return ("Name", "ID")[section]
+            return self._fields[section]
 
     def data(self, index: QtCore.QModelIndex, role: int = ...) -> typing.Any:
         if role != QtCore.Qt.ItemDataRole.DisplayRole:
             return
         row, column = index.row(), index.column()
+        plugin = self._plugins[row]
         if column == 0:
-            return self._plugins[row].getPluginName()
+            return plugin.getPluginName()
         if column == 1:
+            return plugin.getPluginVersion()
+        if column == 2:
             return ClassUtils.fullname(self._plugins[row])
         raise RuntimeError("Impossible")
