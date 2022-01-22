@@ -42,6 +42,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._player = App.instance().getPlayer()
         self._layoutEditing = False
         self._maskWidget = None
+        self._initPalette()
         self._initPlayer()
         self._initMenu()
         self._initToolbar()
@@ -49,6 +50,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.layoutChanged.connect(self._onLayoutChanged)
         self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
         self._app.languageChanged.connect(self._onLanguageChanged)
+
+    def _initPalette(self):
+        self.setPalette(Just.of(QtGui.QPalette()).apply(
+            lambda x: x.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor("white"))).value())
 
     def getLayoutEditing(self) -> bool:
         return self._layoutEditing
@@ -87,9 +92,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.centralWidget().setParent(gg(None))
             assert self.centralWidget() is None
         self._drawElement(layout, self)
-        self.centralWidget().setAutoFillBackground(True)
-        self.centralWidget().setPalette(Just.of(QtGui.QPalette()).apply(
-            lambda x: x.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor("white"))).value())
 
     def _drawElement(self, element: Element, parent: QtWidgets.QWidget) -> None:
         self._logger.info("Draw element: %s to %s", element.clazz, parent)
@@ -119,6 +121,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._player.currentMusicIndexChanged.connect(self._onMusicIndexChanged)
 
     def _initStatusBar(self):
+        self.statusBar().setAutoFillBackground(True)
+        self.statusBar().setPalette(Just.of(QtGui.QPalette()).apply(lambda x: x.setColor(QtGui.QPalette.Window,
+            QtGui.QPalette().color(QtGui.QPalette.ColorRole.Window))).value())
         statusLabel = QtWidgets.QLabel("", self.statusBar())
         statusLabel.setStyleSheet("margin: 0 15px")
         self.statusBar().addPermanentWidget(statusLabel)
@@ -149,13 +154,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self._layoutControlsUpAction.setText(tt.Menu_Layout_ControlsUp)
         self._layoutDefaultAction.setText(tt.Menu_Layout_Default)
         self._layoutDemoAction.setText(tt.Menu_Layout_Demo)
-        self._languageMenu.setTitle(tt.Menu_Language)
-        self._languageEnglishAction.setText(tt.Menu_Language_English)
-        self._languageChineseAction.setText(tt.Menu_Language_Chinese)
         self._pluginsMenu.setTitle(tt.Menu_Plugins)
         self._pluginsMenu.clear()
         for clazz in self._app.getPlugins():
             self._pluginsMenu.addMenu(clazz.getPluginMainMenu(self._pluginsMenu, self))
+        self._languageMenu.setTitle(tt.Menu_Language)
+        self._languageEnglishAction.setText(tt.Menu_Language_English)
+        self._languageChineseAction.setText(tt.Menu_Language_Chinese)
         self._testMenu.setTitle(tt.Menu_Test)
         self._testOneKeyAddAction.setText(tt.Menu_Test_OneKeyAdd)
         self._testLoadTestDataAction.setText(tt.Menu_Test_LoadTestData)
@@ -183,15 +188,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self._layoutDemoAction = self._layoutMenu.addAction(
             tt.Menu_Layout_Demo, lambda: self._changeLayout(self._config.getDemoLayout()))
 
+        self._pluginsMenu = self.menuBar().addMenu(tt.Menu_Plugins)
+        for clazz in self._app.getPlugins():
+            self._pluginsMenu.addMenu(clazz.getPluginMainMenu(self._pluginsMenu, self))
+
         self._languageMenu = self.menuBar().addMenu(tt.Menu_Language)
         self._languageEnglishAction = self._languageMenu.addAction(
             tt.Menu_Language_English, lambda: self._app.changeLanguage("en_US"))
         self._languageChineseAction = self._languageMenu.addAction(
             tt.Menu_Language_Chinese, lambda: self._app.changeLanguage("zh_CN"))
-
-        self._pluginsMenu = self.menuBar().addMenu(tt.Menu_Plugins)
-        for clazz in self._app.getPlugins():
-            self._pluginsMenu.addMenu(clazz.getPluginMainMenu(self._pluginsMenu, self))
 
         self._testMenu = self.menuBar().addMenu(tt.Menu_Test)
         self._testOneKeyAddAction = self._testMenu.addAction(
@@ -222,13 +227,15 @@ class MainWindow(QtWidgets.QMainWindow):
         playlistCombo.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents)
         playlistCombo.activated.connect(self._onPlaylistComboActivated)
         self._playlistLabel = QtWidgets.QLabel(tt.Toolbar_Playlist, toolbar)
+        toolbar.addWidget(Just.of(QtWidgets.QWidget()).apply(lambda x: x.setFixedWidth(5)).value())
         toolbar.addWidget(self._playlistLabel)
         toolbar.addWidget(playlistCombo)
-        toolbar.addAction(self._testOneKeyAddAction)
-        toolbar.addAction(self._testLoadTestDataAction)
+        toolbar.addWidget(Just.of(QtWidgets.QWidget()).apply(
+            lambda x: x.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)).value())
         self._editingCheck = QtWidgets.QCheckBox(tt.Toolbar_Editing, self)
         self._editingCheck.stateChanged.connect(self._onEditingCheckBoxStateChanged)
         toolbar.addWidget(self._editingCheck)
+        toolbar.addWidget(Just.of(QtWidgets.QWidget()).apply(lambda x: x.setFixedWidth(10)).value())
         self._toggleLanguageAction = toolbar.addAction(tt.Toolbar_ToggleLanguage)
         self._toggleLanguageAction.triggered.connect(
             lambda: self._app.changeLanguage("zh_CN" if self._config.language == "en_US" else "en_US"))
