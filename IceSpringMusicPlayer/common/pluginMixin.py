@@ -14,6 +14,7 @@ from IceSpringMusicPlayer.common.emptyPluginWidget import EmptyPluginWidget
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.tt import Text
+from IceSpringMusicPlayer.utils.stringUtils import StringUtils
 
 if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.widgets.maskWidget import MaskWidget
@@ -22,7 +23,7 @@ if typing.TYPE_CHECKING:
 class PluginMixin(object):
     @classmethod
     def getPluginName(cls) -> Text:
-        return Text.of(cls.__name__)
+        return Text.of(StringUtils.camelToTitle(cls.__name__))
 
     @classmethod
     def getPluginDescription(cls) -> Text:
