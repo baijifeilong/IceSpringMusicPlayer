@@ -41,7 +41,7 @@ class PluginMixin(object):
     def getPluginMainMenu(cls, parentMenu: QtWidgets.QMenu, parentWidget: QtWidgets.QWidget) -> QtWidgets.QMenu:
         menu = QtWidgets.QMenu(cls.getPluginName(), parentMenu)
         menu.addAction(tt.Menu_Plugins_AboutPlugin,
-            lambda: QtWidgets.QMessageBox.information(parentWidget, tt.Menu_Plugins_AboutPlugin,
+            lambda: QtWidgets.QMessageBox.about(parentWidget, tt.Menu_Plugins_AboutPlugin,
                 cls.getPluginDescription()))
         return menu
 

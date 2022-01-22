@@ -1,4 +1,5 @@
 # Created by BaiJiFeiLong@gmail.com at 2022-01-03 12:55:48
+import logging
 import sys
 
 from IceSpringPathLib import Path
@@ -13,6 +14,7 @@ from IceSpringMusicPlayer.utils.logUtils import LogUtils
 
 
 def run() -> None:
-    sys.path.append(str(Path(__file__).parent / "plugins"))
     LogUtils.initLogging()
+    logging.info("Append plugins folder to sys path")
+    sys.path.append(str(Path(__file__).parent / "plugins"))
     App().exec_()

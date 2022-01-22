@@ -56,6 +56,7 @@ class PluginManagerWidget(QtWidgets.QSplitter, PluginWidgetMixin):
         self._table.selectionModel().currentRowChanged.connect(self._onCurrentRowChanged)
         self._app.languageChanged.connect(self._onLanguageChanged)
         self._app.pluginStateChanged.connect(self._onPluginStateChanged)
+        self._app.pluginsInserted.connect(self._onPluginsInserted)
         self._table.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
         self._table.selectRow(0)
 
@@ -64,13 +65,38 @@ class PluginManagerWidget(QtWidgets.QSplitter, PluginWidgetMixin):
         self._refreshTable()
         self._refreshLabels()
 
+    def _onPluginsInserted(self, classes):
+        self._logger.info("On plugins inserted: %s", classes)
+        self._model.endResetModel()
+        self._refreshLabels()
+
     def _onCustomContextMenuRequested(self):
         self._logger.info("On custom context menu requested")
         row = [x.row() for x in self._table.selectionModel().selectedIndexes()][0]
         plugin = self._plugins[row]
         menu = QtWidgets.QMenu(self)
+        menu.addAction("Add Plugin", self._onAddPlugin)
         menu.addAction("Enable" if plugin.disabled else "Disable", lambda: self._onEnableOrDisablePlugin(plugin))
         menu.exec_(QtGui.QCursor.pos())
+
+    def _onAddPlugin(self):
+        self._logger.info("On add plugin")
+        filename = QtWidgets.QFileDialog.getExistingDirectory(self)
+        if filename == "":
+            self._logger.info("No folder selected, return")
+            return
+        try:
+            classes = self._app.verifyPlugin(filename)
+        except Exception as e:
+            self._logger.info("Plugin parse failure: %s", e)
+            QtWidgets.QMessageBox.warning(self, "Plugin Parse Failure", str(e))
+            return
+        if len(classes) == 0:
+            self._logger.info("No Plugin Found")
+            QtWidgets.QMessageBox.warning(self, "No Plugin Found", "No PluginMixin Found")
+        self._logger.info("Found %d plugins: %s", len(classes), classes)
+        self._logger.info("Register found plugins")
+        self._app.registerNewPlugins(classes)
 
     def _onEnableOrDisablePlugin(self, plugin: Plugin):
         usedInMainWindow = self._isPluginUsedInMainWindow(plugin)

@@ -27,6 +27,7 @@ class App(QtWidgets.QApplication):
     configChanged: QtCore.SignalInstance = QtCore.Signal()
     languageChanged: QtCore.SignalInstance = QtCore.Signal(str)
     pluginStateChanged: QtCore.SignalInstance = QtCore.Signal()
+    pluginsInserted: QtCore.SignalInstance = QtCore.Signal(list)
 
     _logger: logging.Logger
     _config: Config
@@ -177,14 +178,53 @@ class App(QtWidgets.QApplication):
         self.languageChanged.emit(language)
         self._logger.info("< Signal app.languageChanged emitted.")
 
-    @staticmethod
-    def getPluginClasses() -> typing.List[typing.Type[PluginMixin]]:
+    def getPluginClasses(self) -> typing.List[typing.Type[PluginMixin]]:
+        return self.findPluginClassesInFolder("IceSpringMusicPlayer/plugins")
+
+    def findPluginClassesInFolder(self, folder):
+        self._logger.info("Find plugin classes in folder: %s", folder)
         from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
-        plugins = set()
-        root = Path("IceSpringMusicPlayer/plugins")
-        for path in root.glob("**/*.py"):
-            package = ".".join([x for x in path.relative_to(root).parts if x != "__init__.py"]).rstrip(".py")
+        classes = set()
+        pluginRoot = Path("IceSpringMusicPlayer/plugins")
+        for path in Path(folder).glob("**/*.py"):
+            package = ".".join([x for x in path.relative_to(pluginRoot).parts if x != "__init__.py"]).rstrip(".py")
             for x in importlib.import_module(package).__dict__.values():
                 if isinstance(x, type) and issubclass(x, PluginMixin) and x != PluginMixin:
-                    plugins.add(x)
-        return sorted(plugins, key=lambda x: x.__module__ + "." + x.__name__)
+                    classes.add(x)
+        return sorted(classes, key=lambda x: x.__module__ + "." + x.__name__)
+
+    def verifyPlugin(self, folder: str) -> typing.List[typing.Type[PluginMixin]]:
+        self._logger.info("Verify plugin in folder: %s", folder)
+        root = Path(folder)
+        if not (root / "__init__.py").exists():
+            raise RuntimeError("Plugin folder must contains __init__.py")
+        targetPath = Path(f"IceSpringMusicPlayer/plugins/{root.name}")
+        if targetPath.exists():
+            self._logger.info("Plugin already exists.")
+            raise RuntimeError("Plugin Already Exists")
+        self._logger.info("Copy plugin folder to plugins dir %s", targetPath)
+        root.copytree(targetPath)
+        try:
+            classes = self.findPluginClassesInFolder(str(targetPath))
+        except Exception as e:
+            self._logger.info("Exception occurred: %s", e, e)
+            self._logger.info("Remove folder: %s", targetPath)
+            targetPath.rmtree()
+            raise e
+        if len(classes) == 0:
+            self._logger.info("No plugin found in folder, remove folder")
+            targetPath.rmtree()
+        return classes
+
+    def registerNewPlugins(self, classes: typing.List[typing.Type[PluginMixin]]) -> None:
+        self._logger.info("Register new %d plugins", len(classes))
+        for clazz in classes:
+            self._logger.info("Register plugin %s", clazz)
+            self._config.plugins.append(Plugin(
+                clazz=clazz,
+                disabled=False,
+                config=clazz.getPluginConfigClass().getDefaultObject()
+            ))
+        self._logger.info("> Signal pluginInserted emitting...")
+        self.pluginsInserted.emit(classes)
+        self._logger.info("< Signal pluginInserted emitted.")
