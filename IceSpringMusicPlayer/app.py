@@ -2,23 +2,20 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import typing
 
-from IceSpringPathLib import Path
-from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer import tt
-from IceSpringMusicPlayer.domains.config import Config, Element
-from IceSpringMusicPlayer.domains.plugin import Plugin
-from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
+from IceSpringMusicPlayer.domains.config import Config
 
 if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.services.player import Player
-    from IceSpringMusicPlayer.windows.mainWindow import MainWindow
     from IceSpringMusicPlayer.services.pluginService import PluginService
+    from IceSpringMusicPlayer.services.configService import ConfigService
+    from IceSpringMusicPlayer.services.playlistService import PlaylistService
+    from IceSpringMusicPlayer.windows.mainWindow import MainWindow
 
 
 class App(QtWidgets.QApplication):
@@ -38,14 +35,18 @@ class App(QtWidgets.QApplication):
     def __init__(self):
         from IceSpringMusicPlayer.services.player import Player
         from IceSpringMusicPlayer.windows.mainWindow import MainWindow
+        from IceSpringMusicPlayer.services.configService import ConfigService
         from IceSpringMusicPlayer.services.pluginService import PluginService
+        from IceSpringMusicPlayer.services.playlistService import PlaylistService
         super().__init__()
         self._logger = logging.getLogger("app")
         self._pluginService = PluginService(self)
-        self._config = self._loadConfig()
+        self._configService = ConfigService(self._pluginService, self)
+        self._config = self._configService.getConfig()
         self._setupLanguage(self._config.language)
         self._player = Player(self)
         self._player.setVolume(self._config.volume)
+        self._playlistService = PlaylistService(self)
         self._zoom = self._config.applicationFont.pointSize() / self.font().pointSize()
         self.setFont(self._config.applicationFont)
         self.setApplicationName("Ice Spring Music Player")
@@ -57,6 +58,12 @@ class App(QtWidgets.QApplication):
 
     def getPluginService(self) -> PluginService:
         return self._pluginService
+
+    def getConfigService(self) -> ConfigService:
+        return self._configService
+
+    def getPlaylistService(self) -> PlaylistService:
+        return self._playlistService
 
     def _setupLanguage(self, language: str):
         self._logger.info("Setup language: %s", language)
@@ -70,7 +77,7 @@ class App(QtWidgets.QApplication):
 
     def _onAboutToQuit(self):
         self._logger.info("On about to quit")
-        self._persistConfig()
+        self._configService.persistConfig()
 
     def exec_(self) -> int:
         self._logger.info("Exec")
@@ -90,82 +97,6 @@ class App(QtWidgets.QApplication):
     @staticmethod
     def instance() -> App:
         return QtCore.QCoreApplication.instance()
-
-    def addMusicsFromFileDialog(self):
-        self._logger.info("Add musics from file dialog")
-        musicRoot = str(Path("~/Music").expanduser().absolute())
-        filenames = QtWidgets.QFileDialog.getOpenFileNames(
-            None, "Open music files", musicRoot, "Audio files (*.mp3 *.wma) ;; All files (*)")[0]
-        self._logger.info("There are %d files to open", len(filenames))
-        musics = [MusicUtils.parseMusic(x) for x in filenames]
-        self._player.insertMusics(musics)
-
-    def addMusicsFromHomeFolder(self):
-        self._logger.info("Add musics from home folder")
-        paths = Path("~/Music").expanduser().glob("**/*.mp3")
-        musics = [MusicUtils.parseMusic(str(x)) for x in paths]
-        self._player.insertMusics(musics)
-
-    def loadTestData(self):
-        self._logger.info("Load test data")
-        paths = Path("~/Music").expanduser().glob("**/*.mp3")
-        musics = [MusicUtils.parseMusic(str(x)) for x in paths]
-        self._player.setFrontPlaylistIndex(self._player.insertPlaylist())
-        self._player.insertMusics([x for i, x in enumerate(musics) if i % 6 in (0, 1, 2)])
-        self._player.setFrontPlaylistIndex(self._player.insertPlaylist())
-        self._player.insertMusics([x for i, x in enumerate(musics) if i % 6 in (3, 4)])
-        self._player.setFrontPlaylistIndex(self._player.insertPlaylist())
-        self._player.insertMusics([x for i, x in enumerate(musics) if i % 6 in (5,)])
-
-    def _persistConfig(self):
-        self._logger.info("Persist, refresh current config")
-        self._config.layout = self._mainWindow.calcLayout()
-        self._config.volume = self._player.getVolume()
-        self._config.playbackMode = self._player.getPlaybackMode()
-        self._config.frontPlaylistIndex = self._player.getFrontPlaylistIndex()
-        self._logger.info("Save to config.json")
-        Path("config.json").write_text(json.dumps(self._config, indent=4, ensure_ascii=False, default=Config.toJson))
-
-    def _loadConfig(self) -> Config:
-        self._logger.info("Load config")
-        path = Path("config.json")
-        if not path.exists():
-            self._logger.info("No config.json file, return default config")
-            return Config.getDefaultConfig()
-        config: Config = json.loads(path.read_text(), object_pairs_hook=Config.fromJson)
-        self._logger.info("Process plugin configs (%d plugins)", len(self._pluginService.getPluginClasses()))
-        for plugin in config.plugins:
-            self._logger.info("Plugin in config: %s", plugin)
-            jd = json.loads(
-                json.dumps(plugin.config, default=plugin.clazz.getPluginConfigClass().pythonToJson),
-                object_pairs_hook=plugin.clazz.getPluginConfigClass().jsonToPython)
-            plugin.config = gg(plugin.clazz.getPluginConfigClass())(**jd)
-        self._logger.info("Process plugins not in config")
-        loadedClasses = [x.clazz for x in config.plugins]
-        for clazz in self._pluginService.getPluginClasses():
-            if clazz not in loadedClasses:
-                self._logger.info("Plugin not in config: %s", clazz)
-                config.plugins.append(
-                    Plugin(clazz=clazz, disabled=False, config=clazz.getPluginConfigClass().getDefaultObject()))
-        self._logger.info("Sort plugins")
-        config.plugins.sort(key=lambda x: x.clazz.__module__ + "." + x.clazz.__name__)
-        self._logger.info("Load layout config")
-        self._loadElementConfig(config.layout)
-        self._logger.info("Loaded config: %s", config)
-        return config
-
-    def _loadElementConfig(self, element: Element):
-        from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
-        if issubclass(element.clazz, PluginWidgetMixin):
-            self._logger.info("Load element config: %s", element)
-            elementConfigJd = json.loads(
-                json.dumps(element.config, default=element.clazz.getWidgetConfigClass().pythonToJson),
-                object_pairs_hook=element.clazz.getWidgetConfigClass().jsonToPython)
-            elementConfig = gg(element.clazz.getWidgetConfigClass())(**elementConfigJd)
-            self._logger.info("Loaded element config: %s", elementConfig)
-            element.config = elementConfig
-        for child in element.children:
-            self._loadElementConfig(child)
 
     def changeLanguage(self, language: str):
         self._logger.info("Change language: %s", language)

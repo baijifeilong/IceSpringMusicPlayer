@@ -15,6 +15,7 @@ from IceSpringMusicPlayer.controls.iceTableView import IceTableView
 from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.services.player import Player
+from IceSpringMusicPlayer.services.playlistService import PlaylistService
 from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
 
 
@@ -23,6 +24,7 @@ class PlaylistTable(IceTableView, ReplaceableMixin):
     _app: App
     _config: Config
     _player: Player
+    _playlistService: PlaylistService
 
     def __init__(self, parent: typing.Optional[QtWidgets.QWidget]) -> None:
         super().__init__(parent)
@@ -30,6 +32,7 @@ class PlaylistTable(IceTableView, ReplaceableMixin):
         self._app = App.instance()
         self._config = App.instance().getConfig()
         self._player = App.instance().getPlayer()
+        self._playlistService = self._app.getPlaylistService()
         self.setModel(PlaylistModel(self))
         self.setColumnWidth(0, int(35 * self._app.getZoom()))
         self.setColumnWidth(1, int(150 * self._app.getZoom()))
@@ -112,9 +115,9 @@ class PlaylistTable(IceTableView, ReplaceableMixin):
         unused(pos)
         menu = QtWidgets.QMenu()
         menu.addAction("Remove", self._onRemove)
-        menu.addAction("Add", self._app.addMusicsFromFileDialog)
-        menu.addAction("One Key Add", self._app.addMusicsFromHomeFolder)
-        menu.addAction("Load Test Data", self._app.loadTestData)
+        menu.addAction("Add", self._playlistService.addMusicsFromFileDialog)
+        menu.addAction("One Key Add", self._playlistService.addMusicsFromHomeFolder)
+        menu.addAction("Load Test Data", self._playlistService.loadTestData)
         menu.exec_(QtGui.QCursor.pos())
 
     def _onRequestLocateCurrentMusic(self) -> None:

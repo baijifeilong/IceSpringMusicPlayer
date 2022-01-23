@@ -38,7 +38,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._positionLogger = logging.getLogger("position")
         self._positionLogger.setLevel(logging.INFO)
         self._app = App.instance()
+        self._playlistService = self._app.getPlaylistService()
         self._pluginService = self._app.getPluginService()
+        self._configService = self._app.getConfigService()
         self._config = App.instance().getConfig()
         self._player = App.instance().getPlayer()
         self._layoutEditing = False
@@ -189,7 +191,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _initMenu(self):
         self._fileMenu = self.menuBar().addMenu(tt.Menu_File)
         self._fileOpenAction = self._fileMenu.addAction(tt.Menu_File_Open)
-        self._fileOpenAction.triggered.connect(self._app.addMusicsFromFileDialog)
+        self._fileOpenAction.triggered.connect(self._playlistService.addMusicsFromFileDialog)
 
         self._viewMenu = self.menuBar().addMenu(tt.Menu_View)
         self._viewPlaylistManagerAction = self._viewMenu.addAction(
@@ -197,13 +199,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._layoutMenu = self.menuBar().addMenu(tt.Menu_Layout)
         self._layoutControlsDownAction = self._layoutMenu.addAction(
-            tt.Menu_Layout_ControlsDown, lambda: self._changeLayout(self._config.getControlsDownLayout()))
+            tt.Menu_Layout_ControlsDown, lambda: self._changeLayout(self._configService.getControlsDownLayout()))
         self._layoutControlsUpAction = self._layoutMenu.addAction(
-            tt.Menu_Layout_ControlsUp, lambda: self._changeLayout(self._config.getControlsUpLayout()))
+            tt.Menu_Layout_ControlsUp, lambda: self._changeLayout(self._configService.getControlsUpLayout()))
         self._layoutDefaultAction = self._layoutMenu.addAction(
-            tt.Menu_Layout_Default, lambda: self._changeLayout(self._config.getDefaultLayout()))
+            tt.Menu_Layout_Default, lambda: self._changeLayout(self._configService.getDefaultLayout()))
         self._layoutDemoAction = self._layoutMenu.addAction(
-            tt.Menu_Layout_Demo, lambda: self._changeLayout(self._config.getDemoLayout()))
+            tt.Menu_Layout_Demo, lambda: self._changeLayout(self._configService.getDemoLayout()))
 
         self._pluginsMenu = self.menuBar().addMenu(tt.Menu_Plugins)
         for plugin in self._config.plugins:
@@ -218,9 +220,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._testMenu = self.menuBar().addMenu(tt.Menu_Test)
         self._testOneKeyAddAction = self._testMenu.addAction(
-            tt.Menu_Test_OneKeyAdd, lambda: self._app.addMusicsFromHomeFolder())
+            tt.Menu_Test_OneKeyAdd, lambda: self._playlistService.addMusicsFromHomeFolder())
         self._testLoadTestDataAction = self._testMenu.addAction(
-            tt.Menu_Test_LoadTestData, lambda: self._app.loadTestData())
+            tt.Menu_Test_LoadTestData, lambda: self._playlistService.loadTestData())
 
     def _onPlaylistComboActivated(self, index: int) -> None:
         self._logger.info("On playlist combo activated at index %d", index)

@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import copy
 import enum
 import importlib
 import typing
 from dataclasses import dataclass
 
-from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.vector import Vector
-from PySide2 import QtCore, QtGui, QtWidgets
+from PySide2 import QtCore, QtGui
 
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.domains.music import Music
@@ -86,11 +84,6 @@ class Config(object):
             return Music(**jd)
         elif all(x in jd for x in ("name", "musics")):
             return Playlist(**jd)
-        elif all(x in jd for x in ("layout", "playlists")):
-            return Config(**{
-                **cls.getDefaultConfig().__dict__,
-                **{k: v for k, v in jd.items() if k in Config.__annotations__}
-            })
         elif all(x in jd for x in ("left", "top", "width", "height")):
             return QtCore.QRect(jd["left"], jd["top"], jd["width"], jd["height"])
         elif all(x in jd for x in ("family", "pointSize")):
@@ -105,88 +98,3 @@ class Config(object):
         elif all(x in jd for x in ("clazz", "disabled")):
             return Plugin(**jd)
         return jd
-
-    @classmethod
-    def getDefaultConfig(cls) -> Config:
-        screenSize = QtGui.QGuiApplication.primaryScreen().size()
-        windowSize = screenSize / 1.5
-        diffSize = (screenSize - windowSize) / 2
-        defaultGeometry = QtCore.QRect(QtCore.QPoint(diffSize.width(), diffSize.height()), windowSize)
-        from IceSpringMusicPlayer.app import App
-        plugins = []
-        for clazz in App.instance().getPluginService().getPluginClasses():
-            plugins.append(Plugin(
-                clazz=clazz,
-                disabled=False,
-                config=clazz.getPluginConfigClass().getDefaultObject()
-            ))
-        return Config(
-            language="en_US",
-            geometry=defaultGeometry,
-            iconSize=48,
-            applicationFont=QtWidgets.QApplication.font(),
-            lyricFont=QtWidgets.QApplication.font(),
-            volume=50,
-            playbackMode=PlaybackMode.LOOP,
-            frontPlaylistIndex=-1,
-            layout=cls.getDefaultLayout(),
-            plugins=plugins,
-            playlists=Vector()
-        )
-
-    @staticmethod
-    def getDefaultLayout() -> Element:
-        from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
-        from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
-        from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
-        from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
-        return Element(clazz=SplitterWidget, vertical=False, weight=1, config=dict(), children=[
-            Element(clazz=SplitterWidget, vertical=True, weight=1, config=dict(), children=[
-                Element(clazz=ControlsWidget, vertical=False, weight=1, config=dict(), children=[]),
-                Element(clazz=LyricsWidget, vertical=False, weight=3, config=dict(), children=[]),
-                Element(clazz=PlaylistTable, vertical=False, weight=5, config=dict(), children=[]),
-            ]),
-            Element(clazz=SplitterWidget, vertical=True, weight=2, config=dict(), children=[
-                Element(clazz=PlaylistTable, vertical=False, weight=3, config=dict(), children=[]),
-                Element(clazz=LyricsWidget, vertical=False, weight=5, config=dict(), children=[]),
-                Element(clazz=ControlsWidget, vertical=False, weight=1, config=dict(), children=[]),
-            ]),
-        ])
-
-    @staticmethod
-    def getDemoLayout() -> Element:
-        from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
-        from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
-        from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
-        from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
-        from IceSpringMusicPlayer.widgets.configWidget import ConfigWidget
-        from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
-        return Element(clazz=SplitterWidget, vertical=False, weight=1, config=dict(), children=[
-            Element(clazz=SplitterWidget, vertical=True, weight=1, config=dict(), children=[
-                Element(clazz=ControlsWidget, vertical=False, weight=2, config=dict(), children=[]),
-                Element(clazz=LyricsWidget, vertical=False, weight=3, config=dict(), children=[]),
-                Element(clazz=PlaylistTable, vertical=False, weight=5, config=dict(), children=[]),
-            ]),
-            Element(clazz=SplitterWidget, vertical=True, weight=1, config=dict(), children=[
-                Element(clazz=ConfigWidget, vertical=False, weight=1, config=dict(), children=[]),
-                Element(clazz=BlankWidget, vertical=False, weight=3, config=dict(), children=[]),
-            ]),
-        ])
-
-    @staticmethod
-    def getControlsDownLayout():
-        from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
-        from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
-        from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
-        from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
-        return Element(clazz=SplitterWidget, vertical=True, weight=1, config=dict(), children=[
-            Element(clazz=SplitterWidget, vertical=False, weight=7, config=dict(), children=[
-                Element(clazz=PlaylistTable, vertical=False, weight=1, config=dict(), children=[]),
-                Element(clazz=LyricsWidget, vertical=False, weight=1, config=dict(), children=[]),
-            ]),
-            Element(clazz=ControlsWidget, vertical=False, weight=1, config=dict(), children=[]),
-        ])
-
-    @classmethod
-    def getControlsUpLayout(cls):
-        return Just.of(copy.deepcopy(cls.getControlsDownLayout())).apply(lambda x: x.children.reverse()).value()
