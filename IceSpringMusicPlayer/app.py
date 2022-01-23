@@ -28,6 +28,7 @@ class App(QtWidgets.QApplication):
     languageChanged: QtCore.SignalInstance = QtCore.Signal(str)
     pluginStateChanged: QtCore.SignalInstance = QtCore.Signal()
     pluginsInserted: QtCore.SignalInstance = QtCore.Signal(list)
+    pluginRemoved: QtCore.SignalInstance = QtCore.Signal(Plugin)
 
     _logger: logging.Logger
     _config: Config
@@ -228,3 +229,15 @@ class App(QtWidgets.QApplication):
         self._logger.info("> Signal pluginInserted emitting...")
         self.pluginsInserted.emit(classes)
         self._logger.info("< Signal pluginInserted emitted.")
+
+    def removePlugin(self, plugin: Plugin) -> None:
+        self._logger.info("Remove plugin: %s", plugin.clazz)
+        stem = plugin.clazz.__module__.split(".")[0]
+        path = Path(f"IceSpringMusicPlayer/plugins/{stem}")
+        self._logger.info("Remove plugin folder: %s", path)
+        path.rmtree()
+        self._logger.info("Remove plugin from registry")
+        self._config.plugins.remove(plugin)
+        self._logger.info("> Signal pluginRemoved emitting...")
+        self.pluginRemoved.emit(plugin)
+        self._logger.info("< Signal pluginRemoved emitted.")

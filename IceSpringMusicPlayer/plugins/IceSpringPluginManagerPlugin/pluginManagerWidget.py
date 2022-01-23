@@ -57,6 +57,7 @@ class PluginManagerWidget(QtWidgets.QSplitter, PluginWidgetMixin):
         self._app.languageChanged.connect(self._onLanguageChanged)
         self._app.pluginStateChanged.connect(self._onPluginStateChanged)
         self._app.pluginsInserted.connect(self._onPluginsInserted)
+        self._app.pluginRemoved.connect(self._onPluginRemoved)
         self._table.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
         self._table.selectRow(0)
 
@@ -70,14 +71,36 @@ class PluginManagerWidget(QtWidgets.QSplitter, PluginWidgetMixin):
         self._model.endResetModel()
         self._refreshLabels()
 
+    def _onPluginRemoved(self, plugin):
+        self._logger.info("On plugin removed: %s", plugin.clazz)
+        self._model.endResetModel()
+        self._refreshLabels()
+
     def _onCustomContextMenuRequested(self):
         self._logger.info("On custom context menu requested")
         row = [x.row() for x in self._table.selectionModel().selectedIndexes()][0]
         plugin = self._plugins[row]
         menu = QtWidgets.QMenu(self)
         menu.addAction("Add Plugin", self._onAddPlugin)
-        menu.addAction("Enable" if plugin.disabled else "Disable", lambda: self._onEnableOrDisablePlugin(plugin))
+        menu.addAction("Enable Plugin" if plugin.disabled else "Disable Plugin",
+            lambda: self._onEnableOrDisablePlugin(plugin))
+        menu.addAction("Remove Plugin", lambda: self._onRemovePlugin(plugin))
         menu.exec_(QtGui.QCursor.pos())
+
+    def _onRemovePlugin(self, plugin: Plugin):
+        self._logger.info("On remove plugin %s", plugin.clazz)
+        if self._isPluginUsedInMainWindow(plugin):
+            self._logger.info("Plugin is used in main window, can not be removed, return")
+            QtWidgets.QMessageBox.warning(self, "Warning", "Plugin is used in main window, can not be removed")
+            return
+        self._logger.info("Do remove plugin")
+        try:
+            self._app.removePlugin(plugin)
+        except Exception as e:
+            self._logger.info("Exception occurred: %s", e, e)
+            QtWidgets.QMessageBox.warning(self, "Warning", "Remove plugin failed: %s" % e)
+            return
+        self._logger.info("Plugin removed")
 
     def _onAddPlugin(self):
         self._logger.info("On add plugin")
