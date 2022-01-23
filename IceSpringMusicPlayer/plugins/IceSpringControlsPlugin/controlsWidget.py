@@ -1,10 +1,12 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/12 21:22
 import logging
+import typing
 
 import qtawesome
 from IceSpringRealOptional.just import Just
 from PySide2 import QtWidgets, QtCore, QtGui
 
+from IceSpringControlsPlugin.controlsWidgetConfig import ControlsWidgetConfig
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.controls.fluentSlider import FluentSlider
@@ -12,10 +14,12 @@ from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.services.player import Player
+from IceSpringMusicPlayer.utils.dialogUtils import DialogUtils
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 
 
 class ControlsWidget(QtWidgets.QWidget, PluginWidgetMixin):
+    widgetConfigChanged: QtCore.SignalInstance = QtCore.Signal()
     _logger: logging.Logger
     _config: Config
     _app: App
@@ -26,10 +30,12 @@ class ControlsWidget(QtWidgets.QWidget, PluginWidgetMixin):
     _progressSlider: FluentSlider
     _progressLabel: QtWidgets.QLabel
     _volumeDial: QtWidgets.QDial
+    _widgetConfig: ControlsWidgetConfig
 
-    def __init__(self) -> None:
+    def __init__(self, config) -> None:
         super().__init__()
-        self._logger = logging.getLogger("controlsPanel")
+        self._widgetConfig = config
+        self._logger = logging.getLogger("controlsWidget")
         self._config = App.instance().getConfig()
         self._app = App.instance()
         self._player = App.instance().getPlayer()
@@ -78,18 +84,29 @@ class ControlsWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._player.positionChanged.connect(self._onPlayerPositionChanged)
         self._player.playbackModeChanged.connect(self._onPlaybackModeChanged)
         self._player.volumeChanged.connect(self._onPlayerVolumeChanged)
-        self._app.configChanged.connect(self._onConfigChanged)
+        self.widgetConfigChanged.connect(self._onWidgetConfigChanged)
+        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
+
+    def _onCustomContextMenuRequested(self):
+        from IceSpringControlsPlugin.controlsWidgetConfigWidget import ControlsWidgetConfigWidget
+        self._logger.info("On custom context menu requested")
+        menu = QtWidgets.QMenu(self)
+        menu.addAction("Widget Config",
+            lambda: DialogUtils.execWidget(ControlsWidgetConfigWidget(self), self, QtCore.QSize(854, 480)))
+        menu.exec_(QtGui.QCursor.pos())
 
     def _refreshIcons(self):
-        size = QtCore.QSize(self._config.iconSize, self._config.iconSize)
+        iconSize = self._widgetConfig.iconSize
+        size = QtCore.QSize(iconSize, iconSize)
         for widget in self.findChildren(QtWidgets.QWidget):
             if isinstance(widget, QtWidgets.QToolButton):
                 widget.setIconSize(size)
             elif isinstance(widget, QtWidgets.QDial):
                 widget.setFixedSize(size)
 
-    def _onConfigChanged(self):
-        self._logger.info("On config changed")
+    def _onWidgetConfigChanged(self):
+        self._logger.info("On widget config changed")
         self._refreshIcons()
 
     def _onProgressSliderValueChanged(self, value: int) -> None:
@@ -214,3 +231,10 @@ class ControlsWidget(QtWidgets.QWidget, PluginWidgetMixin):
     def paintEvent(self, evt):
         self.style().drawPrimitive(QtWidgets.QStyle.PrimitiveElement.PE_Widget,
             Just.of(QtWidgets.QStyleOption()).apply(lambda x: x.init(self)).value(), QtGui.QPainter(self), self)
+
+    @classmethod
+    def getWidgetConfigClass(cls) -> typing.Type[ControlsWidgetConfig]:
+        return ControlsWidgetConfig
+
+    def getWidgetConfig(self) -> ControlsWidgetConfig:
+        return self._widgetConfig

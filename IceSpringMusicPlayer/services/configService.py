@@ -75,7 +75,10 @@ class ConfigService(QtCore.QObject):
             elementConfigJd = json.loads(
                 json.dumps(element.config, default=element.clazz.getWidgetConfigClass().pythonToJson),
                 object_pairs_hook=element.clazz.getWidgetConfigClass().jsonToPython)
-            elementConfig = gg(element.clazz.getWidgetConfigClass())(**elementConfigJd)
+            elementConfig = gg(element.clazz.getWidgetConfigClass())(**{
+                **element.clazz.getWidgetConfigClass().getDefaultObject().__dict__,
+                **elementConfigJd
+            })
             self._logger.info("Loaded element config: %s", elementConfig)
             element.config = elementConfig
         for child in element.children:

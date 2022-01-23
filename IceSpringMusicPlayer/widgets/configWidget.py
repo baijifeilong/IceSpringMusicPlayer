@@ -59,13 +59,6 @@ class ConfigWidget(QtWidgets.QFrame, ReplaceableMixin):
         layout.addRow(self._lyricFontLabel, self._lyricFontButton)
         layout.addWidget(self._lyricFontPreviewLabel)
 
-        sizes = [16, 24, 32, 40, 48, 64, 96, 128]
-        self._iconSizeLabel = QtWidgets.QLabel(tt.Config_IconSize, self)
-        self._iconSizeCombo = QtWidgets.QComboBox(self)
-        self._iconSizeCombo.addItems([str(x) for x in sizes])
-        self._iconSizeCombo.setCurrentIndex(sizes.index(self._config.iconSize))
-        layout.addRow(self._iconSizeLabel, self._iconSizeCombo)
-
         self._applyButton = QtWidgets.QPushButton(tt.Config_Apply, self)
         self._applyButton.clicked.connect(self._onApply)
         layout.addRow(self._applyButton)
@@ -75,7 +68,6 @@ class ConfigWidget(QtWidgets.QFrame, ReplaceableMixin):
         self._logger.info("On language changed: %s", language)
         self._applicationFontLabel.setText(tt.Config_ApplicationFont)
         self._lyricFontLabel.setText(tt.Config_LyricFont)
-        self._iconSizeLabel.setText(tt.Config_IconSize)
         self._applyButton.setText(tt.Config_Apply)
 
     def _onApplicationFontButtonClicked(self) -> None:
@@ -100,7 +92,6 @@ class ConfigWidget(QtWidgets.QFrame, ReplaceableMixin):
         self._logger.info("On apply")
         self._config.applicationFont = self._applicationFontPreviewLabel.font()
         self._config.lyricFont = self._lyricFontPreviewLabel.font()
-        self._config.iconSize = int(self._iconSizeCombo.currentText())
         self._logger.info("> Signal app.pluginConfigChanged emitting...")
         self._app.configChanged.emit()
         self._logger.info("< Signal app.pluginConfigChanged emitted.")
