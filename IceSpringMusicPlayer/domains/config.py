@@ -114,7 +114,7 @@ class Config(object):
         defaultGeometry = QtCore.QRect(QtCore.QPoint(diffSize.width(), diffSize.height()), windowSize)
         from IceSpringMusicPlayer.app import App
         plugins = []
-        for clazz in App.instance().getPluginClasses():
+        for clazz in App.instance().getPluginService().getPluginClasses():
             plugins.append(Plugin(
                 clazz=clazz,
                 disabled=False,

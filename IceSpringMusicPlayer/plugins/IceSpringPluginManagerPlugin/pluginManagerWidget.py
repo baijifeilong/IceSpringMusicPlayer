@@ -12,7 +12,6 @@ from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.controls.humanLabel import HumanLabel
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
-from IceSpringMusicPlayer.domains.config import Element
 from IceSpringMusicPlayer.domains.plugin import Plugin
 from IceSpringMusicPlayer.utils.classUtils import ClassUtils
 
@@ -23,7 +22,7 @@ class PluginManagerWidget(QtWidgets.QSplitter, PluginWidgetMixin):
         unused(config)
         self._logger = logging.getLogger("pluginManagerWidget")
         self._app = App.instance()
-        self._mainWindow = self._app.getMainWindow()
+        self._pluginService = self._app.getPluginService()
         self._plugins = self._app.getConfig().plugins
         self._table = IceTableView()
         self._model = PluginManagerModel(self._plugins, self._table)
@@ -55,14 +54,15 @@ class PluginManagerWidget(QtWidgets.QSplitter, PluginWidgetMixin):
         self._table.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self._table.selectionModel().currentRowChanged.connect(self._onCurrentRowChanged)
         self._app.languageChanged.connect(self._onLanguageChanged)
-        self._app.pluginStateChanged.connect(self._onPluginStateChanged)
-        self._app.pluginsInserted.connect(self._onPluginsInserted)
-        self._app.pluginRemoved.connect(self._onPluginRemoved)
+        self._pluginService.pluginEnabled.connect(self._onPluginStateChanged)
+        self._pluginService.pluginDisabled.connect(self._onPluginStateChanged)
+        self._pluginService.pluginsInserted.connect(self._onPluginsInserted)
+        self._pluginService.pluginsRemoved.connect(self._onPluginsRemoved)
         self._table.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
         self._table.selectRow(0)
 
-    def _onPluginStateChanged(self):
-        self._logger.info("On plugin state changed")
+    def _onPluginStateChanged(self, plugin: Plugin):
+        self._logger.info("On plugin state changed: %s", plugin)
         self._refreshTable()
         self._refreshLabels()
 
@@ -71,8 +71,8 @@ class PluginManagerWidget(QtWidgets.QSplitter, PluginWidgetMixin):
         self._model.endResetModel()
         self._refreshLabels()
 
-    def _onPluginRemoved(self, plugin):
-        self._logger.info("On plugin removed: %s", plugin.clazz)
+    def _onPluginsRemoved(self, plugins: typing.List[Plugin]) -> None:
+        self._logger.info("On plugin removed: %s", plugins)
         self._model.endResetModel()
         self._refreshLabels()
 
@@ -89,13 +89,13 @@ class PluginManagerWidget(QtWidgets.QSplitter, PluginWidgetMixin):
 
     def _onRemovePlugin(self, plugin: Plugin):
         self._logger.info("On remove plugin %s", plugin.clazz)
-        if self._isPluginUsedInMainWindow(plugin):
+        if self._pluginService.isPluginUsedInMainWindow(plugin):
             self._logger.info("Plugin is used in main window, can not be removed, return")
             QtWidgets.QMessageBox.warning(self, "Warning", "Plugin is used in main window, can not be removed")
             return
         self._logger.info("Do remove plugin")
         try:
-            self._app.removePlugin(plugin)
+            self._pluginService.removePlugin(plugin)
         except Exception as e:
             self._logger.info("Exception occurred: %s", e, e)
             QtWidgets.QMessageBox.warning(self, "Warning", "Remove plugin failed: %s" % e)
@@ -109,43 +109,26 @@ class PluginManagerWidget(QtWidgets.QSplitter, PluginWidgetMixin):
             self._logger.info("No folder selected, return")
             return
         try:
-            classes = self._app.verifyPlugin(filename)
+            self._pluginService.addPlugin(filename)
         except Exception as e:
-            self._logger.info("Plugin parse failure: %s", e)
+            self._logger.info("Plugin parse failure: %s", e, e)
             QtWidgets.QMessageBox.warning(self, "Plugin Parse Failure", str(e))
-            return
-        if len(classes) == 0:
-            self._logger.info("No Plugin Found")
-            QtWidgets.QMessageBox.warning(self, "No Plugin Found", "No PluginMixin Found")
-        self._logger.info("Found %d plugins: %s", len(classes), classes)
-        self._logger.info("Register found plugins")
-        self._app.registerNewPlugins(classes)
 
     def _onEnableOrDisablePlugin(self, plugin: Plugin):
-        usedInMainWindow = self._isPluginUsedInMainWindow(plugin)
-        self._logger.info("Plugin %s used in mainWindow: %s", plugin.clazz, usedInMainWindow)
-        if not plugin.disabled:
-            self._logger.info("Plugin enabled, disable it")
-            if usedInMainWindow:
-                self._logger.info("Plugin used in main window, can not disable.")
-                QtWidgets.QMessageBox.warning(self, "Warning", "Plugin used in main window, can not disable it.")
-                return
-        else:
-            self._logger.info("Plugin disabled, enable it")
-        plugin.disabled = not plugin.disabled
-        self._logger.info("> Signal app.pluginStateChanged emitting...")
-        self._app.pluginStateChanged.emit()
-        self._logger.info("> Signal app.pluginStateChanged emitted.")
+        self._logger.info("On enable or disable plugin")
+        self._doEnablePlugin(plugin) if plugin.disabled else self._doDisablePlugin(plugin)
 
-    def _isPluginUsedInMainWindow(self, plugin: Plugin):
-        layout = self._mainWindow.calcLayout()
-        return self._isPluginUsedInElement(plugin, layout)
+    def _doEnablePlugin(self, plugin: Plugin):
+        self._logger.info("Do enable plugin")
+        self._pluginService.enablePlugin(plugin)
 
-    def _isPluginUsedInElement(self, plugin: Plugin, element: Element):
-        classes = plugin.clazz.getPluginWidgetClasses()
-        usedInSelf = element.clazz in classes
-        usedInChildren = any(self._isPluginUsedInElement(plugin, x) for x in element.children)
-        return usedInSelf or usedInChildren
+    def _doDisablePlugin(self, plugin: Plugin):
+        self._logger.info("Do disable plugin")
+        if self._pluginService.isPluginUsedInMainWindow(plugin):
+            self._logger.info("Plugin used in main window, can not disable.")
+            QtWidgets.QMessageBox.warning(self, "Warning", "Plugin used in main window, can not disable it.")
+            return
+        self._pluginService.disablePlugin(plugin)
 
     def _onCurrentRowChanged(self, current: QtCore.QModelIndex, previous: QtCore.QModelIndex) -> None:
         self._logger.info("On current row changed: %d -> %d", previous.row(), current.row())

@@ -9,7 +9,6 @@ from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets
 
 from IceSpringMusicPlayer import tt
-from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.emptyPluginWidget import EmptyPluginWidget
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
@@ -59,6 +58,7 @@ class PluginMixin(object):
 
     @classmethod
     def getPluginConfig(cls) -> JsonSupport:
+        from IceSpringMusicPlayer.app import App
         plugins = App.instance().getConfig().plugins
         for plugin in plugins:
             if plugin.clazz == cls:

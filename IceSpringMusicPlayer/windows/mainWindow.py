@@ -38,6 +38,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._positionLogger = logging.getLogger("position")
         self._positionLogger.setLevel(logging.INFO)
         self._app = App.instance()
+        self._pluginService = self._app.getPluginService()
         self._config = App.instance().getConfig()
         self._player = App.instance().getPlayer()
         self._layoutEditing = False
@@ -50,7 +51,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.layoutChanged.connect(self._onLayoutChanged)
         self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
         self._app.languageChanged.connect(self._onLanguageChanged)
-        self._app.pluginStateChanged.connect(self._onPluginStateChanged)
+        self._pluginService.pluginEnabled.connect(self._doRefreshMenuBarAndToolBar)
+        self._pluginService.pluginDisabled.connect(self._doRefreshMenuBarAndToolBar)
+        self._pluginService.pluginsInserted.connect(self._doRefreshMenuBarAndToolBar)
+        self._pluginService.pluginsRemoved.connect(self._doRefreshMenuBarAndToolBar)
 
     def _initPalette(self):
         self.setPalette(Just.of(QtGui.QPalette()).apply(
@@ -148,8 +152,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._refreshMenuBar()
         self._refreshToolBar()
 
-    def _onPluginStateChanged(self):
-        self._logger.info("On plugin state changed")
+    def _doRefreshMenuBarAndToolBar(self):
+        self._logger.info("Do refresh menu bar and tool bar")
         self._refreshMenuBar()
         self._refreshToolBar()
 

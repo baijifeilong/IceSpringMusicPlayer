@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib
 import json
 import logging
 import typing
@@ -19,16 +18,13 @@ from IceSpringMusicPlayer.utils.musicUtils import MusicUtils
 if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.services.player import Player
     from IceSpringMusicPlayer.windows.mainWindow import MainWindow
-    from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
+    from IceSpringMusicPlayer.services.pluginService import PluginService
 
 
 class App(QtWidgets.QApplication):
     requestLocateCurrentMusic: QtCore.SignalInstance = QtCore.Signal()
     configChanged: QtCore.SignalInstance = QtCore.Signal()
     languageChanged: QtCore.SignalInstance = QtCore.Signal(str)
-    pluginStateChanged: QtCore.SignalInstance = QtCore.Signal()
-    pluginsInserted: QtCore.SignalInstance = QtCore.Signal(list)
-    pluginRemoved: QtCore.SignalInstance = QtCore.Signal(Plugin)
 
     _logger: logging.Logger
     _config: Config
@@ -42,8 +38,10 @@ class App(QtWidgets.QApplication):
     def __init__(self):
         from IceSpringMusicPlayer.services.player import Player
         from IceSpringMusicPlayer.windows.mainWindow import MainWindow
+        from IceSpringMusicPlayer.services.pluginService import PluginService
         super().__init__()
         self._logger = logging.getLogger("app")
+        self._pluginService = PluginService(self)
         self._config = self._loadConfig()
         self._setupLanguage(self._config.language)
         self._player = Player(self)
@@ -57,9 +55,12 @@ class App(QtWidgets.QApplication):
         self.aboutToQuit.connect(self._onAboutToQuit)
         self.configChanged.connect(self._onConfigChanged)
 
+    def getPluginService(self) -> PluginService:
+        return self._pluginService
+
     def _setupLanguage(self, language: str):
         self._logger.info("Setup language: %s", language)
-        for module in {tt, *{x.getPluginTranslationModule() for x in self.getPluginClasses()}}:
+        for module in {tt, *{x.getPluginTranslationModule() for x in self._pluginService.getPluginClasses()}}:
             self._logger.info("Setup language for module: %s", module)
             tt.setupLanguage(language, module=module)
 
@@ -132,7 +133,7 @@ class App(QtWidgets.QApplication):
             self._logger.info("No config.json file, return default config")
             return Config.getDefaultConfig()
         config: Config = json.loads(path.read_text(), object_pairs_hook=Config.fromJson)
-        self._logger.info("Process plugin configs (%d plugins)", len(self.getPluginClasses()))
+        self._logger.info("Process plugin configs (%d plugins)", len(self._pluginService.getPluginClasses()))
         for plugin in config.plugins:
             self._logger.info("Plugin in config: %s", plugin)
             jd = json.loads(
@@ -141,7 +142,7 @@ class App(QtWidgets.QApplication):
             plugin.config = gg(plugin.clazz.getPluginConfigClass())(**jd)
         self._logger.info("Process plugins not in config")
         loadedClasses = [x.clazz for x in config.plugins]
-        for clazz in self.getPluginClasses():
+        for clazz in self._pluginService.getPluginClasses():
             if clazz not in loadedClasses:
                 self._logger.info("Plugin not in config: %s", clazz)
                 config.plugins.append(
@@ -172,72 +173,9 @@ class App(QtWidgets.QApplication):
             self._logger.info("Language not changed, return")
             return
         self._config.language = language
-        for module in {tt, *{x.getPluginTranslationModule() for x in self.getPluginClasses()}}:
+        for module in {tt, *{x.getPluginTranslationModule() for x in self._pluginService.getPluginClasses()}}:
             self._logger.info("Change language for module: %s", module)
             tt.setupLanguage(language, module=module)
         self._logger.info("> Signal app.languageChanged emitting...")
         self.languageChanged.emit(language)
         self._logger.info("< Signal app.languageChanged emitted.")
-
-    def getPluginClasses(self) -> typing.List[typing.Type[PluginMixin]]:
-        return self.findPluginClassesInFolder("IceSpringMusicPlayer/plugins")
-
-    def findPluginClassesInFolder(self, folder):
-        self._logger.info("Find plugin classes in folder: %s", folder)
-        from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
-        classes = set()
-        pluginRoot = Path("IceSpringMusicPlayer/plugins")
-        for path in Path(folder).glob("**/*.py"):
-            package = ".".join([x for x in path.relative_to(pluginRoot).parts if x != "__init__.py"]).rstrip(".py")
-            for x in importlib.import_module(package).__dict__.values():
-                if isinstance(x, type) and issubclass(x, PluginMixin) and x != PluginMixin:
-                    classes.add(x)
-        return sorted(classes, key=lambda x: x.__module__ + "." + x.__name__)
-
-    def verifyPlugin(self, folder: str) -> typing.List[typing.Type[PluginMixin]]:
-        self._logger.info("Verify plugin in folder: %s", folder)
-        root = Path(folder)
-        if not (root / "__init__.py").exists():
-            raise RuntimeError("Plugin folder must contains __init__.py")
-        targetPath = Path(f"IceSpringMusicPlayer/plugins/{root.name}")
-        if targetPath.exists():
-            self._logger.info("Plugin already exists.")
-            raise RuntimeError("Plugin Already Exists")
-        self._logger.info("Copy plugin folder to plugins dir %s", targetPath)
-        root.copytree(targetPath)
-        try:
-            classes = self.findPluginClassesInFolder(str(targetPath))
-        except Exception as e:
-            self._logger.info("Exception occurred: %s", e, e)
-            self._logger.info("Remove folder: %s", targetPath)
-            targetPath.rmtree()
-            raise e
-        if len(classes) == 0:
-            self._logger.info("No plugin found in folder, remove folder")
-            targetPath.rmtree()
-        return classes
-
-    def registerNewPlugins(self, classes: typing.List[typing.Type[PluginMixin]]) -> None:
-        self._logger.info("Register new %d plugins", len(classes))
-        for clazz in classes:
-            self._logger.info("Register plugin %s", clazz)
-            self._config.plugins.append(Plugin(
-                clazz=clazz,
-                disabled=False,
-                config=clazz.getPluginConfigClass().getDefaultObject()
-            ))
-        self._logger.info("> Signal pluginInserted emitting...")
-        self.pluginsInserted.emit(classes)
-        self._logger.info("< Signal pluginInserted emitted.")
-
-    def removePlugin(self, plugin: Plugin) -> None:
-        self._logger.info("Remove plugin: %s", plugin.clazz)
-        stem = plugin.clazz.__module__.split(".")[0]
-        path = Path(f"IceSpringMusicPlayer/plugins/{stem}")
-        self._logger.info("Remove plugin folder: %s", path)
-        path.rmtree()
-        self._logger.info("Remove plugin from registry")
-        self._config.plugins.remove(plugin)
-        self._logger.info("> Signal pluginRemoved emitting...")
-        self.pluginRemoved.emit(plugin)
-        self._logger.info("< Signal pluginRemoved emitted.")
