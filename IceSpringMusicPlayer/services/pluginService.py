@@ -3,12 +3,14 @@
 import importlib
 import logging
 import typing
+from datetime import datetime
 
 from IceSpringPathLib import Path
 from PySide2 import QtCore
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
+from IceSpringMusicPlayer.common.systemPluginMixin import SystemPluginMixin
 from IceSpringMusicPlayer.domains.config import Element
 from IceSpringMusicPlayer.domains.plugin import Plugin
 
@@ -35,12 +37,13 @@ class PluginService(QtCore.QObject):
         for path in Path(folder).glob("**/*.py"):
             package = ".".join([x for x in path.relative_to(pluginRoot).parts if x != "__init__.py"]).rstrip(".py")
             for x in importlib.import_module(package).__dict__.values():
-                if isinstance(x, type) and issubclass(x, PluginMixin) and x != PluginMixin:
+                if isinstance(x, type) and issubclass(x, PluginMixin) and x not in [PluginMixin, SystemPluginMixin]:
                     classes.add(x)
         return sorted(classes, key=lambda x: x.__module__ + "." + x.__name__)
 
     def _verifyPluginFolder(self, folder: str) -> typing.List[typing.Type[PluginMixin]]:
         self._logger.info("Verify plugin in folder: %s", folder)
+        oldClasses = [x.clazz for x in self._app.getConfig().plugins]
         root = Path(folder)
         if not (root / "__init__.py").exists():
             raise RuntimeError("Plugin folder must contains __init__.py")
@@ -52,6 +55,7 @@ class PluginService(QtCore.QObject):
         root.copytree(targetPath)
         try:
             classes = self.findPluginClassesInFolder(str(targetPath))
+            classes = [x for x in classes if x not in oldClasses]
         except Exception as e:
             self._logger.info("Exception occurred: %s", e, e)
             self._logger.info("Remove folder: %s", targetPath)
@@ -60,13 +64,16 @@ class PluginService(QtCore.QObject):
         if len(classes) == 0:
             self._logger.info("No plugin found in folder, remove folder")
             targetPath.rmtree()
+            raise RuntimeError("No plugin found")
         return classes
 
     def addPlugin(self, folder):
         self._logger.info("On add plugin")
         classes = self._verifyPluginFolder(folder)
-        if len(classes) == 0:
-            raise RuntimeError("No plugin found")
+        assert len(classes) > 0
+        if any([x.isSystemPlugin() for x in classes]):
+            self._logger.info("System plugins are not allowed to be added")
+            raise RuntimeError("System plugins are not allowed to be added")
         self._logger.info("Found %d plugins: %s", len(classes), classes)
         self.registerNewPlugins(classes)
 
@@ -95,6 +102,7 @@ class PluginService(QtCore.QObject):
 
     def disablePlugin(self, plugin: Plugin):
         self._logger.info("Disable plugin: %s", plugin.clazz)
+        assert not plugin.clazz.isSystemPlugin()
         assert not plugin.disabled
         assert not self.isPluginUsedInMainWindow(plugin), "Plugin used in main window"
         plugin.disabled = True
@@ -104,10 +112,15 @@ class PluginService(QtCore.QObject):
 
     def removePlugin(self, plugin: Plugin) -> None:
         self._logger.info("Remove plugin: %s", plugin.clazz)
+        assert not plugin.clazz.isSystemPlugin()
         assert not self.isPluginUsedInMainWindow(plugin), "Plugin used in main window"
         stem = plugin.clazz.__module__.split(".")[0]
         path = Path(f"IceSpringMusicPlayer/plugins/{stem}")
         self._logger.info("Remove plugin folder: %s", path)
+        now = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        targetPath = Path(f"IceSpringMusicPlayer/recycles/{now}/{stem}")
+        self._logger.info("Plugin is backup to %s", targetPath)
+        path.copytree(targetPath)
         path.rmtree()
         self._logger.info("Remove plugin from registry")
         self._app.getConfig().plugins.remove(plugin)

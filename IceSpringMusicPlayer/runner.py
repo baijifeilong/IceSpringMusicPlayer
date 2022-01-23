@@ -15,6 +15,4 @@ from IceSpringMusicPlayer.utils.logUtils import LogUtils
 
 def run() -> None:
     LogUtils.initLogging()
-    logging.info("Append plugins folder to sys path")
-    sys.path.append(str(Path(__file__).parent / "plugins"))
     App().exec_()

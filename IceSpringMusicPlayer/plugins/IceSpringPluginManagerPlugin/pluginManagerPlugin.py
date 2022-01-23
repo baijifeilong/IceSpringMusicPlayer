@@ -1,11 +1,11 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/22 15:31
 import typing
 
-from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
+from IceSpringMusicPlayer.common.systemPluginMixin import SystemPluginMixin
 
 
-class PluginManagerPlugin(PluginMixin):
+class PluginManagerPlugin(SystemPluginMixin):
 
     @classmethod
     def getPluginWidgetClasses(cls) -> typing.List[typing.Type[PluginWidgetMixin]]:

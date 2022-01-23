@@ -68,3 +68,8 @@ class PluginMixin(object):
     @classmethod
     def getPluginTranslationModule(cls) -> types.ModuleType:
         return tt
+
+    @classmethod
+    def isSystemPlugin(cls) -> bool:
+        from IceSpringMusicPlayer.common.systemPluginMixin import SystemPluginMixin
+        return issubclass(cls, SystemPluginMixin)

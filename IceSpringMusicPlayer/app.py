@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+import sys
 import typing
 
+from IceSpringPathLib import Path
 from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer import tt
@@ -40,6 +42,10 @@ class App(QtWidgets.QApplication):
         from IceSpringMusicPlayer.services.playlistService import PlaylistService
         super().__init__()
         self._logger = logging.getLogger("app")
+        self._logger.info("Append plugins folder to sys path")
+        sys.path.append(str(Path(__file__).parent / "plugins"))
+        self._logger.info("Create recycles folder")
+        Path("recycles").mkdir(exist_ok=True)
         self._pluginService = PluginService(self)
         self._configService = ConfigService(self._pluginService, self)
         self._config = self._configService.getConfig()

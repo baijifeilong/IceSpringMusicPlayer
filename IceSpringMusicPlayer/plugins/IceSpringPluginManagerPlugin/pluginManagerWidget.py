@@ -89,6 +89,9 @@ class PluginManagerWidget(QtWidgets.QSplitter, PluginWidgetMixin):
 
     def _onRemovePlugin(self, plugin: Plugin):
         self._logger.info("On remove plugin %s", plugin.clazz)
+        if plugin.clazz.isSystemPlugin():
+            QtWidgets.QMessageBox.warning(self, "Warning", "System plugins are not allowed to be removed")
+            return
         if self._pluginService.isPluginUsedInMainWindow(plugin):
             self._logger.info("Plugin is used in main window, can not be removed, return")
             QtWidgets.QMessageBox.warning(self, "Warning", "Plugin is used in main window, can not be removed")
@@ -124,6 +127,9 @@ class PluginManagerWidget(QtWidgets.QSplitter, PluginWidgetMixin):
 
     def _doDisablePlugin(self, plugin: Plugin):
         self._logger.info("Do disable plugin")
+        if plugin.clazz.isSystemPlugin():
+            QtWidgets.QMessageBox.warning(self, "Warning", "System plugins are not allowed to be disabled")
+            return
         if self._pluginService.isPluginUsedInMainWindow(plugin):
             self._logger.info("Plugin used in main window, can not disable.")
             QtWidgets.QMessageBox.warning(self, "Warning", "Plugin used in main window, can not disable it.")
