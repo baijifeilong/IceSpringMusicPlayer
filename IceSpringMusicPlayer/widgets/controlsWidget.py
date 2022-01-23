@@ -13,7 +13,7 @@ from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
-from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
+from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
 
 
 class ControlsWidget(QtWidgets.QWidget, ReplaceableMixin):

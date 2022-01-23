@@ -11,7 +11,7 @@ from PySide2 import QtCore, QtWidgets, QtGui
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
 from IceSpringMusicPlayer.services.player import Player
-from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
+from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
 
 
 class PlaylistManagerTable(IceTableView, ReplaceableMixin):

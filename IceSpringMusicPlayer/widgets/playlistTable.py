@@ -16,7 +16,7 @@ from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.services.playlistService import PlaylistService
-from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
+from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
 
 
 class PlaylistTable(IceTableView, ReplaceableMixin):

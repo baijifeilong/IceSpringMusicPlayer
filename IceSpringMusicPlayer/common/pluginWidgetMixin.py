@@ -7,7 +7,7 @@ import typing
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.utils.stringUtils import StringUtils
-from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
+from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
 
 
 class PluginWidgetMixin(ReplaceableMixin):

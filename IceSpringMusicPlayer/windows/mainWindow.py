@@ -72,7 +72,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._config.layout = newLayout
 
     def _widgetToElement(self, widget: QtWidgets.QWidget) -> Element:
-        from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
+        from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
         assert isinstance(widget, (ReplaceableMixin, QtWidgets.QWidget))
         return Element(
             clazz=type(widget),

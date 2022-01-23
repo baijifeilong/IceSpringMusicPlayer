@@ -7,7 +7,7 @@ from PySide2 import QtWidgets, QtGui
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.domains.config import Config
-from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
+from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
 
 
 class ConfigWidget(QtWidgets.QFrame, ReplaceableMixin):

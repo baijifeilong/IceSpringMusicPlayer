@@ -4,7 +4,7 @@ from PySide2 import QtWidgets, QtCore, QtGui
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
-from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
+from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
 
 
 class SplitterWidget(QtWidgets.QSplitter, ReplaceableMixin):

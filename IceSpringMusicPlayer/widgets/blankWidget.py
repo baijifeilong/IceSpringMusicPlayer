@@ -4,7 +4,7 @@ import typing
 
 from PySide2 import QtWidgets
 
-from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
+from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
 
 
 class BlankWidget(QtWidgets.QFrame, ReplaceableMixin):

@@ -13,7 +13,7 @@ from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.layoutUtils import LayoutUtils
 from IceSpringMusicPlayer.utils.lyricUtils import LyricUtils
-from IceSpringMusicPlayer.widgets.replaceableMixin import ReplaceableMixin
+from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
 
 
 class LyricsWidget(QtWidgets.QScrollArea, ReplaceableMixin):
