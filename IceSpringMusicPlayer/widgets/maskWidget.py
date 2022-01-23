@@ -6,9 +6,9 @@ from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore, QtGui
 
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
 from IceSpringMusicPlayer.widgets.configWidget import ConfigWidget
 from IceSpringMusicPlayer.widgets.playlistManagerTable import PlaylistManagerTable
-from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
 
 
 class MaskWidget(QtWidgets.QWidget):
@@ -46,18 +46,16 @@ class MaskWidget(QtWidgets.QWidget):
         self._setReplaceable(self._calcReplaceable(pos))
         from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
         from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
-        from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
         from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         menu = QtWidgets.QMenu(self)
-        menu.addAction("Replace by horizontal splitter", lambda: self.doReplace(lambda: SplitterWidget(None, False, 2)))
-        menu.addAction("Replace by vertical splitter", lambda: self.doReplace(lambda: SplitterWidget(None, True, 2)))
-        menu.addAction("Replace by blank widget", lambda: self.doReplace(lambda: BlankWidget(None)))
-        menu.addAction("Replace by controls widget", lambda: self.doReplace(lambda: ControlsWidget(None)))
-        menu.addAction("Replace by lyrics widget", lambda: self.doReplace(lambda: LyricsWidget(None)))
-        menu.addAction("Replace by playlist widget", lambda: self.doReplace(lambda: PlaylistTable(None)))
-        menu.addAction("Replace by playlist manager", lambda: self.doReplace(lambda: PlaylistManagerTable(None)))
-        menu.addAction("Replace by config widget", lambda: self.doReplace(lambda: ConfigWidget(None)))
+        menu.addAction("Replace by horizontal splitter", lambda: self.doReplace(lambda: SplitterWidget(False, 2)))
+        menu.addAction("Replace by vertical splitter", lambda: self.doReplace(lambda: SplitterWidget(True, 2)))
+        menu.addAction("Replace by blank widget", lambda: self.doReplace(lambda: BlankWidget()))
+        menu.addAction("Replace by lyrics widget", lambda: self.doReplace(lambda: LyricsWidget()))
+        menu.addAction("Replace by playlist widget", lambda: self.doReplace(lambda: PlaylistTable()))
+        menu.addAction("Replace by playlist manager", lambda: self.doReplace(lambda: PlaylistManagerTable()))
+        menu.addAction("Replace by config widget", lambda: self.doReplace(lambda: ConfigWidget()))
         menu.addSeparator()
         for plugin in self._app.getConfig().plugins:
             if not plugin.disabled:

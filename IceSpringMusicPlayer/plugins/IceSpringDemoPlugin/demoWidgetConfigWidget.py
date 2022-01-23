@@ -9,8 +9,8 @@ from IceSpringDemoPlugin.demoWidget import DemoWidget
 
 
 class DemoWidgetConfigWidget(QtWidgets.QWidget):
-    def __init__(self, target: DemoWidget, parent: QtWidgets.QWidget = None) -> None:
-        super().__init__(parent)
+    def __init__(self, target: DemoWidget) -> None:
+        super().__init__()
         self._target = target
         self._logger = logging.getLogger("demoWidgetConfigWidget")
         self._widgetConfig = target.getWidgetConfig()

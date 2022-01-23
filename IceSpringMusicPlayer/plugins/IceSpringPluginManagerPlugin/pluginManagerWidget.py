@@ -4,11 +4,9 @@ import typing
 
 import PySide2
 from IceSpringRealOptional.just import Just
-from IceSpringRealOptional.typingUtils import unused
 from PySide2 import QtWidgets, QtCore, QtGui
 
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.controls.humanLabel import HumanLabel
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
@@ -17,9 +15,8 @@ from IceSpringMusicPlayer.utils.classUtils import ClassUtils
 
 
 class PluginManagerWidget(QtWidgets.QSplitter, PluginWidgetMixin):
-    def __init__(self, parent: QtWidgets.QWidget = None, config: JsonSupport = None):
-        super().__init__(parent)
-        unused(config)
+    def __init__(self):
+        super().__init__()
         self._logger = logging.getLogger("pluginManagerWidget")
         self._app = App.instance()
         self._pluginService = self._app.getPluginService()

@@ -1,7 +1,7 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/20 12:55
 import logging
 
-from IceSpringRealOptional.typingUtils import unused, gg
+from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore
 
 import IceSpringDemoPlugin.demoPluginTranslation as tt
@@ -11,9 +11,8 @@ from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 
 
 class DemoPluginConfigWidget(QtWidgets.QWidget, PluginWidgetMixin):
-    def __init__(self, parent: QtWidgets.QWidget = None, config=None) -> None:
-        unused(config)
-        super().__init__(parent)
+    def __init__(self) -> None:
+        super().__init__()
         self._app = App.instance()
         self._logger = logging.getLogger("demoPluginConfigWidget")
         self._pluginConfig = DemoPlugin.getPluginConfig()

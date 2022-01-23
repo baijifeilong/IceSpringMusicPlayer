@@ -2,7 +2,7 @@
 
 import typing
 
-from IceSpringRealOptional.typingUtils import unused, gg
+from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
@@ -14,9 +14,8 @@ class HelloWorldPlugin(QtWidgets.QWidget, PluginMixin, PluginWidgetMixin):
     def getPluginWidgetClasses(cls) -> typing.List[typing.Type[PluginWidgetMixin]]:
         return [cls]
 
-    def __init__(self, parent, config):
-        super().__init__(parent)
-        unused(config)
+    def __init__(self):
+        super().__init__()
         label = QtWidgets.QLabel("Hello World", self)
         label.setAlignment(gg(QtCore.Qt.AlignmentFlag.AlignCenter))
         self.setLayout(QtWidgets.QGridLayout(self))

@@ -9,17 +9,17 @@ from IceSpringRealOptional.typingUtils import unused
 from PySide2 import QtCore, QtWidgets, QtGui
 
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
 from IceSpringMusicPlayer.services.player import Player
-from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
 
 
 class PlaylistManagerTable(IceTableView, ReplaceableMixin):
     _logger: logging.Logger
     _player: Player
 
-    def __init__(self, parent: typing.Optional[QtWidgets.QWidget]) -> None:
-        super().__init__(parent)
+    def __init__(self) -> None:
+        super().__init__()
         self._logger = logging.getLogger("playlistsTable")
         self._player = App.instance().getPlayer()
         self.setModel(PlaylistManagerModel(self))

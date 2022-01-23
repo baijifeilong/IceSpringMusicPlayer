@@ -1,22 +1,21 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/12 21:22
 import logging
-import typing
 
 import qtawesome
 from IceSpringRealOptional.just import Just
 from PySide2 import QtWidgets, QtCore, QtGui
 
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.controls.fluentSlider import FluentSlider
 from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
-from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
 
 
-class ControlsWidget(QtWidgets.QWidget, ReplaceableMixin):
+class ControlsWidget(QtWidgets.QWidget, PluginWidgetMixin):
     _logger: logging.Logger
     _config: Config
     _app: App
@@ -28,8 +27,8 @@ class ControlsWidget(QtWidgets.QWidget, ReplaceableMixin):
     _progressLabel: QtWidgets.QLabel
     _volumeDial: QtWidgets.QDial
 
-    def __init__(self, parent: typing.Optional[QtWidgets.QWidget]) -> None:
-        super().__init__(parent)
+    def __init__(self) -> None:
+        super().__init__()
         self._logger = logging.getLogger("controlsPanel")
         self._config = App.instance().getConfig()
         self._app = App.instance()

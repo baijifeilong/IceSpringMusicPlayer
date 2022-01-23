@@ -1,13 +1,12 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/16 8:24
 import logging
-import typing
 
 from PySide2 import QtWidgets, QtGui
 
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
+from IceSpringMusicPlayer.domains.config import Config
 
 
 class ConfigWidget(QtWidgets.QFrame, ReplaceableMixin):
@@ -34,8 +33,8 @@ class ConfigWidget(QtWidgets.QFrame, ReplaceableMixin):
         features.append(f"{font.pointSize()} pt")
         return " ".join(features)
 
-    def __init__(self, parent: typing.Optional[QtWidgets.QWidget]):
-        super().__init__(parent)
+    def __init__(self):
+        super().__init__()
         self._logger = logging.getLogger("configsWidget")
         self._app = App.instance()
         self._config = App.instance().getConfig()

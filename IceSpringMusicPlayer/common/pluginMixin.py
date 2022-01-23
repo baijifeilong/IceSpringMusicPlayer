@@ -49,7 +49,7 @@ class PluginMixin(object):
         menu = QtWidgets.QMenu(cls.getPluginName(), parentMenu)
         for clazz in cls.getPluginWidgetClasses():
             menu.addAction(f"Replace By {clazz.getWidgetName()}",
-                lambda clazz=clazz: maskWidget.doReplace(lambda: gg(clazz)(None, None)))
+                lambda clazz=clazz: maskWidget.doReplace(lambda: gg(clazz)()))
         return menu
 
     @classmethod

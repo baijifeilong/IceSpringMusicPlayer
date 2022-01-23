@@ -113,7 +113,7 @@ class ConfigService(QtCore.QObject):
     def getDefaultLayout() -> Element:
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
-        from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
+        from IceSpringControlsPlugin.controlsWidget import ControlsWidget
         from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
         return Element(clazz=SplitterWidget, vertical=False, weight=1, config=dict(), children=[
             Element(clazz=SplitterWidget, vertical=True, weight=1, config=dict(), children=[
@@ -132,7 +132,7 @@ class ConfigService(QtCore.QObject):
     def getDemoLayout() -> Element:
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
-        from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
+        from IceSpringControlsPlugin.controlsWidget import ControlsWidget
         from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
         from IceSpringMusicPlayer.widgets.configWidget import ConfigWidget
         from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
@@ -152,7 +152,7 @@ class ConfigService(QtCore.QObject):
     def getControlsDownLayout():
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
-        from IceSpringMusicPlayer.widgets.controlsWidget import ControlsWidget
+        from IceSpringControlsPlugin.controlsWidget import ControlsWidget
         from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
         return Element(clazz=SplitterWidget, vertical=True, weight=1, config=dict(), children=[
             Element(clazz=SplitterWidget, vertical=False, weight=7, config=dict(), children=[

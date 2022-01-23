@@ -1,4 +1,5 @@
 # Created by BaiJiFeiLong@gmail.com at 2022-01-03 11:06:37
+import inspect
 import logging
 import typing
 from pathlib import Path
@@ -102,10 +103,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _drawElement(self, element: Element, parent: QtWidgets.QWidget) -> None:
         self._logger.info("Draw element: %s to %s", element.clazz, parent)
-        if issubclass(element.clazz, PluginWidgetMixin):
-            widget = gg(element.clazz)(parent, element.config)
+        if issubclass(element.clazz, PluginWidgetMixin) and "config" in inspect.signature(
+                element.clazz.__init__).parameters.keys():
+            widget = gg(element.clazz)(element.config)
         else:
-            widget = element.clazz(parent)
+            widget = element.clazz()
         if isinstance(widget, QtWidgets.QSplitter) and element.vertical:
             widget.setOrientation(QtCore.Qt.Orientation.Vertical)
         if isinstance(parent, QtWidgets.QMainWindow):

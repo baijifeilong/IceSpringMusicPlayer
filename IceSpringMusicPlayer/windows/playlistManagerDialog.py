@@ -12,5 +12,5 @@ class PlaylistManagerDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle("Playlist Manager")
         self.setLayout(QtWidgets.QGridLayout(self))
-        self.layout().addWidget(PlaylistManagerTable(self))
+        self.layout().addWidget(PlaylistManagerTable())
         self.resize(640, 360)
