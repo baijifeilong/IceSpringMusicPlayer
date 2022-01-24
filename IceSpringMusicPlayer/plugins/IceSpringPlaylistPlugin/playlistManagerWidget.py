@@ -9,18 +9,18 @@ from IceSpringRealOptional.typingUtils import unused
 from PySide2 import QtCore, QtWidgets, QtGui
 
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.common.replacerMixin import ReplacerMixin
+from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
 from IceSpringMusicPlayer.services.player import Player
 
 
-class PlaylistManagerTable(IceTableView, ReplacerMixin):
+class PlaylistManagerWidget(IceTableView, PluginWidgetMixin):
     _logger: logging.Logger
     _player: Player
 
     def __init__(self) -> None:
         super().__init__()
-        self._logger = logging.getLogger("playlistsTable")
+        self._logger = logging.getLogger("playlistManagerWidget")
         self._player = App.instance().getPlayer()
         self.setModel(PlaylistManagerModel(self))
         self.setColumnWidth(0, 320)

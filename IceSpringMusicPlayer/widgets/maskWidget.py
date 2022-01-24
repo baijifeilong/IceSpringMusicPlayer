@@ -7,8 +7,9 @@ from PySide2 import QtWidgets, QtCore, QtGui
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.replacerMixin import ReplacerMixin
+from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
 from IceSpringMusicPlayer.widgets.configWidget import ConfigWidget
-from IceSpringMusicPlayer.widgets.playlistManagerTable import PlaylistManagerTable
+from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
 
 
 class MaskWidget(QtWidgets.QWidget):
@@ -44,13 +45,10 @@ class MaskWidget(QtWidgets.QWidget):
 
     def _onCustomContextMenuRequested(self, pos: QtCore.QPoint) -> None:
         self._setReplaceable(self._calcReplaceable(pos))
-        from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
-        from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
         menu = QtWidgets.QMenu(self)
         menu.addAction("Replace by horizontal splitter", lambda: self._doReplace(SplitterWidget(False, 2)))
         menu.addAction("Replace by vertical splitter", lambda: self._doReplace(SplitterWidget(True, 2)))
         menu.addAction("Replace by blank widget", lambda: self._doReplace(BlankWidget()))
-        menu.addAction("Replace by playlist manager", lambda: self._doReplace(PlaylistManagerTable()))
         menu.addAction("Replace by config widget", lambda: self._doReplace(ConfigWidget()))
         menu.addSeparator()
         for plugin in self._app.getConfig().plugins:

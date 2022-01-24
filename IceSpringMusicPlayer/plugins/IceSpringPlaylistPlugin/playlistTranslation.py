@@ -19,3 +19,6 @@ PlaylistPlugin_Name.zh_CN = "播放列表插件"
 PlaylistWidget_Name = Text()
 PlaylistWidget_Name.en_US = "Playlist Widget"
 PlaylistWidget_Name.zh_CN = "播放列表组件"
+PlaylistManagerWidget_Name = Text()
+PlaylistManagerWidget_Name.en_US = "Playlist Manager Widget"
+PlaylistManagerWidget_Name.zh_CN = "播放列表管理器组件"

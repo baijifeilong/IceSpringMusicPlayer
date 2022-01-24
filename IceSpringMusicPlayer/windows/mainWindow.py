@@ -13,10 +13,11 @@ from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.domains.config import Config, Element
 from IceSpringMusicPlayer.services.player import Player
+from IceSpringMusicPlayer.utils.dialogUtils import DialogUtils
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 from IceSpringMusicPlayer.widgets.maskWidget import MaskWidget
 from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
-from IceSpringMusicPlayer.windows.playlistManagerDialog import PlaylistManagerDialog
+from IceSpringPlaylistPlugin.playlistManagerWidget import PlaylistManagerWidget
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -211,7 +212,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._viewMenu = self.menuBar().addMenu(tt.ViewMenu)
         self._viewPlaylistManagerAction = self._viewMenu.addAction(
-            tt.ViewMenu_PlaylistManager, lambda: PlaylistManagerDialog(self).show())
+            tt.ViewMenu_PlaylistManager, lambda: DialogUtils.execWidget(PlaylistManagerWidget(), withOk=True))
 
         self._layoutMenu = self.menuBar().addMenu(tt.LayoutMenu)
         self._layoutControlsDownAction = self._layoutMenu.addAction(
