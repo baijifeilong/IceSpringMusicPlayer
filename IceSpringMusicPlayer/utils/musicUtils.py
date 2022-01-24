@@ -13,15 +13,17 @@ class MusicUtils(object):
         parts = [x.strip() for x in Path(filename).with_suffix("").name.rsplit("-", maxsplit=1)]
         artist, title = parts if len(parts) == 2 else ["Unknown"] + parts
         info = taglib.File(filename)
-        return Music(
+        music = Music(
             filename=filename,
             filesize=Path(filename).stat().st_size,
-            album=info.tags.get("ALBUM", [""])[0],
-            title=info.tags.get("TITLE", [title])[0],
-            artist=info.tags.get("ARTIST", [artist])[0],
+            album=(info.tags.get("ALBUM") or [""])[0],
+            title=(info.tags.get("TITLE") or [title])[0],
+            artist=(info.tags.get("ARTIST") or [artist])[0],
             bitrate=info.bitrate,
             sampleRate=info.sampleRate,
             channels=info.channels,
             duration=info.length * 1000,
             format=Path(filename).suffix.strip(".").upper(),
         )
+        info.close()
+        return music

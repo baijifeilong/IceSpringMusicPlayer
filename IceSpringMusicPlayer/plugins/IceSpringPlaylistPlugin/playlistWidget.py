@@ -111,10 +111,9 @@ class PlaylistWidget(IceTableView, PluginWidgetMixin):
     def _onCustomContextMenuRequested(self, pos: QtCore.QPoint) -> None:
         unused(pos)
         menu = QtWidgets.QMenu()
-        menu.addAction("Remove", self._onRemove)
-        menu.addAction("Add", self._playlistService.addMusicsFromFileDialog)
-        menu.addAction("One Key Add", self._playlistService.addMusicsFromHomeFolder)
-        menu.addAction("Load Test Data", self._playlistService.loadTestData)
+        menu.addAction("Add Musics", self._playlistService.addMusicsFromFileDialog)
+        menu.addAction("Add Folder", self._playlistService.addMusicsFromFolderDialog)
+        menu.addAction("Remove Musics", self._onRemove)
         menu.exec_(QtGui.QCursor.pos())
 
     def _onRequestLocateCurrentMusic(self) -> None:

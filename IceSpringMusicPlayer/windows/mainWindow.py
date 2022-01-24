@@ -12,6 +12,7 @@ from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.domains.config import Config, Element
+from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.dialogUtils import DialogUtils
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
@@ -60,6 +61,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._pluginService.pluginDisabled.connect(self._doRefreshMenuBarAndToolBar)
         self._pluginService.pluginsInserted.connect(self._doRefreshMenuBarAndToolBar)
         self._pluginService.pluginsRemoved.connect(self._doRefreshMenuBarAndToolBar)
+        self._playlistService.musicParsed.connect(self._onMusicParsed)
+
+    def _onMusicParsed(self, progress: int, total: int, music: Music):
+        self._logger.info("On music parsed: %d/%d %s", progress, total, music.filename)
+        self.statusBar().showMessage("Added %d/%d %s" % (progress, total, music.filename))
+        QtCore.QCoreApplication.processEvents()
 
     def _initPalette(self):
         self.setPalette(Just.of(QtGui.QPalette()).apply(
@@ -185,6 +192,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._logger.info("Refresh menu bar")
         self._fileMenu.setTitle(tt.FileMenu)
         self._fileOpenAction.setText(tt.FileMenu_Open)
+        self._fileConfigAction.setText(tt.FileMenu_Config)
         self._viewMenu.setTitle(tt.ViewMenu)
         self._viewPlaylistManagerAction.setText(tt.ViewMenu_PlaylistManager)
         self._layoutMenu.setTitle(tt.LayoutMenu)
@@ -236,7 +244,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._testMenu = self.menuBar().addMenu(tt.TestMenu)
         self._testOneKeyAddAction = self._testMenu.addAction(
-            tt.TestMenu_OneKeyAdd, lambda: self._playlistService.addMusicsFromHomeFolder())
+            tt.TestMenu_OneKeyAdd, lambda: self._playlistService.addMusicsFromFolder("~/Music"))
         self._testLoadTestDataAction = self._testMenu.addAction(
             tt.TestMenu_LoadTestData, lambda: self._playlistService.loadTestData())
 
