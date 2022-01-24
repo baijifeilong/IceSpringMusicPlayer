@@ -73,8 +73,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._config.layout = newLayout
 
     def _widgetToElement(self, widget: QtWidgets.QWidget) -> Element:
-        from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
-        assert isinstance(widget, (ReplaceableMixin, QtWidgets.QWidget))
+        from IceSpringMusicPlayer.common.replacerMixin import ReplacerMixin
+        assert isinstance(widget, (ReplacerMixin, QtWidgets.QWidget))
         return Element(
             clazz=type(widget),
             vertical=isinstance(widget, QtWidgets.QSplitter) and widget.orientation() == QtCore.Qt.Orientation.Vertical,
@@ -161,6 +161,23 @@ class MainWindow(QtWidgets.QMainWindow):
         self._refreshMenuBar()
         self._refreshToolBar()
 
+    def _resetPluginsMenu(self):
+        self._pluginsMenu.clear()
+        self._pluginsMenu.setTitle(tt.Menu_Plugins)
+        for plugin in self._config.plugins:
+            items = plugin.clazz.getPluginMenus()
+            if not plugin.disabled:
+                menu = self._pluginsMenu.addMenu(plugin.clazz.getPluginName())
+                menu.addAction(tt.Menu_Plugins_AboutPlugin,
+                    lambda plugin=plugin: QtWidgets.QMessageBox.about(QtWidgets.QApplication.activeWindow(),
+                        tt.Menu_Plugins_AboutPlugin, plugin.clazz.getPluginDescription()))
+                for item in items:
+                    if isinstance(item, QtWidgets.QMenu):
+                        menu.addMenu(item)
+                    else:
+                        assert isinstance(item, QtWidgets.QAction)
+                        menu.addAction(item)
+
     def _refreshMenuBar(self):
         self._logger.info("Refresh menu bar")
         self._fileMenu.setTitle(tt.Menu_File)
@@ -172,11 +189,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._layoutControlsUpAction.setText(tt.Menu_Layout_ControlsUp)
         self._layoutDefaultAction.setText(tt.Menu_Layout_Default)
         self._layoutDemoAction.setText(tt.Menu_Layout_Demo)
-        self._pluginsMenu.setTitle(tt.Menu_Plugins)
-        self._pluginsMenu.clear()
-        for plugin in self._config.plugins:
-            if not plugin.disabled:
-                self._pluginsMenu.addMenu(plugin.clazz.getPluginMainMenu(self._pluginsMenu, self))
+        self._resetPluginsMenu()
         self._languageMenu.setTitle(tt.Menu_Language)
         self._languageEnglishAction.setText(tt.Menu_Language_English)
         self._languageChineseAction.setText(tt.Menu_Language_Chinese)
@@ -210,9 +223,7 @@ class MainWindow(QtWidgets.QMainWindow):
             tt.Menu_Layout_Demo, lambda: self._changeLayout(self._configService.getDemoLayout()))
 
         self._pluginsMenu = self.menuBar().addMenu(tt.Menu_Plugins)
-        for plugin in self._config.plugins:
-            if not plugin.disabled:
-                self._pluginsMenu.addMenu(plugin.clazz.getPluginMainMenu(self._pluginsMenu, self))
+        self._resetPluginsMenu()
 
         self._languageMenu = self.menuBar().addMenu(tt.Menu_Language)
         self._languageEnglishAction = self._languageMenu.addAction(

@@ -8,7 +8,7 @@ from IceSpringRealOptional.typingUtils import unused, gg
 from PySide2 import QtWidgets, QtGui, QtCore
 
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
+from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.controls.clickableLabel import ClickableLabel
 from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.services.player import Player
@@ -16,7 +16,7 @@ from IceSpringMusicPlayer.utils.layoutUtils import LayoutUtils
 from IceSpringMusicPlayer.utils.lyricUtils import LyricUtils
 
 
-class LyricsWidget(QtWidgets.QScrollArea, ReplaceableMixin):
+class LyricsWidget(QtWidgets.QScrollArea, PluginWidgetMixin):
     _app: App
     _config: Config
     _player: Player
@@ -24,7 +24,7 @@ class LyricsWidget(QtWidgets.QScrollArea, ReplaceableMixin):
 
     def __init__(self):
         super().__init__()
-        self._logger = logging.getLogger("lyricsPanel")
+        self._logger = logging.getLogger("lyricsWidget")
         self._logger.setLevel(logging.INFO)
         self._app = App.instance()
         self._config = App.instance().getConfig()

@@ -5,14 +5,20 @@ import typing
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore
 
+from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
+from IceSpringMusicPlayer.tt import Text
 
 
 class HelloWorldPlugin(QtWidgets.QWidget, PluginMixin, PluginWidgetMixin):
     @classmethod
-    def getPluginWidgetClasses(cls) -> typing.List[typing.Type[PluginWidgetMixin]]:
-        return [cls]
+    def getPluginName(cls) -> Text:
+        return tt.HelloWorldPlugin_Name
+
+    @classmethod
+    def getPluginReplacers(cls) -> typing.Dict[Text, typing.Callable[[], PluginWidgetMixin]]:
+        return {tt.HelloWorldWidget_Name: lambda: cls()}
 
     def __init__(self):
         super().__init__()

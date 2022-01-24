@@ -5,16 +5,10 @@ from __future__ import annotations
 import typing
 
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
-from IceSpringMusicPlayer.tt import Text
-from IceSpringMusicPlayer.utils.stringUtils import StringUtils
-from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
+from IceSpringMusicPlayer.common.replacerMixin import ReplacerMixin
 
 
-class PluginWidgetMixin(ReplaceableMixin):
-    @classmethod
-    def getWidgetName(cls) -> Text:
-        return Text.of(StringUtils.camelToTitle(cls.__name__))
-
+class PluginWidgetMixin(ReplacerMixin):
     @classmethod
     def getWidgetConfigClass(cls) -> typing.Type[JsonSupport]:
         return JsonSupport

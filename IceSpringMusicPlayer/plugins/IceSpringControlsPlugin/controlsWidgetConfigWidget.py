@@ -4,7 +4,7 @@ import logging
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets
 
-import IceSpringControlsPlugin.controlsPluginTranslation as tt
+import IceSpringControlsPlugin.controlsTranslation as tt
 from IceSpringControlsPlugin.controlsWidget import ControlsWidget
 from IceSpringMusicPlayer.utils.widgetUtils import WidgetUtils
 

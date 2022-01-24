@@ -31,3 +31,6 @@ Demo_PluginCounter.zh_CN = "插件计数器："
 Demo_WidgetCounter = Text()
 Demo_WidgetCounter.en_US = "Widget Counter: "
 Demo_WidgetCounter.zh_CN = "组件计数器："
+DemoBetaWidget_Name = Text()
+DemoBetaWidget_Name.en_US = "Beta Widget"
+DemoBetaWidget_Name.zh_CN = "演示贝塔组件"

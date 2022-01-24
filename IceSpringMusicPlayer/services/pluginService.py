@@ -133,7 +133,6 @@ class PluginService(QtCore.QObject):
         return self._isPluginUsedInElement(plugin, layout)
 
     def _isPluginUsedInElement(self, plugin: Plugin, element: Element):
-        classes = plugin.clazz.getPluginWidgetClasses()
-        usedInSelf = element.clazz in classes
+        usedInSelf = element.clazz.__module__.startswith(plugin.clazz.__module__)
         usedInChildren = any(self._isPluginUsedInElement(plugin, x) for x in element.children)
         return usedInSelf or usedInChildren

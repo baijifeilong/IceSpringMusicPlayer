@@ -6,14 +6,14 @@ from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore, QtGui
 
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
+from IceSpringMusicPlayer.common.replacerMixin import ReplacerMixin
 from IceSpringMusicPlayer.widgets.configWidget import ConfigWidget
 from IceSpringMusicPlayer.widgets.playlistManagerTable import PlaylistManagerTable
 
 
 class MaskWidget(QtWidgets.QWidget):
     _app: App
-    _replaceable: typing.Union[ReplaceableMixin, QtWidgets.QWidget, None]
+    _replaceable: typing.Union[ReplacerMixin, QtWidgets.QWidget, None]
 
     def __init__(self, parent: QtWidgets.QMainWindow) -> None:
         super().__init__(parent)
@@ -31,7 +31,7 @@ class MaskWidget(QtWidgets.QWidget):
             else:
                 self._setReplaceable(None)
 
-    def _setReplaceable(self, replaceable: typing.Union[ReplaceableMixin, QtWidgets.QWidget, None]) -> None:
+    def _setReplaceable(self, replaceable: typing.Union[ReplacerMixin, QtWidgets.QWidget, None]) -> None:
         self._replaceable = replaceable
         self.repaint()
 
@@ -46,20 +46,21 @@ class MaskWidget(QtWidgets.QWidget):
         self._setReplaceable(self._calcReplaceable(pos))
         from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
         from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
-        from IceSpringMusicPlayer.widgets.lyricsWidget import LyricsWidget
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         menu = QtWidgets.QMenu(self)
-        menu.addAction("Replace by horizontal splitter", lambda: self.doReplace(lambda: SplitterWidget(False, 2)))
-        menu.addAction("Replace by vertical splitter", lambda: self.doReplace(lambda: SplitterWidget(True, 2)))
-        menu.addAction("Replace by blank widget", lambda: self.doReplace(lambda: BlankWidget()))
-        menu.addAction("Replace by lyrics widget", lambda: self.doReplace(lambda: LyricsWidget()))
-        menu.addAction("Replace by playlist widget", lambda: self.doReplace(lambda: PlaylistTable()))
-        menu.addAction("Replace by playlist manager", lambda: self.doReplace(lambda: PlaylistManagerTable()))
-        menu.addAction("Replace by config widget", lambda: self.doReplace(lambda: ConfigWidget()))
+        menu.addAction("Replace by horizontal splitter", lambda: self.doReplace(SplitterWidget(False, 2)))
+        menu.addAction("Replace by vertical splitter", lambda: self.doReplace(SplitterWidget(True, 2)))
+        menu.addAction("Replace by blank widget", lambda: self.doReplace(BlankWidget()))
+        menu.addAction("Replace by playlist widget", lambda: self.doReplace(PlaylistTable()))
+        menu.addAction("Replace by playlist manager", lambda: self.doReplace(PlaylistManagerTable()))
+        menu.addAction("Replace by config widget", lambda: self.doReplace(ConfigWidget()))
         menu.addSeparator()
         for plugin in self._app.getConfig().plugins:
-            if not plugin.disabled:
-                menu.addMenu(plugin.clazz.getPluginLayoutMenu(menu, self))
+            replacers = plugin.clazz.getPluginReplacers()
+            if (not plugin.disabled) and len(replacers) > 0:
+                pluginMenu = menu.addMenu(plugin.clazz.getPluginName())
+                for k, v in replacers.items():
+                    pluginMenu.addAction(k, lambda v=v: self.doReplace(v()))
         menu.addSeparator()
         menu.addAction("Quit editing", self._doQuitEditing)
         menu.exec_(QtGui.QCursor.pos())
@@ -68,12 +69,12 @@ class MaskWidget(QtWidgets.QWidget):
     def _doQuitEditing(self):
         self._app.getMainWindow().setLayoutEditing(False)
 
-    def doReplace(self, maker: typing.Callable[[], QtWidgets.QWidget]):
+    def doReplace(self, widget: ReplacerMixin):
+        assert isinstance(widget, QtWidgets.QWidget)
         logger = logging.getLogger("maskWidget")
         parent = self._replaceable.parentWidget()
-        widget = maker()
         logger.info("Replacing %s with %s", self._replaceable, widget)
-        assert isinstance(widget, (QtWidgets.QWidget, ReplaceableMixin))
+        assert isinstance(widget, (QtWidgets.QWidget, ReplacerMixin))
         if isinstance(parent, QtWidgets.QMainWindow):
             logger.info("Parent is main window")
             parent.setCentralWidget(widget)
@@ -87,11 +88,11 @@ class MaskWidget(QtWidgets.QWidget):
         self.raise_()
         self._app.getMainWindow().layoutChanged.emit()
 
-    def _calcReplaceable(self, pos) -> ReplaceableMixin:
+    def _calcReplaceable(self, pos) -> ReplacerMixin:
         widget = self.parent().centralWidget().childAt(pos)
-        while (not isinstance(widget, ReplaceableMixin)) and (widget is not None):
+        while (not isinstance(widget, ReplacerMixin)) and (widget is not None):
             widget = widget.parentWidget()
         if widget is None:
             widget = self.parent().centralWidget()
-        assert isinstance(widget, ReplaceableMixin)
+        assert isinstance(widget, ReplacerMixin)
         return widget

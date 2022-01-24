@@ -2,16 +2,23 @@
 import types
 import typing
 
-import IceSpringControlsPlugin.controlsPluginTranslation as tt
+import IceSpringControlsPlugin.controlsTranslation as tt
 from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
+from IceSpringMusicPlayer.tt import Text
 
 
 class ControlsPlugin(PluginMixin):
     @classmethod
-    def getPluginWidgetClasses(cls) -> typing.List[typing.Type[PluginWidgetMixin]]:
+    def getPluginName(cls) -> Text:
+        return tt.ControlsPlugin_Name
+
+    @classmethod
+    def getPluginReplacers(cls) -> typing.Dict[Text, typing.Callable[[], PluginWidgetMixin]]:
         from IceSpringControlsPlugin.controlsWidget import ControlsWidget
-        return [ControlsWidget]
+        return {
+            tt.ControlsWidget_Name: lambda: ControlsWidget()
+        }
 
     @classmethod
     def getPluginTranslationModule(cls) -> types.ModuleType:

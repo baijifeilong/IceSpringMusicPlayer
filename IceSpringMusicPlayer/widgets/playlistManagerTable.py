@@ -9,12 +9,12 @@ from IceSpringRealOptional.typingUtils import unused
 from PySide2 import QtCore, QtWidgets, QtGui
 
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
+from IceSpringMusicPlayer.common.replacerMixin import ReplacerMixin
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
 from IceSpringMusicPlayer.services.player import Player
 
 
-class PlaylistManagerTable(IceTableView, ReplaceableMixin):
+class PlaylistManagerTable(IceTableView, ReplacerMixin):
     _logger: logging.Logger
     _player: Player
 

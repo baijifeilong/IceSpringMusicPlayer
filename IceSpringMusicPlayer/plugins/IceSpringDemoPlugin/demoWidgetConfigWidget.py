@@ -4,7 +4,7 @@ import logging
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore
 
-import IceSpringDemoPlugin.demoPluginTranslation as tt
+import IceSpringDemoPlugin.demoTranslation as tt
 from IceSpringDemoPlugin.demoWidget import DemoWidget
 
 

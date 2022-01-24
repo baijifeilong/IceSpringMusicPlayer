@@ -32,9 +32,9 @@ class ControlsWidget(QtWidgets.QWidget, PluginWidgetMixin):
     _volumeDial: QtWidgets.QDial
     _widgetConfig: ControlsWidgetConfig
 
-    def __init__(self, config) -> None:
+    def __init__(self, config=None) -> None:
         super().__init__()
-        self._widgetConfig = config
+        self._widgetConfig = config or self.getWidgetConfigClass().getDefaultObject()
         self._logger = logging.getLogger("controlsWidget")
         self._config = App.instance().getConfig()
         self._app = App.instance()

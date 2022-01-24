@@ -6,7 +6,7 @@ import typing
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore
 
-import IceSpringDemoPlugin.demoPluginTranslation as tt
+import IceSpringDemoPlugin.demoTranslation as tt
 from IceSpringDemoPlugin.demoPluginConfig import DemoPluginConfig
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
@@ -19,11 +19,13 @@ class DemoPlugin(PluginMixin):
     pluginConfigChanged: QtCore.SignalInstance = SignalUtils.createSignal()
 
     @classmethod
-    def getPluginWidgetClasses(cls) -> typing.List[typing.Type[PluginWidgetMixin]]:
+    def getPluginReplacers(cls) -> typing.Dict[Text, typing.Callable[[], PluginWidgetMixin]]:
         from IceSpringDemoPlugin.demoWidget import DemoWidget
-        from IceSpringDemoPlugin.demoPluginConfigWidget import DemoPluginConfigWidget
         from IceSpringDemoPlugin.demoBetaWidget import DemoBetaWidget
-        return [DemoWidget, DemoPluginConfigWidget, DemoBetaWidget]
+        return {
+            tt.DemoWidget_Name: lambda: DemoWidget(),
+            tt.DemoBetaWidget_Name: lambda: DemoBetaWidget()
+        }
 
     @classmethod
     def getPluginName(cls) -> Text:

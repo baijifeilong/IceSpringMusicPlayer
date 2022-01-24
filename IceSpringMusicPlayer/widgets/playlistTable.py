@@ -11,7 +11,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
+from IceSpringMusicPlayer.common.replacerMixin import ReplacerMixin
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
 from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.enums.playerState import PlayerState
@@ -19,7 +19,7 @@ from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.services.playlistService import PlaylistService
 
 
-class PlaylistTable(IceTableView, ReplaceableMixin):
+class PlaylistTable(IceTableView, ReplacerMixin):
     _logger: logging.Logger
     _app: App
     _config: Config

@@ -6,14 +6,13 @@ import typing
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore, QtGui
 
-import IceSpringDemoPlugin.demoPluginTranslation as tt
+import IceSpringDemoPlugin.demoTranslation as tt
 from IceSpringDemoPlugin.demoPlugin import DemoPlugin
 from IceSpringDemoPlugin.demoPluginConfig import DemoPluginConfig
 from IceSpringDemoPlugin.demoWidgetConfig import DemoWidgetConfig
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
-from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.utils.dialogUtils import DialogUtils
 
 
@@ -23,8 +22,8 @@ class DemoWidget(QtWidgets.QWidget, PluginWidgetMixin):
     _pluginConfig: DemoPluginConfig
     _widgetConfig: DemoWidgetConfig
 
-    def __init__(self, parent: QtWidgets.QWidget, config: DemoWidgetConfig = None):
-        super().__init__(parent)
+    def __init__(self, config=None):
+        super().__init__()
         self._logger = logging.getLogger("demoWidget")
         self._app = App.instance()
         self._pluginConfig = DemoPlugin.getPluginConfig()
@@ -70,10 +69,6 @@ class DemoWidget(QtWidgets.QWidget, PluginWidgetMixin):
     def _onWidgetConfigChanged(self) -> None:
         self._logger.info("On local config changed")
         self._refreshWidget()
-
-    @classmethod
-    def getWidgetName(cls) -> Text:
-        return tt.DemoWidget_Name
 
     @classmethod
     def getWidgetConfigClass(cls) -> typing.Type[JsonSupport]:

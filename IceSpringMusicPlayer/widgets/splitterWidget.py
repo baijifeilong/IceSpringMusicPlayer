@@ -3,11 +3,11 @@
 from PySide2 import QtWidgets, QtCore, QtGui
 
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.common.replaceableMixin import ReplaceableMixin
+from IceSpringMusicPlayer.common.replacerMixin import ReplacerMixin
 from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
 
 
-class SplitterWidget(QtWidgets.QSplitter, ReplaceableMixin):
+class SplitterWidget(QtWidgets.QSplitter, ReplacerMixin):
     _app: App
 
     def __init__(self, vertical=False, children=0):
