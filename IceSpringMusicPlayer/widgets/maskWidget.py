@@ -5,6 +5,7 @@ import typing
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore, QtGui
 
+from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.replacerMixin import ReplacerMixin
 from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
@@ -45,9 +46,15 @@ class MaskWidget(QtWidgets.QWidget):
     def _onCustomContextMenuRequested(self, pos: QtCore.QPoint) -> None:
         self._setReplaceable(self._calcReplaceable(pos))
         menu = QtWidgets.QMenu(self)
-        menu.addAction("Replace by horizontal splitter", lambda: self._doReplace(SplitterWidget(False, 2)))
-        menu.addAction("Replace by vertical splitter", lambda: self._doReplace(SplitterWidget(True, 2)))
         menu.addAction("Replace by blank widget", lambda: self._doReplace(BlankWidget()))
+        horizontalMenu = menu.addMenu(tt.MaskWidget_HorizontallySplitBy)
+        for i in range(2, 10):
+            horizontalMenu.addAction(tt.MaskWidget_NColumns.format(i),
+                lambda i=i: self._doReplace(SplitterWidget(False, i)))
+        verticalMenu = menu.addMenu(tt.MaskWidget_VerticallySplitBy)
+        for i in range(2, 10):
+            verticalMenu.addAction(tt.MaskWidget_NRows.format(i),
+                lambda i=i: self._doReplace(SplitterWidget(True, i)))
         menu.addSeparator()
         for plugin in self._app.getConfig().plugins:
             replacers = plugin.clazz.getPluginReplacers()
