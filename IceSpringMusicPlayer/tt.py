@@ -29,6 +29,9 @@ class Text(str):
         return text
 
 
+Common_Config = Text()
+Common_Config.en_US = "Config"
+Common_Config.zh_CN = "配置"
 FileMenu = Text()
 FileMenu.en_US = "&File"
 FileMenu.zh_CN = "文件"

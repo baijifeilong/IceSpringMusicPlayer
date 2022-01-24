@@ -52,8 +52,8 @@ class DemoWidget(QtWidgets.QWidget, PluginWidgetMixin):
         from IceSpringDemoPlugin.demoPluginConfigWidget import DemoPluginConfigWidget
         from IceSpringDemoPlugin.demoWidgetConfigWidget import DemoWidgetConfigWidget
         menu = QtWidgets.QMenu(self)
-        menu.addAction("Plugin Config", lambda: DialogUtils.execWidget(DemoPluginConfigWidget()))
-        menu.addAction("Widget Config", lambda: DialogUtils.execWidget(DemoWidgetConfigWidget(self)))
+        menu.addAction("Plugin Config", lambda: DialogUtils.execWidget(DemoPluginConfigWidget(), withOk=True))
+        menu.addAction("Widget Config", lambda: DialogUtils.execWidget(DemoWidgetConfigWidget(self), withOk=True))
         menu.exec_(QtGui.QCursor.pos())
 
     def onLanguageChanged(self, language: str) -> None:

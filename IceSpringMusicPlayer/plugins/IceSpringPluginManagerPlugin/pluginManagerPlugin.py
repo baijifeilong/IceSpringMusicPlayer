@@ -2,24 +2,30 @@
 import types
 import typing
 
+from PySide2 import QtWidgets
+
 import IceSpringPluginManagerPlugin.pluginManagerTranslation as tt
-from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
-from IceSpringMusicPlayer.common.systemPluginMixin import SystemPluginMixin
+from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
 from IceSpringMusicPlayer.tt import Text
+from IceSpringMusicPlayer.utils.dialogUtils import DialogUtils
 
 
-class PluginManagerPlugin(SystemPluginMixin):
+class PluginManagerPlugin(PluginMixin):
     @classmethod
     def getPluginName(cls) -> Text:
         return tt.PluginManagerPlugin_Name
 
     @classmethod
-    def getPluginReplacers(cls) -> typing.Dict[Text, typing.Callable[[], PluginWidgetMixin]]:
-        from IceSpringPluginManagerPlugin.pluginManagerWidget import PluginManagerWidget
-        return {
-            tt.PluginManagerWidget_Name: lambda: PluginManagerWidget()
-        }
-
-    @classmethod
     def getPluginTranslationModule(cls) -> types.ModuleType:
         return tt
+
+    @classmethod
+    def getPluginMenus(cls) -> typing.List[typing.Union[QtWidgets.QAction, QtWidgets.QMenu]]:
+        from IceSpringPluginManagerPlugin.pluginManagerWidget import PluginManagerWidget
+        action = QtWidgets.QAction(tt.Common_Config)
+        action.triggered.connect(lambda: DialogUtils.execWidget(PluginManagerWidget(), withOk=True))
+        return [action]
+
+    @classmethod
+    def isSystemPlugin(cls) -> bool:
+        return True

@@ -10,7 +10,6 @@ from PySide2 import QtCore
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
-from IceSpringMusicPlayer.common.systemPluginMixin import SystemPluginMixin
 from IceSpringMusicPlayer.domains.config import Element
 from IceSpringMusicPlayer.domains.plugin import Plugin
 
@@ -37,7 +36,7 @@ class PluginService(QtCore.QObject):
         for path in Path(folder).glob("**/*.py"):
             package = ".".join([x for x in path.relative_to(pluginRoot).parts if x != "__init__.py"]).rstrip(".py")
             for x in importlib.import_module(package).__dict__.values():
-                if isinstance(x, type) and issubclass(x, PluginMixin) and x not in [PluginMixin, SystemPluginMixin]:
+                if isinstance(x, type) and issubclass(x, PluginMixin) and x != PluginMixin:
                     classes.add(x)
         return sorted(classes, key=lambda x: x.__module__ + "." + x.__name__)
 

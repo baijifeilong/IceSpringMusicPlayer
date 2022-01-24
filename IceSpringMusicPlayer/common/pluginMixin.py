@@ -54,5 +54,4 @@ class PluginMixin(object):
 
     @classmethod
     def isSystemPlugin(cls) -> bool:
-        from IceSpringMusicPlayer.common.systemPluginMixin import SystemPluginMixin
-        return issubclass(cls, SystemPluginMixin)
+        return False

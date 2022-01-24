@@ -32,3 +32,7 @@ class LyricsPlugin(PluginMixin):
     @classmethod
     def getPluginTranslationModule(cls) -> types.ModuleType:
         return tt
+
+    @classmethod
+    def isSystemPlugin(cls) -> bool:
+        return True

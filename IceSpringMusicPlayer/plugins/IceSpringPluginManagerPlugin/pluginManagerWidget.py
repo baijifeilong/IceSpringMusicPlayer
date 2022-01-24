@@ -7,14 +7,13 @@ from IceSpringRealOptional.just import Just
 from PySide2 import QtWidgets, QtCore, QtGui
 
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.controls.humanLabel import HumanLabel
 from IceSpringMusicPlayer.controls.iceTableView import IceTableView
 from IceSpringMusicPlayer.domains.plugin import Plugin
 from IceSpringMusicPlayer.utils.classUtils import ClassUtils
 
 
-class PluginManagerWidget(QtWidgets.QSplitter, PluginWidgetMixin):
+class PluginManagerWidget(QtWidgets.QSplitter):
     def __init__(self):
         super().__init__()
         self._logger = logging.getLogger("pluginManagerWidget")
@@ -29,6 +28,7 @@ class PluginManagerWidget(QtWidgets.QSplitter, PluginWidgetMixin):
         self._versionLabel = HumanLabel()
         self._idLabel = HumanLabel()
         self._statusLabel = HumanLabel()
+        self._systemLabel = HumanLabel()
         formLayout = QtWidgets.QFormLayout()
         formLayout.setMargin(10)
         formLayout.addRow("ID:", self._idLabel)
@@ -38,6 +38,8 @@ class PluginManagerWidget(QtWidgets.QSplitter, PluginWidgetMixin):
         formLayout.addRow("Version:", self._versionLabel)
         formLayout.addWidget(Just.of(QtWidgets.QWidget()).apply(lambda x: x.setFixedHeight(5)).value())
         formLayout.addRow("Status:", self._statusLabel)
+        formLayout.addWidget(Just.of(QtWidgets.QWidget()).apply(lambda x: x.setFixedHeight(5)).value())
+        formLayout.addRow("System:", self._systemLabel)
         widget = QtWidgets.QWidget()
         widget.setLayout(formLayout)
         self.addWidget(self._table)
@@ -144,6 +146,7 @@ class PluginManagerWidget(QtWidgets.QSplitter, PluginWidgetMixin):
         self._versionLabel.setText(plugin.clazz.getPluginVersion())
         self._idLabel.setText(ClassUtils.fullname(plugin.clazz))
         self._statusLabel.setText("Disabled" if plugin.disabled else "Enabled")
+        self._systemLabel.setText("YES" if plugin.clazz.isSystemPlugin() else "NO")
 
     def _refreshTable(self):
         topLeft = self._model.index(0, 0)
@@ -160,7 +163,7 @@ class PluginManagerModel(QtCore.QAbstractTableModel):
     def __init__(self, plugins: typing.List[Plugin], parent: QtCore.QObject) -> None:
         super().__init__(parent)
         self._plugins = plugins
-        self._fields = ["Name", "Version", "State"]
+        self._fields = ["Name", "Version", "System", "State"]
 
     def rowCount(self, parent: QtCore.QModelIndex = ...) -> int:
         return len(self._plugins)
@@ -182,5 +185,7 @@ class PluginManagerModel(QtCore.QAbstractTableModel):
         if column == 1:
             return plugin.clazz.getPluginVersion()
         if column == 2:
+            return "YES" if plugin.clazz.isSystemPlugin() else "NO"
+        if column == 3:
             return "Disabled" if plugin.disabled else "Enabled"
         raise RuntimeError("Impossible")
