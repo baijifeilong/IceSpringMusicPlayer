@@ -22,7 +22,7 @@ class HelloWorldPlugin(QtWidgets.QWidget, PluginMixin, PluginWidgetMixin):
 
     def __init__(self):
         super().__init__()
-        label = QtWidgets.QLabel("Hello World", self)
+        label = QtWidgets.QLabel("Hello World")
         label.setAlignment(gg(QtCore.Qt.AlignmentFlag.AlignCenter))
-        self.setLayout(QtWidgets.QGridLayout(self))
+        self.setLayout(QtWidgets.QGridLayout())
         self.layout().addWidget(label)

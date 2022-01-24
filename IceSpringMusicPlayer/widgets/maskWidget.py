@@ -46,12 +46,10 @@ class MaskWidget(QtWidgets.QWidget):
         self._setReplaceable(self._calcReplaceable(pos))
         from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
         from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
-        from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         menu = QtWidgets.QMenu(self)
         menu.addAction("Replace by horizontal splitter", lambda: self._doReplace(SplitterWidget(False, 2)))
         menu.addAction("Replace by vertical splitter", lambda: self._doReplace(SplitterWidget(True, 2)))
         menu.addAction("Replace by blank widget", lambda: self._doReplace(BlankWidget()))
-        menu.addAction("Replace by playlist widget", lambda: self._doReplace(PlaylistTable()))
         menu.addAction("Replace by playlist manager", lambda: self._doReplace(PlaylistManagerTable()))
         menu.addAction("Replace by config widget", lambda: self._doReplace(ConfigWidget()))
         menu.addSeparator()
