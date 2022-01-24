@@ -163,15 +163,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _resetPluginsMenu(self):
         self._pluginsMenu.clear()
-        self._pluginsMenu.setTitle(tt.Menu_Plugins)
+        self._pluginsMenu.setTitle(tt.PluginsMenu)
         for plugin in self._config.plugins:
             items = plugin.clazz.getPluginMenus()
             if not plugin.disabled:
                 menu = self._pluginsMenu.addMenu(plugin.clazz.getPluginName())
-                menu.addAction(tt.Menu_Plugins_AboutPlugin,
+                menu.addAction(tt.PluginsMenu_AboutPlugin,
                     lambda plugin=plugin: QtWidgets.QMessageBox.about(QtWidgets.QApplication.activeWindow(),
-                        tt.Menu_Plugins_AboutPlugin, plugin.clazz.getPluginDescription()))
+                        tt.PluginsMenu_AboutPlugin, plugin.clazz.getPluginDescription()))
                 for item in items:
+                    item.setParent(menu)
                     if isinstance(item, QtWidgets.QMenu):
                         menu.addMenu(item)
                     else:
@@ -180,22 +181,22 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _refreshMenuBar(self):
         self._logger.info("Refresh menu bar")
-        self._fileMenu.setTitle(tt.Menu_File)
-        self._fileOpenAction.setText(tt.Menu_File_Open)
-        self._viewMenu.setTitle(tt.Menu_View)
-        self._viewPlaylistManagerAction.setText(tt.Menu_View_PlaylistManager)
-        self._layoutMenu.setTitle(tt.Menu_Layout)
-        self._layoutControlsDownAction.setText(tt.Menu_Layout_ControlsDown)
-        self._layoutControlsUpAction.setText(tt.Menu_Layout_ControlsUp)
-        self._layoutDefaultAction.setText(tt.Menu_Layout_Default)
-        self._layoutDemoAction.setText(tt.Menu_Layout_Demo)
+        self._fileMenu.setTitle(tt.FileMenu)
+        self._fileOpenAction.setText(tt.FileMenu_Open)
+        self._viewMenu.setTitle(tt.ViewMenu)
+        self._viewPlaylistManagerAction.setText(tt.ViewMenu_PlaylistManager)
+        self._layoutMenu.setTitle(tt.LayoutMenu)
+        self._layoutControlsDownAction.setText(tt.LayoutMenu_ControlsDown)
+        self._layoutControlsUpAction.setText(tt.LayoutMenu_ControlsUp)
+        self._layoutDefaultAction.setText(tt.LayoutMenu_Default)
+        self._layoutDemoAction.setText(tt.LayoutMenu_Demo)
         self._resetPluginsMenu()
-        self._languageMenu.setTitle(tt.Menu_Language)
-        self._languageEnglishAction.setText(tt.Menu_Language_English)
-        self._languageChineseAction.setText(tt.Menu_Language_Chinese)
-        self._testMenu.setTitle(tt.Menu_Test)
-        self._testOneKeyAddAction.setText(tt.Menu_Test_OneKeyAdd)
-        self._testLoadTestDataAction.setText(tt.Menu_Test_LoadTestData)
+        self._languageMenu.setTitle(tt.LanguageMenu)
+        self._languageEnglishAction.setText(tt.LanguageMenu_English)
+        self._languageChineseAction.setText(tt.LanguageMenu_Chinese)
+        self._testMenu.setTitle(tt.TestMenu)
+        self._testOneKeyAddAction.setText(tt.TestMenu_OneKeyAdd)
+        self._testLoadTestDataAction.setText(tt.TestMenu_LoadTestData)
 
     def _refreshToolBar(self):
         self._logger.info("Refresh tool bar")
@@ -204,38 +205,38 @@ class MainWindow(QtWidgets.QMainWindow):
         self._toggleLanguageAction.setText(tt.Toolbar_ToggleLanguage)
 
     def _initMenu(self):
-        self._fileMenu = self.menuBar().addMenu(tt.Menu_File)
-        self._fileOpenAction = self._fileMenu.addAction(tt.Menu_File_Open)
+        self._fileMenu = self.menuBar().addMenu(tt.FileMenu)
+        self._fileOpenAction = self._fileMenu.addAction(tt.FileMenu_Open)
         self._fileOpenAction.triggered.connect(self._playlistService.addMusicsFromFileDialog)
 
-        self._viewMenu = self.menuBar().addMenu(tt.Menu_View)
+        self._viewMenu = self.menuBar().addMenu(tt.ViewMenu)
         self._viewPlaylistManagerAction = self._viewMenu.addAction(
-            tt.Menu_View_PlaylistManager, lambda: PlaylistManagerDialog(self).show())
+            tt.ViewMenu_PlaylistManager, lambda: PlaylistManagerDialog(self).show())
 
-        self._layoutMenu = self.menuBar().addMenu(tt.Menu_Layout)
+        self._layoutMenu = self.menuBar().addMenu(tt.LayoutMenu)
         self._layoutControlsDownAction = self._layoutMenu.addAction(
-            tt.Menu_Layout_ControlsDown, lambda: self._changeLayout(self._configService.getControlsDownLayout()))
+            tt.LayoutMenu_ControlsDown, lambda: self._changeLayout(self._configService.getControlsDownLayout()))
         self._layoutControlsUpAction = self._layoutMenu.addAction(
-            tt.Menu_Layout_ControlsUp, lambda: self._changeLayout(self._configService.getControlsUpLayout()))
+            tt.LayoutMenu_ControlsUp, lambda: self._changeLayout(self._configService.getControlsUpLayout()))
         self._layoutDefaultAction = self._layoutMenu.addAction(
-            tt.Menu_Layout_Default, lambda: self._changeLayout(self._configService.getDefaultLayout()))
+            tt.LayoutMenu_Default, lambda: self._changeLayout(self._configService.getDefaultLayout()))
         self._layoutDemoAction = self._layoutMenu.addAction(
-            tt.Menu_Layout_Demo, lambda: self._changeLayout(self._configService.getDemoLayout()))
+            tt.LayoutMenu_Demo, lambda: self._changeLayout(self._configService.getDemoLayout()))
 
-        self._pluginsMenu = self.menuBar().addMenu(tt.Menu_Plugins)
+        self._pluginsMenu = self.menuBar().addMenu(tt.PluginsMenu)
         self._resetPluginsMenu()
 
-        self._languageMenu = self.menuBar().addMenu(tt.Menu_Language)
+        self._languageMenu = self.menuBar().addMenu(tt.LanguageMenu)
         self._languageEnglishAction = self._languageMenu.addAction(
-            tt.Menu_Language_English, lambda: self._app.changeLanguage("en_US"))
+            tt.LanguageMenu_English, lambda: self._app.changeLanguage("en_US"))
         self._languageChineseAction = self._languageMenu.addAction(
-            tt.Menu_Language_Chinese, lambda: self._app.changeLanguage("zh_CN"))
+            tt.LanguageMenu_Chinese, lambda: self._app.changeLanguage("zh_CN"))
 
-        self._testMenu = self.menuBar().addMenu(tt.Menu_Test)
+        self._testMenu = self.menuBar().addMenu(tt.TestMenu)
         self._testOneKeyAddAction = self._testMenu.addAction(
-            tt.Menu_Test_OneKeyAdd, lambda: self._playlistService.addMusicsFromHomeFolder())
+            tt.TestMenu_OneKeyAdd, lambda: self._playlistService.addMusicsFromHomeFolder())
         self._testLoadTestDataAction = self._testMenu.addAction(
-            tt.Menu_Test_LoadTestData, lambda: self._playlistService.loadTestData())
+            tt.TestMenu_LoadTestData, lambda: self._playlistService.loadTestData())
 
     def _onPlaylistComboActivated(self, index: int) -> None:
         self._logger.info("On playlist combo activated at index %d", index)

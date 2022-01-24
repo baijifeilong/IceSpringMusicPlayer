@@ -92,8 +92,7 @@ class ControlsWidget(QtWidgets.QWidget, PluginWidgetMixin):
         from IceSpringControlsPlugin.controlsWidgetConfigWidget import ControlsWidgetConfigWidget
         self._logger.info("On custom context menu requested")
         menu = QtWidgets.QMenu(self)
-        menu.addAction("Widget Config",
-            lambda: DialogUtils.execWidget(ControlsWidgetConfigWidget(self), self, QtCore.QSize(854, 480)))
+        menu.addAction("Widget Config", lambda: DialogUtils.execWidget(ControlsWidgetConfigWidget(self)))
         menu.exec_(QtGui.QCursor.pos())
 
     def _refreshIcons(self):

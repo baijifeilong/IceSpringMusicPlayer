@@ -38,7 +38,7 @@ class DemoPluginConfigWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._refreshWidget()
 
     def _refreshWidget(self):
-        self._pluginCounterLabel.setText(tt.Demo_PluginCounter + str(self._pluginConfig.pluginCounter))
+        self._pluginCounterLabel.setText(tt.DemoWidget_PluginCounter + str(self._pluginConfig.pluginCounter))
 
     def _onIncreaseButtonClicked(self):
         self._pluginConfig.pluginCounter += 1

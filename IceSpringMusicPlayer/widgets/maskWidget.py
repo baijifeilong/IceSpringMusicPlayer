@@ -48,19 +48,19 @@ class MaskWidget(QtWidgets.QWidget):
         from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
         from IceSpringMusicPlayer.widgets.playlistTable import PlaylistTable
         menu = QtWidgets.QMenu(self)
-        menu.addAction("Replace by horizontal splitter", lambda: self.doReplace(SplitterWidget(False, 2)))
-        menu.addAction("Replace by vertical splitter", lambda: self.doReplace(SplitterWidget(True, 2)))
-        menu.addAction("Replace by blank widget", lambda: self.doReplace(BlankWidget()))
-        menu.addAction("Replace by playlist widget", lambda: self.doReplace(PlaylistTable()))
-        menu.addAction("Replace by playlist manager", lambda: self.doReplace(PlaylistManagerTable()))
-        menu.addAction("Replace by config widget", lambda: self.doReplace(ConfigWidget()))
+        menu.addAction("Replace by horizontal splitter", lambda: self._doReplace(SplitterWidget(False, 2)))
+        menu.addAction("Replace by vertical splitter", lambda: self._doReplace(SplitterWidget(True, 2)))
+        menu.addAction("Replace by blank widget", lambda: self._doReplace(BlankWidget()))
+        menu.addAction("Replace by playlist widget", lambda: self._doReplace(PlaylistTable()))
+        menu.addAction("Replace by playlist manager", lambda: self._doReplace(PlaylistManagerTable()))
+        menu.addAction("Replace by config widget", lambda: self._doReplace(ConfigWidget()))
         menu.addSeparator()
         for plugin in self._app.getConfig().plugins:
             replacers = plugin.clazz.getPluginReplacers()
             if (not plugin.disabled) and len(replacers) > 0:
                 pluginMenu = menu.addMenu(plugin.clazz.getPluginName())
                 for k, v in replacers.items():
-                    pluginMenu.addAction(k, lambda v=v: self.doReplace(v()))
+                    pluginMenu.addAction(k, lambda v=v: self._doReplace(v()))
         menu.addSeparator()
         menu.addAction("Quit editing", self._doQuitEditing)
         menu.exec_(QtGui.QCursor.pos())
@@ -69,7 +69,7 @@ class MaskWidget(QtWidgets.QWidget):
     def _doQuitEditing(self):
         self._app.getMainWindow().setLayoutEditing(False)
 
-    def doReplace(self, widget: ReplacerMixin):
+    def _doReplace(self, widget: ReplacerMixin):
         assert isinstance(widget, QtWidgets.QWidget)
         logger = logging.getLogger("maskWidget")
         parent = self._replaceable.parentWidget()

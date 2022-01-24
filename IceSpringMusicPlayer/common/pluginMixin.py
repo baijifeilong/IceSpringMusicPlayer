@@ -25,7 +25,7 @@ class PluginMixin(object):
 
     @classmethod
     def getPluginDescription(cls) -> Text:
-        return tt.Plugins_ThisIs.format(cls.getPluginName())
+        return tt.PluginsMenu_ThisIs.format(cls.getPluginName())
 
     @classmethod
     def getPluginMenus(cls) -> typing.List[typing.Union[QtWidgets.QAction, QtWidgets.QMenu]]:

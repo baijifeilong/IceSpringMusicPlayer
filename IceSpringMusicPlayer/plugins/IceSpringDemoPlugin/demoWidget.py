@@ -45,17 +45,15 @@ class DemoWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._refreshWidget()
 
     def _refreshWidget(self):
-        self._pluginCounterLabel.setText(tt.Demo_PluginCounter + str(self._pluginConfig.pluginCounter))
-        self._widgetCounterLabel.setText(tt.Demo_WidgetCounter + str(self._widgetConfig.widgetCounter))
+        self._pluginCounterLabel.setText(tt.DemoWidget_PluginCounter + str(self._pluginConfig.pluginCounter))
+        self._widgetCounterLabel.setText(tt.DemoWidget_WidgetCounter + str(self._widgetConfig.widgetCounter))
 
     def _onCustomContextMenuRequested(self):
         from IceSpringDemoPlugin.demoPluginConfigWidget import DemoPluginConfigWidget
         from IceSpringDemoPlugin.demoWidgetConfigWidget import DemoWidgetConfigWidget
         menu = QtWidgets.QMenu(self)
-        menu.addAction("Plugin Config",
-            lambda: DialogUtils.execWidget(DemoPluginConfigWidget(), parent=self, size=QtCore.QSize(854, 480)))
-        menu.addAction("Widget Config",
-            lambda: DialogUtils.execWidget(DemoWidgetConfigWidget(self), parent=self, size=QtCore.QSize(854, 480)))
+        menu.addAction("Plugin Config", lambda: DialogUtils.execWidget(DemoPluginConfigWidget()))
+        menu.addAction("Widget Config", lambda: DialogUtils.execWidget(DemoWidgetConfigWidget(self)))
         menu.exec_(QtGui.QCursor.pos())
 
     def onLanguageChanged(self, language: str) -> None:

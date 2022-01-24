@@ -31,7 +31,7 @@ class DemoWidgetConfigWidget(QtWidgets.QWidget):
         self._refreshWidget()
 
     def _refreshWidget(self):
-        self._widgetCounterLabel.setText(tt.Demo_WidgetCounter + str(self._widgetConfig.widgetCounter))
+        self._widgetCounterLabel.setText(tt.DemoWidget_WidgetCounter + str(self._widgetConfig.widgetCounter))
 
     def _onIncreaseButtonClicked(self):
         self._widgetConfig.widgetCounter += 1

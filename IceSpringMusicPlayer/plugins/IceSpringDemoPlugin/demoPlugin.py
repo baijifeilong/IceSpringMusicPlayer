@@ -4,7 +4,7 @@ import types
 import typing
 
 from IceSpringRealOptional.typingUtils import gg
-from PySide2 import QtCore
+from PySide2 import QtCore, QtWidgets
 
 import IceSpringDemoPlugin.demoTranslation as tt
 from IceSpringDemoPlugin.demoPluginConfig import DemoPluginConfig
@@ -12,11 +12,20 @@ from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginMixin import PluginMixin
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.tt import Text
+from IceSpringMusicPlayer.utils.dialogUtils import DialogUtils
 from IceSpringMusicPlayer.utils.signalUtils import SignalUtils
 
 
 class DemoPlugin(PluginMixin):
     pluginConfigChanged: QtCore.SignalInstance = SignalUtils.createSignal()
+
+    @classmethod
+    def getPluginName(cls) -> Text:
+        return tt.DemoPlugin_Name
+
+    @classmethod
+    def getPluginDescription(cls) -> Text:
+        return tt.DemoPlugin_Description
 
     @classmethod
     def getPluginReplacers(cls) -> typing.Dict[Text, typing.Callable[[], PluginWidgetMixin]]:
@@ -28,12 +37,11 @@ class DemoPlugin(PluginMixin):
         }
 
     @classmethod
-    def getPluginName(cls) -> Text:
-        return tt.Demo_Name
-
-    @classmethod
-    def getPluginDescription(cls) -> Text:
-        return tt.Demo_Description
+    def getPluginMenus(cls) -> typing.List[typing.Union[QtWidgets.QAction, QtWidgets.QMenu]]:
+        from IceSpringDemoPlugin.demoPluginConfigWidget import DemoPluginConfigWidget
+        action = QtWidgets.QAction(tt.DemoPluginMenu_Config)
+        action.triggered.connect(lambda: DialogUtils.execWidget(DemoPluginConfigWidget()))
+        return [action]
 
     @classmethod
     def getPluginConfigClass(cls) -> typing.Type[JsonSupport]:
