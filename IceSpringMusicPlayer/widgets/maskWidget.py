@@ -46,12 +46,12 @@ class MaskWidget(QtWidgets.QWidget):
     def _onCustomContextMenuRequested(self, pos: QtCore.QPoint) -> None:
         self._setReplaceable(self._calcReplaceable(pos))
         menu = QtWidgets.QMenu(self)
-        menu.addAction("Replace by blank widget", lambda: self._doReplace(BlankWidget()))
-        horizontalMenu = menu.addMenu(tt.MaskWidget_HorizontallySplitBy)
+        menu.addAction(tt.MaskWidget_ReplaceWithBlankWidget, lambda: self._doReplace(BlankWidget()))
+        horizontalMenu = menu.addMenu(tt.MaskWidget_HorizontallySplitTo)
         for i in range(2, 10):
             horizontalMenu.addAction(tt.MaskWidget_NColumns.format(i),
                 lambda i=i: self._doReplace(SplitterWidget(False, i)))
-        verticalMenu = menu.addMenu(tt.MaskWidget_VerticallySplitBy)
+        verticalMenu = menu.addMenu(tt.MaskWidget_VerticallySplitTo)
         for i in range(2, 10):
             verticalMenu.addAction(tt.MaskWidget_NRows.format(i),
                 lambda i=i: self._doReplace(SplitterWidget(True, i)))
@@ -63,7 +63,7 @@ class MaskWidget(QtWidgets.QWidget):
                 for k, v in replacers.items():
                     pluginMenu.addAction(k, lambda v=v: self._doReplace(v()))
         menu.addSeparator()
-        menu.addAction("Quit editing", self._doQuitEditing)
+        menu.addAction(tt.MaskWidget_QuitEditingMode, self._doQuitEditing)
         menu.exec_(QtGui.QCursor.pos())
         self._setReplaceable(None)
 

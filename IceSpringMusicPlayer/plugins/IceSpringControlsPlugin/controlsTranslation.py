@@ -14,7 +14,7 @@ def __getattr__(name):
 
 ControlsPlugin_Name = Text()
 ControlsPlugin_Name.en_US = "Controls Plugin"
-ControlsPlugin_Name.en_US = "控制器插件"
+ControlsPlugin_Name.zh_CN = "控制器插件"
 ControlsWidget_Name = Text()
 ControlsWidget_Name.en_US = "Controls Widget"
 ControlsWidget_Name.zh_CN = "控制器组件"
