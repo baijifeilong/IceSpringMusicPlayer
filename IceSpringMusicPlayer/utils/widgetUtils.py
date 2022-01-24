@@ -10,3 +10,14 @@ class WidgetUtils(object):
         spacer = QtWidgets.QWidget()
         spacer.setSizePolicy(gg(QtWidgets.QSizePolicy.Expanding), gg(QtWidgets.QSizePolicy.Expanding))
         return spacer
+
+    @staticmethod
+    def createButtonBox(ok=False, cancel=False, apply=False):
+        flag = 0
+        if ok:
+            flag |= QtWidgets.QDialogButtonBox.StandardButton.Ok
+        if cancel:
+            flag |= QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        if apply:
+            flag |= QtWidgets.QDialogButtonBox.StandardButton.Apply
+        return QtWidgets.QDialogButtonBox(gg(flag))

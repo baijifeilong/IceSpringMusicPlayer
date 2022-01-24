@@ -7,31 +7,41 @@ from IceSpringPathLib import Path
 from IceSpringRealOptional.typingUtils import unused, gg
 from PySide2 import QtWidgets, QtGui, QtCore
 
+import IceSpringLyricsPlugin.lyricsTranslation as tt
+from IceSpringLyricsPlugin.lyricsWidgetConfig import LyricsWidgetConfig
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.controls.clickableLabel import ClickableLabel
-from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.layoutUtils import LayoutUtils
 from IceSpringMusicPlayer.utils.lyricUtils import LyricUtils
 
 
 class LyricsWidget(QtWidgets.QScrollArea, PluginWidgetMixin):
+    widgetConfigChanged: QtCore.SignalInstance = QtCore.Signal()
     _app: App
-    _config: Config
+    _widgetConfig: LyricsWidgetConfig
     _player: Player
     _layout: QtWidgets.QVBoxLayout
 
-    def __init__(self):
+    @classmethod
+    def getWidgetConfigClass(cls) -> typing.Type[JsonSupport]:
+        return LyricsWidgetConfig
+
+    def getWidgetConfig(self) -> LyricsWidgetConfig:
+        return self._widgetConfig
+
+    def __init__(self, config=None):
         super().__init__()
+        self._widgetConfig = config or LyricsWidgetConfig.getDefaultObject()
         self._logger = logging.getLogger("lyricsWidget")
         self._logger.setLevel(logging.INFO)
         self._app = App.instance()
-        self._config = App.instance().getConfig()
-        self._player = App.instance().getPlayer()
+        self._player = self._app.getPlayer()
         self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
         self._player.positionChanged.connect(self._onPlayerPositionChanged)
-        self.setFont(self._config.lyricFont)
+        self.setFont(self._widgetConfig.font)
         self.setWidget(QtWidgets.QWidget(self))
         layout = QtWidgets.QVBoxLayout(self.widget())
         layout.setMargin(0)
@@ -44,7 +54,16 @@ class LyricsWidget(QtWidgets.QScrollArea, PluginWidgetMixin):
         self._layout = layout
         self._resetLayout()
         self._setupLyrics()
-        self._app.configChanged.connect(self._onConfigChanged)
+        self.widgetConfigChanged.connect(self._onWidgetConfigChanged)
+        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
+
+    def _onCustomContextMenuRequested(self) -> None:
+        from IceSpringLyricsPlugin.lyricsWidgetConfigDialog import LyricsWidgetConfigDialog
+        self._logger.info("On custom context menu requested")
+        menu = QtWidgets.QMenu(self)
+        menu.addAction(tt.Plugins_ConfigWidget, lambda: LyricsWidgetConfigDialog(self).exec_())
+        menu.exec_(QtGui.QCursor.pos())
 
     def _resetLayout(self):
         LayoutUtils.clearLayout(self._layout)
@@ -53,10 +72,9 @@ class LyricsWidget(QtWidgets.QScrollArea, PluginWidgetMixin):
             gg(QtCore.Qt.AlignmentFlag.AlignCenter))
         self._layout.addStretch()
 
-    def _onConfigChanged(self):
-        self._logger.info("On config changed, Update font to: %s", self._config.lyricFont)
-        self.setFont(self._config.lyricFont)
-        # self._refreshLyrics(forceRefresh=True)
+    def _onWidgetConfigChanged(self):
+        self._logger.info("On config changed, Update font to: %s", self._widgetConfig.font)
+        self.setFont(self._widgetConfig.font)
 
     def _onPlayerPositionChanged(self, position: int) -> None:
         self._logger.debug("Player position changed: %d", position)

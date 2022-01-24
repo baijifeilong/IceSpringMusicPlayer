@@ -61,6 +61,8 @@ class Config(object):
             )
         elif isinstance(obj, JsonSupport):
             return obj.__class__.pythonToJson(obj)
+        elif isinstance(obj, dict):
+            return obj
         else:
             return obj.__dict__
 

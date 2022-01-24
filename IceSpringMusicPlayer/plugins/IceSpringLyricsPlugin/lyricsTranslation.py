@@ -19,3 +19,6 @@ LyricsPlugin_Name.zh_CN = "歌词插件"
 LyricsWidget_Name = Text()
 LyricsWidget_Name.en_US = "Lyrics Widget"
 LyricsWidget_Name.zh_CN = "歌词组件"
+LyricsWidget_Font = Text()
+LyricsWidget_Font.en_US = "Lyrics Font"
+LyricsWidget_Font.zh_CN = "歌词字体"

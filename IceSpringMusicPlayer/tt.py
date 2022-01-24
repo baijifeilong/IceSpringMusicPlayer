@@ -29,9 +29,6 @@ class Text(str):
         return text
 
 
-Common_Config = Text()
-Common_Config.en_US = "Config"
-Common_Config.zh_CN = "配置"
 FileMenu = Text()
 FileMenu.en_US = "&File"
 FileMenu.zh_CN = "文件"
@@ -74,6 +71,9 @@ PluginsMenu.zh_CN = "插件"
 PluginsMenu_AboutPlugin = Text()
 PluginsMenu_AboutPlugin.en_US = "About Plugin"
 PluginsMenu_AboutPlugin.zh_CN = "关于插件"
+PluginsMenu_ConfigPlugin = Text()
+PluginsMenu_ConfigPlugin.en_US = "Config Plugin"
+PluginsMenu_ConfigPlugin.zh_CN = "配置插件"
 PluginsMenu_ThisIs = Text()
 PluginsMenu_ThisIs.en_US = "This is {}"
 PluginsMenu_ThisIs.zh_CN = "这是 {}"
@@ -104,6 +104,9 @@ Config_LyricFont.zh_CN = "歌词字体"
 Config_Apply = Text()
 Config_Apply.en_US = "Apply"
 Config_Apply.zh_CN = "应用"
+Config_QuickBrownFox = Text()
+Config_QuickBrownFox.en_US = "The quick brown fox jumps over the lazy dog."
+Config_QuickBrownFox.zh_CN = "天地玄黄，宇宙洪荒。日月盈昃，辰宿列张。"
 Music_Artist = Text()
 Music_Artist.en_US = "Artist"
 Music_Artist.zh_CN = "艺术家"
@@ -116,3 +119,6 @@ HelloWorldPlugin_Name.zh_CN = "你好世界插件"
 HelloWorldWidget_Name = Text()
 HelloWorldWidget_Name.en_US = "Hello World Widget"
 HelloWorldWidget_Name.zh_CN = "你好世界组件"
+Plugins_ConfigWidget = Text()
+Plugins_ConfigWidget.en_US = "Config Widget"
+Plugins_ConfigWidget.zh_CN = "组件配置"

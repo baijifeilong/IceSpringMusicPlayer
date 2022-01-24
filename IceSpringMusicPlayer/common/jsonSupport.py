@@ -8,11 +8,13 @@ import typing
 class JsonSupport(object):
     @classmethod
     def pythonToJson(cls, obj: typing.Any) -> typing.Any:
-        return obj.__dict__
+        from IceSpringMusicPlayer.domains.config import Config
+        return Config.toJson(obj.__dict__ if isinstance(obj, JsonSupport) else obj)
 
     @classmethod
     def jsonToPython(cls, pairs: typing.List[typing.Tuple[str, typing.Any]]) -> typing.Any:
-        return dict(pairs)
+        from IceSpringMusicPlayer.domains.config import Config
+        return Config.fromJson(pairs)
 
     @classmethod
     def getDefaultObject(cls) -> JsonSupport:

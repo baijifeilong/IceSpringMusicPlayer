@@ -22,7 +22,7 @@ class PluginManagerPlugin(PluginMixin):
     @classmethod
     def getPluginMenus(cls) -> typing.List[typing.Union[QtWidgets.QAction, QtWidgets.QMenu]]:
         from IceSpringPluginManagerPlugin.pluginManagerWidget import PluginManagerWidget
-        action = QtWidgets.QAction(tt.Common_Config)
+        action = QtWidgets.QAction(tt.PluginsMenu_ConfigPlugin)
         action.triggered.connect(lambda: DialogUtils.execWidget(PluginManagerWidget(), withOk=True))
         return [action]
 
