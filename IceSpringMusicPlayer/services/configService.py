@@ -132,26 +132,6 @@ class ConfigService(QtCore.QObject):
         ])
 
     @staticmethod
-    def getDemoLayout() -> Element:
-        from IceSpringPlaylistPlugin.playlistWidget import PlaylistWidget
-        from IceSpringLyricsPlugin.lyricsWidget import LyricsWidget
-        from IceSpringControlsPlugin.controlsWidget import ControlsWidget
-        from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
-        from IceSpringMusicPlayer.widgets.configWidget import ConfigWidget
-        from IceSpringMusicPlayer.widgets.blankWidget import BlankWidget
-        return Element(clazz=SplitterWidget, vertical=False, weight=1, config=dict(), children=[
-            Element(clazz=SplitterWidget, vertical=True, weight=1, config=dict(), children=[
-                Element(clazz=ControlsWidget, vertical=False, weight=2, config=dict(), children=[]),
-                Element(clazz=LyricsWidget, vertical=False, weight=3, config=dict(), children=[]),
-                Element(clazz=PlaylistWidget, vertical=False, weight=5, config=dict(), children=[]),
-            ]),
-            Element(clazz=SplitterWidget, vertical=True, weight=1, config=dict(), children=[
-                Element(clazz=ConfigWidget, vertical=False, weight=1, config=dict(), children=[]),
-                Element(clazz=BlankWidget, vertical=False, weight=3, config=dict(), children=[]),
-            ]),
-        ])
-
-    @staticmethod
     def getControlsDownLayout():
         from IceSpringPlaylistPlugin.playlistWidget import PlaylistWidget
         from IceSpringLyricsPlugin.lyricsWidget import LyricsWidget

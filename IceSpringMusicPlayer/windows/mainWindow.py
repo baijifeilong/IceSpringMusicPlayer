@@ -17,6 +17,7 @@ from IceSpringMusicPlayer.utils.dialogUtils import DialogUtils
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 from IceSpringMusicPlayer.widgets.maskWidget import MaskWidget
 from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
+from IceSpringMusicPlayer.windows.configDialog import ConfigDialog
 from IceSpringPlaylistPlugin.playlistManagerWidget import PlaylistManagerWidget
 
 
@@ -190,7 +191,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._layoutControlsDownAction.setText(tt.LayoutMenu_ControlsDown)
         self._layoutControlsUpAction.setText(tt.LayoutMenu_ControlsUp)
         self._layoutDefaultAction.setText(tt.LayoutMenu_Default)
-        self._layoutDemoAction.setText(tt.LayoutMenu_Demo)
         self._resetPluginsMenu()
         self._languageMenu.setTitle(tt.LanguageMenu)
         self._languageEnglishAction.setText(tt.LanguageMenu_English)
@@ -209,6 +209,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._fileMenu = self.menuBar().addMenu(tt.FileMenu)
         self._fileOpenAction = self._fileMenu.addAction(tt.FileMenu_Open)
         self._fileOpenAction.triggered.connect(self._playlistService.addMusicsFromFileDialog)
+        self._fileMenu.addSeparator()
+        self._fileConfigAction = self._fileMenu.addAction(tt.FileMenu_Config)
+        self._fileConfigAction.triggered.connect(lambda: ConfigDialog().exec_())
 
         self._viewMenu = self.menuBar().addMenu(tt.ViewMenu)
         self._viewPlaylistManagerAction = self._viewMenu.addAction(
@@ -221,8 +224,6 @@ class MainWindow(QtWidgets.QMainWindow):
             tt.LayoutMenu_ControlsUp, lambda: self._changeLayout(self._configService.getControlsUpLayout()))
         self._layoutDefaultAction = self._layoutMenu.addAction(
             tt.LayoutMenu_Default, lambda: self._changeLayout(self._configService.getDefaultLayout()))
-        self._layoutDemoAction = self._layoutMenu.addAction(
-            tt.LayoutMenu_Demo, lambda: self._changeLayout(self._configService.getDemoLayout()))
 
         self._pluginsMenu = self.menuBar().addMenu(tt.PluginsMenu)
         self._resetPluginsMenu()
