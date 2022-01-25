@@ -36,7 +36,6 @@ class PlaylistWidget(IceTableView, PluginWidgetMixin):
         self.doubleClicked.connect(self._onDoubleClicked)
         self.setIconSize(QtCore.QSize(32, 32) * self._app.getZoom())
         self.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
-        self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         self.setWordWrap(False)
         self.setSortingEnabled(True)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
@@ -218,13 +217,13 @@ class PlaylistModel(QtCore.QAbstractTableModel):
         return 3
 
     def data(self, index: QtCore.QModelIndex, role: int = ...) -> typing.Any:
-        music = self._player.getFrontPlaylist().orElseThrow(AssertionError).musics[index.row()]
-        currentPlaylistIndex = self._player.getCurrentPlaylistIndex()
-        frontPlaylistIndex = self._player.getFrontPlaylistIndex()
-        currentMusicIndex = self._player.getCurrentMusicIndex()
         if role == QtCore.Qt.DisplayRole:
-            return ["", music.artist, music.title][index.column()]
+            music = self._player.getFrontPlaylist().orElseThrow(AssertionError).musics[index.row()]
+            return ("", music.artist, music.title)[index.column()]
         elif role == QtCore.Qt.DecorationRole:
+            currentPlaylistIndex = self._player.getCurrentPlaylistIndex()
+            frontPlaylistIndex = self._player.getFrontPlaylistIndex()
+            currentMusicIndex = self._player.getCurrentMusicIndex()
             if index.column() == 0 and index.row() == currentMusicIndex and currentPlaylistIndex == frontPlaylistIndex:
                 playerState = self._player.getState()
                 return qtawesome.icon("mdi.play") if playerState.isPlaying() else qtawesome.icon(
