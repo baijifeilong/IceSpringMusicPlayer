@@ -22,7 +22,7 @@ class MusicUtils(object):
             bitrate=info.bitrate,
             sampleRate=info.sampleRate,
             channels=info.channels,
-            duration=info.length * 1000,
+            duration=Path(filename).stat().st_size * 8 // info.bitrate,
             format=Path(filename).suffix.strip(".").upper(),
         )
         info.close()

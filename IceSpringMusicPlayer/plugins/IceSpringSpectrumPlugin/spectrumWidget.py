@@ -15,6 +15,7 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
     def __init__(self):
         super().__init__()
         self._logger = logging.getLogger("spectrumWidget")
+        self._logger.setLevel(logging.INFO)
         self._player = App.instance().getPlayer()
         self._timer = QtCore.QTimer(self)
         self._timer.timeout.connect(self._onTimeout)
@@ -22,6 +23,12 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
 
     def _onTimeout(self):
         self._logger.debug("On timeout, repaint")
+        music = self._player.getCurrentMusic()
+        if music.isPresent():
+            samples = self._player.getSamples()
+            reportedDuration = self._player.getDuration()
+            realDuration = int(len(samples) / music.get().sampleRate * 1000)
+            self._logger.debug("Report duration: %d, real duration: %d", reportedDuration, realDuration)
         self.repaint()
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
