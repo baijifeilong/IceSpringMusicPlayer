@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import threading
 import typing
 
+import numpy as np
+import pydub
 from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.maybe import Maybe
 from IceSpringRealOptional.vector import Vector
@@ -51,6 +54,7 @@ class Player(QtCore.QObject):
     _historyPosition: int
     _proxy: QtMultimedia.QMediaPlayer
     _playedCount: int
+    _samples: np.ndarray
 
     def __init__(self, parent: QtCore.QObject):
         super().__init__(parent)
@@ -64,6 +68,7 @@ class Player(QtCore.QObject):
         self._histories = dict()
         self._historyPosition = -1
         self._playedCount = 0
+        self._samples = np.array([])
         self._proxy = QtMultimedia.QMediaPlayer(self)
         self._proxy.setVolume(50)
         self._proxy.stateChanged.connect(self._onProxyStateChanged)
@@ -279,6 +284,7 @@ class Player(QtCore.QObject):
         self._logger.info("Set music content: %s", music.filename)
         self._proxy.blockSignals(True)
         self._proxy.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(music.filename)))
+        threading.Thread(target=self._setupSamples, args=(music.filename,)).start()
         self._proxy.blockSignals(False)
         self._logger.info("Music content set to player.")
         self._logger.info("Update current music index")
@@ -288,6 +294,17 @@ class Player(QtCore.QObject):
         self._logger.info("Music play started.")
         self._playedCount += 1
         self._logger.info("Played count now: %d", self._playedCount)
+
+    def _setupSamples(self, filename):
+        self._logger.info("Setting up samples...")
+        segment = pydub.AudioSegment.from_file(filename)
+        samples = np.array(segment.set_channels(1).get_array_of_samples())
+        samples = samples / (2 ** (segment.sample_width * 8 - 1))
+        self._samples = samples
+        self._logger.info("Samples set up.")
+
+    def getSamples(self) -> np.ndarray:
+        return self._samples
 
     def playMusicAtIndex(self, index: int) -> None:
         self._logger.info("Play music at index: %d", index)

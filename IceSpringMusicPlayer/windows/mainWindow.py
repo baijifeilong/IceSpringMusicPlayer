@@ -19,7 +19,6 @@ from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 from IceSpringMusicPlayer.widgets.maskWidget import MaskWidget
 from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
 from IceSpringMusicPlayer.windows.configDialog import ConfigDialog
-from IceSpringPlaylistPlugin.playlistManagerWidget import PlaylistManagerWidget
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -214,6 +213,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._toggleLanguageAction.setText(tt.Toolbar_ToggleLanguage)
 
     def _initMenu(self):
+        from IceSpringPlaylistPlugin.playlistManagerWidget import PlaylistManagerWidget
         self._fileMenu = self.menuBar().addMenu(tt.FileMenu)
         self._fileOpenAction = self._fileMenu.addAction(tt.FileMenu_Open)
         self._fileOpenAction.triggered.connect(self._playlistService.addMusicsFromFileDialog)

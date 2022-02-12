@@ -7,6 +7,7 @@ import sys
 import typing
 
 from IceSpringPathLib import Path
+from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer import tt
@@ -102,7 +103,7 @@ class App(QtWidgets.QApplication):
 
     @staticmethod
     def instance() -> App:
-        return QtCore.QCoreApplication.instance()
+        return gg(QtCore.QCoreApplication.instance())
 
     def changeLanguage(self, language: str):
         self._logger.info("Change language: %s", language)
