@@ -5,6 +5,7 @@ import statistics
 import typing
 
 import numpy as np
+from IceSpringRealOptional.just import Just
 from PySide2 import QtWidgets, QtGui, QtCore
 from assertpy import assert_that
 from scipy import signal
@@ -13,6 +14,7 @@ import IceSpringSpectrumPlugin.spectrumTranslation as tt
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
+from IceSpringMusicPlayer.utils.layoutUtils import LayoutUtils
 from IceSpringSpectrumPlugin.spectrumWidgetConfig import SpectrumWidgetConfig
 
 
@@ -38,6 +40,7 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
     def __init__(self, config=None):
         super().__init__()
         self._widgetConfig = config or self.getWidgetConfigClass().getDefaultObject()
+        self._app = App.instance()
         self._minDbfs = -60
         self._updateRate = 20
         self._refreshRate = 60
@@ -62,12 +65,15 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self.widgetConfigChanged.connect(self._onWidgetConfigChanged)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
+        self.setPalette(Just.of(self.palette()).apply(
+            lambda x: x.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor("white"))).value())
 
     def _onCustomContextMenuRequested(self) -> None:
         from IceSpringSpectrumPlugin.spectrumWidgetConfigDialog import SpectrumWidgetConfigDialog
         self._logger.info("On custom context menu requested")
         menu = QtWidgets.QMenu(self)
         menu.addAction(tt.Plugins_ConfigWidget, lambda: SpectrumWidgetConfigDialog(self).exec_())
+        menu.addAction(tt.Plugins_ToggleFullscreen, lambda: LayoutUtils.toggleFullscreen(self))
         menu.exec_(QtGui.QCursor.pos())
 
     def _onWidgetConfigChanged(self):

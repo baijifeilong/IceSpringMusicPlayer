@@ -6,6 +6,7 @@ import qtawesome
 from IceSpringRealOptional.just import Just
 from PySide2 import QtWidgets, QtCore, QtGui
 
+import IceSpringControlsPlugin.controlsTranslation as tt
 from IceSpringControlsPlugin.controlsWidgetConfig import ControlsWidgetConfig
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
@@ -15,6 +16,7 @@ from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.dialogUtils import DialogUtils
+from IceSpringMusicPlayer.utils.layoutUtils import LayoutUtils
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 
 
@@ -87,12 +89,15 @@ class ControlsWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self.widgetConfigChanged.connect(self._onWidgetConfigChanged)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
+        self.setPalette(Just.of(self.palette()).apply(
+            lambda x: x.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor("white"))).value())
 
     def _onCustomContextMenuRequested(self):
         from IceSpringControlsPlugin.controlsWidgetConfigWidget import ControlsWidgetConfigWidget
         self._logger.info("On custom context menu requested")
         menu = QtWidgets.QMenu(self)
         menu.addAction("Widget Config", lambda: DialogUtils.execWidget(ControlsWidgetConfigWidget(self)))
+        menu.addAction(tt.Plugins_ToggleFullscreen, lambda: LayoutUtils.toggleFullscreen(self))
         menu.exec_(QtGui.QCursor.pos())
 
     def _refreshIcons(self):

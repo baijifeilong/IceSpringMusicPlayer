@@ -4,6 +4,7 @@ import typing
 from typing import Any
 
 from IceSpringPathLib import Path
+from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.typingUtils import unused, gg
 from PySide2 import QtWidgets, QtGui, QtCore
 
@@ -57,12 +58,15 @@ class LyricsWidget(QtWidgets.QScrollArea, PluginWidgetMixin):
         self.widgetConfigChanged.connect(self._onWidgetConfigChanged)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
+        self.setPalette(Just.of(self.palette()).apply(
+            lambda x: x.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor("white"))).value())
 
     def _onCustomContextMenuRequested(self) -> None:
         from IceSpringLyricsPlugin.lyricsWidgetConfigDialog import LyricsWidgetConfigDialog
         self._logger.info("On custom context menu requested")
         menu = QtWidgets.QMenu(self)
         menu.addAction(tt.Plugins_ConfigWidget, lambda: LyricsWidgetConfigDialog(self).exec_())
+        menu.addAction(tt.Plugins_ToggleFullscreen, lambda: LayoutUtils.toggleFullscreen(self))
         menu.exec_(QtGui.QCursor.pos())
 
     def _resetLayout(self):
