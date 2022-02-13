@@ -1,5 +1,6 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/2/12 19:19
 import logging
+import math
 import random
 import statistics
 import typing
@@ -43,7 +44,6 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         super().__init__()
         self._widgetConfig = config or self.getWidgetConfigClass().getDefaultObject()
         self._app = App.instance()
-        self._minDbfs = -60
         self._updateRate = 20
         self._refreshRate = 60
         self._sampleMillis = 33
@@ -89,6 +89,7 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._baseFrequency = self._widgetConfig.baseFrequency
         self._smoothUp = self._widgetConfig.smoothUp
         self._smoothDown = self._widgetConfig.smoothDown
+        self._minDbfs = self._widgetConfig.minDbfs
         assert_that(self._distribution).is_in("EXPONENTIAL", "LINEAR")
         if self._distribution == "EXPONENTIAL":
             powerRoot = pow(self._maxFrequency / self._baseFrequency, 1 / (self._barCount - 1))
@@ -130,7 +131,7 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         prevLabel = -1
         for i, (k, v) in enumerate(zip(self._thresholds, self._smooths)):
             v = max(v, self._minDbfs)
-            x, y = i * spacing + padLeft, round(-v * unitHeight) + padTop
+            x, y = i * spacing + padLeft, int(math.ceil(-v * unitHeight)) + padTop
             w, h = spacing - 1, self.height() - y - padBottom
             painter.fillRect(x, y, w, h, QtGui.QColor("#4477CC"))
             hz = str(k) if k < 1000 else ("%.1fK" if k < 10000 else "%.0fK") % (k / 1000)
@@ -140,7 +141,7 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
 
     @staticmethod
     def calcPowerValues(frequencies, powers, thresholds, minFrequency):
-        powers[powers == 0] = 2 ** -40
+        powers[powers == 0] = 10 ** -20
         powers = np.log10(powers * 2) * 10
         prevThresholds = [minFrequency] + thresholds[:-1]
         powerArrays = [[] for _ in range(len(thresholds))]
@@ -153,13 +154,13 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
             if len(powerArray) > 0:
                 value = statistics.mean(powerArray)
             else:
-                value = -90
+                value = -120
             values.append(value)
-        validIndexes = [i for i, v in enumerate(values) if v != -90]
+        validIndexes = [i for i, v in enumerate(values) if v != -120]
         if len(validIndexes) > 0:
             for index in range(0, validIndexes[-1], 1):
-                if values[index] == -90:
-                    samples = [x for x in values[max(index - 2, 0):index + 3] if x != -90] or [
+                if values[index] == -120:
+                    samples = [x for x in values[max(index - 2, 0):index + 3] if x != -120] or [
                         x for x in values if x != 90]
                     values[index] = statistics.mean(samples) * ((random.random() - 0.5) * 2 * 0.2 + 1)
         return values

@@ -46,3 +46,6 @@ spectrumWidget_smoothUp.zh_CN = "平滑上升因子"
 spectrumWidget_smoothDown = Text()
 spectrumWidget_smoothDown.en_US = "Smooth Down Factor"
 spectrumWidget_smoothDown.zh_CN = "平滑下降因子"
+spectrumWidget_minDbfs = Text()
+spectrumWidget_minDbfs.en_US = "Minimum Dbfs"
+spectrumWidget_minDbfs.zh_CN = "最小分贝数"

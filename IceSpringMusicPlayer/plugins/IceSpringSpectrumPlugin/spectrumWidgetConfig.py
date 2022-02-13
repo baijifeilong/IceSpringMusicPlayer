@@ -13,8 +13,9 @@ class SpectrumWidgetConfig(JsonSupport):
     maxFrequency: int
     smoothUp: float
     smoothDown: float
+    minDbfs: int
 
     @classmethod
     def getDefaultObject(cls) -> JsonSupport:
         return cls(barCount=100, distribution="EXPONENTIAL", baseFrequency=50, minFrequency=0, maxFrequency=22000,
-            smoothUp=0.9, smoothDown=0.7)
+            smoothUp=0.9, smoothDown=0.7, minDbfs=-60)
