@@ -32,6 +32,12 @@ class SpectrumWidgetConfigDialog(QtWidgets.QDialog):
         self._maxFrequencyComboBox = QtWidgets.QComboBox()
         self._maxFrequencyComboBox.addItems(list(map(str, frequencies)))
         self._maxFrequencyComboBox.setCurrentText(str(self._widgetConfig.maxFrequency))
+        self._smoothUpComboBox = QtWidgets.QComboBox()
+        self._smoothUpComboBox.addItems(list(map(str, reversed(range(1, 101)))))
+        self._smoothUpComboBox.setCurrentText(str(round(self._widgetConfig.smoothUp * 100)))
+        self._smoothDownComboBox = QtWidgets.QComboBox()
+        self._smoothDownComboBox.addItems(list(map(str, reversed(range(1, 101)))))
+        self._smoothDownComboBox.setCurrentText(str(round(self._widgetConfig.smoothDown * 100)))
         self._buttonBox = WidgetUtils.createButtonBox(ok=True, cancel=True, apply=True)
         mainLayout = QtWidgets.QGridLayout()
         mainLayout.setColumnStretch(0, 1)
@@ -46,6 +52,10 @@ class SpectrumWidgetConfigDialog(QtWidgets.QDialog):
         mainLayout.addWidget(self._minFrequencyComboBox)
         mainLayout.addWidget(QtWidgets.QLabel(tt.spectrumWidget_maxFrequency))
         mainLayout.addWidget(self._maxFrequencyComboBox)
+        mainLayout.addWidget(QtWidgets.QLabel(tt.spectrumWidget_smoothUp))
+        mainLayout.addWidget(self._smoothUpComboBox)
+        mainLayout.addWidget(QtWidgets.QLabel(tt.spectrumWidget_smoothDown))
+        mainLayout.addWidget(self._smoothDownComboBox)
         mainLayout.addWidget(WidgetUtils.createExpandingSpacer(), mainLayout.rowCount(), 0, 1, 2)
         mainLayout.addWidget(self._buttonBox, mainLayout.rowCount(), 0, 1, 2)
         self.setLayout(mainLayout)
@@ -61,6 +71,8 @@ class SpectrumWidgetConfigDialog(QtWidgets.QDialog):
             self._widgetConfig.baseFrequency = int(self._baseFrequencyComboBox.currentText())
             self._widgetConfig.minFrequency = int(self._minFrequencyComboBox.currentText())
             self._widgetConfig.maxFrequency = int(self._maxFrequencyComboBox.currentText())
+            self._widgetConfig.smoothUp = float(self._smoothUpComboBox.currentText()) / 100
+            self._widgetConfig.smoothDown = float(self._smoothDownComboBox.currentText()) / 100
             self._target.widgetConfigChanged.emit()
         if role in [QtWidgets.QDialogButtonBox.AcceptRole, QtWidgets.QDialogButtonBox.RejectRole]:
             self.close()

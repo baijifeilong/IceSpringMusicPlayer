@@ -26,6 +26,8 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
     _baseFrequency: int
     _minFrequency: int
     _maxFrequency: int
+    _smoothUp: float
+    _smoothDown: float
     _thresholds: typing.List[int]
     _values: typing.List[float]
     _smooths: typing.List[float]
@@ -45,8 +47,6 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._updateRate = 20
         self._refreshRate = 60
         self._sampleMillis = 33
-        self._smoothUp = 0.9
-        self._smoothDown = 0.9
         self._logger = logging.getLogger("spectrumWidget")
         self._logger.setLevel(logging.INFO)
         self._player = App.instance().getPlayer()
@@ -87,6 +87,8 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._minFrequency = self._widgetConfig.minFrequency
         self._maxFrequency = self._widgetConfig.maxFrequency
         self._baseFrequency = self._widgetConfig.baseFrequency
+        self._smoothUp = self._widgetConfig.smoothUp
+        self._smoothDown = self._widgetConfig.smoothDown
         assert_that(self._distribution).is_in("EXPONENTIAL", "LINEAR")
         if self._distribution == "EXPONENTIAL":
             powerRoot = pow(self._maxFrequency / self._baseFrequency, 1 / (self._barCount - 1))
