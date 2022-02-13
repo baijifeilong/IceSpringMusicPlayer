@@ -6,6 +6,7 @@ import typing
 
 import numpy as np
 from PySide2 import QtWidgets, QtGui, QtCore
+from assertpy import assert_that
 from scipy import signal
 
 import IceSpringSpectrumPlugin.spectrumTranslation as tt
@@ -18,6 +19,8 @@ from IceSpringSpectrumPlugin.spectrumWidgetConfig import SpectrumWidgetConfig
 class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
     widgetConfigChanged: QtCore.SignalInstance = QtCore.Signal()
     _widgetConfig: SpectrumWidgetConfig
+    _barCount: int
+    _distribution: str
     _thresholds: typing.List[int]
     _values: typing.List[float]
     _smooths: typing.List[float]
@@ -73,8 +76,14 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
     def _loadConfig(self):
         self._logger.info("Load config")
         self._barCount = self._widgetConfig.barCount
-        powerRoot = pow(self._maxFrequency / self._minFrequency, 1 / (self._barCount - 1))
-        self._thresholds = [round(self._minFrequency * pow(powerRoot, x)) for x in range(self._barCount)]
+        self._distribution = self._widgetConfig.distribution
+        assert_that(self._distribution).is_in("EXPONENTIAL", "LINEAR")
+        if self._distribution == "EXPONENTIAL":
+            powerRoot = pow(self._maxFrequency / self._minFrequency, 1 / (self._barCount - 1))
+            self._thresholds = [round(self._minFrequency * pow(powerRoot, x)) for x in range(self._barCount)]
+        else:
+            step = (self._maxFrequency - self._minFrequency) / (self._barCount - 1)
+            self._thresholds = [round(x * step + self._minFrequency) for x in range(self._barCount)]
 
     def _doUpdateSpectrum(self):
         self._logger.debug("Do update spectrum")

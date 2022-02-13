@@ -18,12 +18,18 @@ class SpectrumWidgetConfigDialog(QtWidgets.QDialog):
         self._barCountComboBox = QtWidgets.QComboBox()
         self._barCountComboBox.addItems(list(map(str, range(10, 210, 10))))
         self._barCountComboBox.setCurrentText(str(self._widgetConfig.barCount))
+        self._distributionComboBox = QtWidgets.QComboBox()
+        self._distributionComboBox.addItem(tt.spectrumWidget_frequencyDistributionExponential)
+        self._distributionComboBox.addItem(tt.spectrumWidget_frequencyDistributionLinear)
+        self._distributionComboBox.setCurrentIndex(["EXPONENTIAL", "LINEAR"].index(self._widgetConfig.distribution))
         self._buttonBox = WidgetUtils.createButtonBox(ok=True, cancel=True, apply=True)
         mainLayout = QtWidgets.QGridLayout()
         mainLayout.setColumnStretch(0, 1)
         mainLayout.setColumnStretch(1, 2)
         mainLayout.addWidget(QtWidgets.QLabel(tt.spectrumWidget_barCount))
         mainLayout.addWidget(self._barCountComboBox)
+        mainLayout.addWidget(QtWidgets.QLabel(tt.spectrumWidget_frequencyDistribution))
+        mainLayout.addWidget(self._distributionComboBox)
         mainLayout.addWidget(WidgetUtils.createExpandingSpacer(), mainLayout.rowCount(), 0, 1, 2)
         mainLayout.addWidget(self._buttonBox, mainLayout.rowCount(), 0, 1, 2)
         self.setLayout(mainLayout)
@@ -35,6 +41,7 @@ class SpectrumWidgetConfigDialog(QtWidgets.QDialog):
         role = self._buttonBox.buttonRole(button)
         if role in [QtWidgets.QDialogButtonBox.ApplyRole, QtWidgets.QDialogButtonBox.AcceptRole]:
             self._widgetConfig.barCount = int(self._barCountComboBox.currentText())
+            self._widgetConfig.distribution = ["EXPONENTIAL", "LINEAR"][self._distributionComboBox.currentIndex()]
             self._target.widgetConfigChanged.emit()
         if role in [QtWidgets.QDialogButtonBox.AcceptRole, QtWidgets.QDialogButtonBox.RejectRole]:
             self.close()

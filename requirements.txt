@@ -10,5 +10,6 @@ IceSpringRealOptional==1.2.4
 pydash==5.1.0
 pydub==0.25.1
 scipy==1.7.3
+assertpy==1.1
 
 
