@@ -21,6 +21,9 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
     _widgetConfig: SpectrumWidgetConfig
     _barCount: int
     _distribution: str
+    _baseFrequency: int
+    _minFrequency: int
+    _maxFrequency: int
     _thresholds: typing.List[int]
     _values: typing.List[float]
     _smooths: typing.List[float]
@@ -36,8 +39,6 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         super().__init__()
         self._widgetConfig = config or self.getWidgetConfigClass().getDefaultObject()
         self._minDbfs = -60
-        self._minFrequency = 50
-        self._maxFrequency = 22000
         self._updateRate = 20
         self._refreshRate = 60
         self._sampleMillis = 33
@@ -77,13 +78,17 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._logger.info("Load config")
         self._barCount = self._widgetConfig.barCount
         self._distribution = self._widgetConfig.distribution
+        self._minFrequency = self._widgetConfig.minFrequency
+        self._maxFrequency = self._widgetConfig.maxFrequency
+        self._baseFrequency = self._widgetConfig.baseFrequency
         assert_that(self._distribution).is_in("EXPONENTIAL", "LINEAR")
         if self._distribution == "EXPONENTIAL":
-            powerRoot = pow(self._maxFrequency / self._minFrequency, 1 / (self._barCount - 1))
-            self._thresholds = [round(self._minFrequency * pow(powerRoot, x)) for x in range(self._barCount)]
+            powerRoot = pow(self._maxFrequency / self._baseFrequency, 1 / (self._barCount - 1))
+            self._thresholds = [round(self._baseFrequency * pow(powerRoot, x)) for x in range(self._barCount)]
         else:
-            step = (self._maxFrequency - self._minFrequency) / (self._barCount - 1)
-            self._thresholds = [round(x * step + self._minFrequency) for x in range(self._barCount)]
+            step = (self._maxFrequency - self._minFrequency) / self._barCount
+            self._thresholds = [round((x + 1) * step + self._minFrequency) for x in range(self._barCount)]
+        self._thresholds = [x for x in self._thresholds if x >= self._minFrequency]
 
     def _doUpdateSpectrum(self):
         self._logger.debug("Do update spectrum")
@@ -100,7 +105,7 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         sampleIndex = int(self._player.getPosition() / 1000 * sampleRate)
         segments = samples[sampleIndex:sampleIndex + sampleCount]
         frequencies, powers = signal.welch(segments, fs=sampleRate, nperseg=sampleCount, scaling="spectrum")
-        self._values = self.calcPowerValues(frequencies, powers, self._thresholds)
+        self._values = self.calcPowerValues(frequencies, powers, self._thresholds, self._minFrequency)
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         padRight, padBottom, padLeft = 0, 20, 0
@@ -126,10 +131,10 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
                 prevLabel = i
 
     @staticmethod
-    def calcPowerValues(frequencies, powers, thresholds):
+    def calcPowerValues(frequencies, powers, thresholds, minFrequency):
         powers[powers == 0] = 2 ** -40
         powers = np.log10(powers * 2) * 10
-        prevThresholds = [0] + thresholds[:-1]
+        prevThresholds = [minFrequency] + thresholds[:-1]
         powerArrays = [[] for _ in range(len(thresholds))]
         for frequency, power in zip(frequencies, powers):
             for index, (prevThreshold, threshold) in enumerate(zip(prevThresholds, thresholds)):
@@ -139,11 +144,16 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         for index, powerArray in enumerate(powerArrays):
             if len(powerArray) > 0:
                 value = statistics.mean(powerArray)
-            elif index == 0:
-                value = -90
             else:
-                value = statistics.mean(values[-3:]) * ((random.random() - 0.5) * 2 * 0.2 + 1)
+                value = -90
             values.append(value)
+        validIndexes = [i for i, v in enumerate(values) if v != -90]
+        if len(validIndexes) > 0:
+            for index in range(0, validIndexes[-1], 1):
+                if values[index] == -90:
+                    samples = [x for x in values[max(index - 2, 0):index + 3] if x != -90] or [
+                        x for x in values if x != 90]
+                    values[index] = statistics.mean(samples) * ((random.random() - 0.5) * 2 * 0.2 + 1)
         return values
 
     def _doSmooth(self):

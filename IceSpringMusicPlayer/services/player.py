@@ -8,6 +8,7 @@ import threading
 import typing
 
 import numpy as np
+import pendulum
 import pydub
 from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.maybe import Maybe
@@ -363,7 +364,8 @@ class Player(QtCore.QObject):
     def _calcRandomMusicIndex(self, direction: str) -> int:
         assert direction in ["PREVIOUS", "NEXT"]
         playlist = self.getCurrentPlaylist().orElseThrow(AssertionError)
-        digest = hashlib.md5(f"{direction}:{self._playedCount}".encode()).hexdigest()
+        thisHour = pendulum.now().set(minute=0, second=0, microsecond=0)
+        digest = hashlib.md5(f"{thisHour}:{direction}:{self._playedCount}".encode()).hexdigest()
         randomMusicIndex = int(digest, 16) % playlist.musics.size()
         return randomMusicIndex if randomMusicIndex != self._currentMusicIndex \
             else (randomMusicIndex + 1) % len(playlist.musics)

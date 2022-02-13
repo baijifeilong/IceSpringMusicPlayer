@@ -8,7 +8,10 @@ from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 class SpectrumWidgetConfig(JsonSupport):
     barCount: int
     distribution: str
+    baseFrequency: int
+    minFrequency: int
+    maxFrequency: int
 
     @classmethod
     def getDefaultObject(cls) -> JsonSupport:
-        return cls(barCount=100, distribution="EXPONENTIAL")
+        return cls(barCount=100, distribution="EXPONENTIAL", baseFrequency=50, minFrequency=0, maxFrequency=22000)
