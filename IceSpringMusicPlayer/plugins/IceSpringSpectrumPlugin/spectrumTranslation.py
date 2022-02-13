@@ -19,3 +19,6 @@ spectrumPlugin_Name.zh_CN = "频谱图插件"
 spectrumWidget_Name = Text()
 spectrumWidget_Name.en_US = "Spectrum Widget"
 spectrumWidget_Name.zh_CN = "频谱图组件"
+spectrumWidget_barCount = Text()
+spectrumWidget_barCount.en_US = "Bar Count"
+spectrumWidget_barCount.zh_CN = "频谱数量"

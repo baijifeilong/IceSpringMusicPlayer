@@ -8,21 +8,33 @@ import numpy as np
 from PySide2 import QtWidgets, QtGui, QtCore
 from scipy import signal
 
+import IceSpringSpectrumPlugin.spectrumTranslation as tt
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
+from IceSpringSpectrumPlugin.spectrumWidgetConfig import SpectrumWidgetConfig
 
 
 class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
+    widgetConfigChanged: QtCore.SignalInstance = QtCore.Signal()
+    _widgetConfig: SpectrumWidgetConfig
     _thresholds: typing.List[int]
     _values: typing.List[float]
     _smooths: typing.List[float]
 
-    def __init__(self):
+    @classmethod
+    def getWidgetConfigClass(cls) -> typing.Type[JsonSupport]:
+        return SpectrumWidgetConfig
+
+    def getWidgetConfig(self) -> SpectrumWidgetConfig:
+        return self._widgetConfig
+
+    def __init__(self, config=None):
         super().__init__()
+        self._widgetConfig = config or self.getWidgetConfigClass().getDefaultObject()
         self._minDbfs = -60
         self._minFrequency = 50
         self._maxFrequency = 22000
-        self._barCount = 100
         self._updateRate = 20
         self._refreshRate = 60
         self._sampleMillis = 33
@@ -34,7 +46,7 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._thresholds = []
         self._values = []
         self._smooths = []
-        self._doInit()
+        self._loadConfig()
         self._updateTimer = QtCore.QTimer(self)
         self._updateTimer.timeout.connect(self._doUpdateSpectrum)
         self._updateTimer.start(1000 // self._updateRate)
@@ -43,8 +55,24 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._repaintTimer.timeout.connect(self.repaint)
         self._repaintTimer.start(1000 // self._refreshRate)
         self.setFont(QtGui.QFont("", 10))
+        self.widgetConfigChanged.connect(self._onWidgetConfigChanged)
+        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
 
-    def _doInit(self):
+    def _onCustomContextMenuRequested(self) -> None:
+        from IceSpringSpectrumPlugin.spectrumWidgetConfigDialog import SpectrumWidgetConfigDialog
+        self._logger.info("On custom context menu requested")
+        menu = QtWidgets.QMenu(self)
+        menu.addAction(tt.Plugins_ConfigWidget, lambda: SpectrumWidgetConfigDialog(self).exec_())
+        menu.exec_(QtGui.QCursor.pos())
+
+    def _onWidgetConfigChanged(self):
+        self._logger.info("On widget config changed")
+        self._loadConfig()
+
+    def _loadConfig(self):
+        self._logger.info("Load config")
+        self._barCount = self._widgetConfig.barCount
         powerRoot = pow(self._maxFrequency / self._minFrequency, 1 / (self._barCount - 1))
         self._thresholds = [round(self._minFrequency * pow(powerRoot, x)) for x in range(self._barCount)]
 
