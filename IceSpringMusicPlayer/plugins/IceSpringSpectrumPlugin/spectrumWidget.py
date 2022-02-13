@@ -2,6 +2,8 @@
 import collections
 import logging
 import math
+import random
+import statistics
 import typing
 
 import numpy as np
@@ -52,8 +54,9 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
             self._logger.debug("No samples, skip")
             return
         sampleRate = music.get().sampleRate
-        baseFrequency, maxFrequency, barCount, minDbfs, sampleCount = 50, 20000, 30, -60, 1500
-        powerRoot = pow(maxFrequency / baseFrequency, 1 / barCount)
+        baseFrequency, maxFrequency, barCount, minDbfs, sampleMillis = 50, 22000, 100, -60, 33
+        sampleCount = int(sampleMillis / 1000 * sampleRate)
+        powerRoot = pow(maxFrequency / baseFrequency, 1 / (barCount - 1))
         sampleIndex = int(self._player.getPosition() / 1000 * sampleRate)
         segments = samples[sampleIndex:sampleIndex + sampleCount]
         frequencies, powers = signal.welch(segments, fs=sampleRate, nperseg=sampleCount, scaling="spectrum")
@@ -62,12 +65,26 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         spacing = self.width() // barCount
         valuesDict = collections.defaultdict(list)
         painter = QtGui.QPainter(self)
+        thresholds = [round(baseFrequency * pow(powerRoot, x)) for x in range(barCount)]
+        prevThresholds = [0] + thresholds[:-1]
+        powerArrays = [[] for _ in range(len(thresholds))]
         for frequency, power in zip(frequencies, powers):
+            for index, (prevThreshold, threshold) in enumerate(zip(prevThresholds, thresholds)):
+                if prevThreshold <= frequency < threshold:
+                    powerArrays[index].append(power)
             valuesIndex = 0 if frequency == 0 else int(math.log(frequency / baseFrequency, powerRoot))
             valuesDict[min(max(0, valuesIndex), barCount - 1)].append(power)
-        values = [-sum(x) / len(x) for x in valuesDict.values()]
-        self.smoothArray(values)
-        for valuesIndex, value in enumerate(values):
+        powers = []
+        for index, powerArray in enumerate(powerArrays):
+            if len(powerArray) > 0:
+                power = statistics.mean(powerArray)
+            elif index == 0:
+                power = -90
+            else:
+                power = statistics.mean(powers[-3:]) * ((random.random() - 0.5) * 2 * 0.2 + 1)
+            powers.append(power)
+        self.smoothArray(powers)
+        for powerIndex, power in enumerate(powers):
             unit = self.height() / -minDbfs
-            painter.fillRect(valuesIndex * spacing, int(value * unit), spacing - 1, self.height(),
+            painter.fillRect(powerIndex * spacing, int(-power * unit), spacing - 1, self.height(),
                 QtGui.QColor("#4477CC"))
