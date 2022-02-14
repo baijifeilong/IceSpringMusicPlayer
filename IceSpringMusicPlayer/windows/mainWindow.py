@@ -17,6 +17,7 @@ from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.dialogUtils import DialogUtils
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 from IceSpringMusicPlayer.utils.widgetUtils import WidgetUtils
+from IceSpringMusicPlayer.widgets.controllerWidget import ControllerWidget
 from IceSpringMusicPlayer.widgets.maskWidget import MaskWidget
 from IceSpringMusicPlayer.widgets.playlistSelector import PlaylistSelector
 from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
@@ -53,8 +54,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self._initPalette()
         self._menuToolbar = self.addToolBar("Menu")
         self._playlistToolbar = self.addToolBar("Playlist")
+        self._controllerToolbar = self.addToolBar("Controller")
         self._setupMenuToolbar()
         self._setupPlaylistToolbar()
+        self._setupControlsToolbar()
         self._initStatusBar()
         self.layoutChanged.connect(self._onLayoutChanged)
         self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
@@ -230,6 +233,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self._playlistToolbar.clear()
         self._playlistToolbar.addWidget(WidgetUtils.createHorizontalSpacer(5))
         self._playlistToolbar.addWidget(PlaylistSelector())
+
+    def _setupControlsToolbar(self):
+        self._controllerToolbar.clear()
+        self._controllerToolbar.addWidget(ControllerWidget())
 
     def setLayoutEditing(self, editing: bool) -> None:
         self._layoutEditing = editing

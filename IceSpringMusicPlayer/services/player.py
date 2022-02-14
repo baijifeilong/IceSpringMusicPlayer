@@ -142,7 +142,19 @@ class Player(QtCore.QObject):
         self._proxy.pause()
         self._logger.info("Proxy paused.")
 
+    def togglePlayPause(self):
+        self._logger.info("Toggle play pause")
+        if self.getState().isPlaying():
+            self._logger.info("Playing, pause it")
+            self.pause()
+        else:
+            self._logger.info("Not playing, play it")
+            self.play()
+
     def stop(self) -> None:
+        if self.getState().isStopped():
+            self._logger.info("Already stopped, skip")
+            return
         self._logger.info("Stopping proxy...")
         self._proxy.stop()
         self._logger.info("Proxy stopped.")

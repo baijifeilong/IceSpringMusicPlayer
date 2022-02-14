@@ -39,3 +39,10 @@ class WidgetUtils(object):
         toolButton.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
         toolButton.setStyleSheet("QToolButton::menu-indicator { image: none; } QToolButton { padding-left: -15px }")
         return toolButton
+
+    @staticmethod
+    def createToolButton(icon) -> QtWidgets.QToolButton:
+        toolButton = QtWidgets.QToolButton()
+        toolButton.setIcon(icon)
+        toolButton.setAutoRaise(True)
+        return toolButton
