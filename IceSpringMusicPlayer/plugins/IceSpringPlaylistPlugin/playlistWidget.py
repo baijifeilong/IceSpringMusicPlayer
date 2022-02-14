@@ -67,8 +67,12 @@ class PlaylistWidget(IceTableView, PluginWidgetMixin):
         self._loadConfig()
 
     def _loadConfig(self):
+        policies = dict(AUTO=QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded,
+            ON=QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOn, OFF=QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._logger.info("Load config")
         self.verticalHeader().setDefaultSectionSize(self._widgetConfig.rowHeight)
+        self.setHorizontalScrollBarPolicy(policies[self._widgetConfig.horizontalScrollBarPolicy])
+        self.setVerticalScrollBarPolicy(policies[self._widgetConfig.verticalScrollBarPolicy])
 
     def model(self) -> "PlaylistModel":
         return gg(super().model())

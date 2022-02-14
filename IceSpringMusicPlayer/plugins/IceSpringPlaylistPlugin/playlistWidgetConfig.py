@@ -9,7 +9,9 @@ from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 @dataclasses.dataclass
 class PlaylistWidgetConfig(JsonSupport):
     rowHeight: int
+    horizontalScrollBarPolicy: str
+    verticalScrollBarPolicy: str
 
     @classmethod
     def getDefaultObject(cls) -> PlaylistWidgetConfig:
-        return cls(rowHeight=45)
+        return cls(rowHeight=45, horizontalScrollBarPolicy="AUTO", verticalScrollBarPolicy="AUTO")
