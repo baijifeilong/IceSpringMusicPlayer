@@ -42,7 +42,6 @@ class LyricsWidget(QtWidgets.QScrollArea, PluginWidgetMixin):
         self._player = self._app.getPlayer()
         self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
         self._player.positionChanged.connect(self._onPlayerPositionChanged)
-        self.setFont(self._widgetConfig.font)
         self.setWidget(QtWidgets.QWidget(self))
         layout = QtWidgets.QVBoxLayout(self.widget())
         layout.setMargin(0)
@@ -60,6 +59,14 @@ class LyricsWidget(QtWidgets.QScrollArea, PluginWidgetMixin):
         self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
         self.setPalette(Just.of(self.palette()).apply(
             lambda x: x.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor("white"))).value())
+        self._loadConfig()
+
+    def _loadConfig(self):
+        policies = dict(AUTO=QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded,
+            ON=QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOn, OFF=QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setFont(self._widgetConfig.font)
+        self.setHorizontalScrollBarPolicy(policies[self._widgetConfig.horizontalScrollBarPolicy])
+        self.setVerticalScrollBarPolicy(policies[self._widgetConfig.verticalScrollBarPolicy])
 
     def _onCustomContextMenuRequested(self) -> None:
         from IceSpringLyricsPlugin.lyricsWidgetConfigDialog import LyricsWidgetConfigDialog
@@ -78,7 +85,7 @@ class LyricsWidget(QtWidgets.QScrollArea, PluginWidgetMixin):
 
     def _onWidgetConfigChanged(self):
         self._logger.info("On config changed, Update font to: %s", self._widgetConfig.font)
-        self.setFont(self._widgetConfig.font)
+        self._loadConfig()
 
     def _onPlayerPositionChanged(self, position: int) -> None:
         self._logger.debug("Player position changed: %d", position)

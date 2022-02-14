@@ -12,7 +12,10 @@ from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 @dataclasses.dataclass
 class LyricsWidgetConfig(JsonSupport):
     font: QtGui.QFont
+    horizontalScrollBarPolicy: str
+    verticalScrollBarPolicy: str
 
     @classmethod
     def getDefaultObject(cls) -> LyricsWidgetConfig:
-        return LyricsWidgetConfig(font=QtWidgets.QApplication.font())
+        return LyricsWidgetConfig(font=QtWidgets.QApplication.font(), horizontalScrollBarPolicy="AUTO",
+            verticalScrollBarPolicy="AUTO")
