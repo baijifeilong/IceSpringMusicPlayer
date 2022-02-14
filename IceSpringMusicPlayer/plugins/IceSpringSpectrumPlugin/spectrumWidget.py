@@ -29,6 +29,7 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
     _maxFrequency: int
     _smoothUp: float
     _smoothDown: float
+    _spacing: int
     _thresholds: typing.List[int]
     _values: typing.List[float]
     _smooths: typing.List[float]
@@ -90,6 +91,7 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._smoothUp = self._widgetConfig.smoothUp
         self._smoothDown = self._widgetConfig.smoothDown
         self._minDbfs = self._widgetConfig.minDbfs
+        self._spacing = self._widgetConfig.spacing
         assert_that(self._distribution).is_in("EXPONENTIAL", "LINEAR")
         if self._distribution == "EXPONENTIAL":
             powerRoot = pow(self._maxFrequency / self._baseFrequency, 1 / (self._barCount - 1))
@@ -118,25 +120,31 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         padRight, padBottom, padLeft = 0, 20, 0
-        spacing = (self.width() - padLeft - padRight) // self._barCount
-        unitHeight = (self.height() - padBottom) / (-self._minDbfs + 5)
+        spacing, barCount, minDbfs = self._spacing, self._barCount, self._minDbfs
+        thresholds, smooths = self._thresholds, self._smooths
+        unitHeight = (self.height() - padBottom) / (-minDbfs + 5)
         padTop = int(unitHeight * 5)
         painter = QtGui.QPainter(self)
-        for dbfs in range(0, self._minDbfs - 1, -10):
+        for dbfs in range(0, minDbfs - 1, -10):
             y = int(-dbfs * unitHeight + padTop)
             painter.setPen(QtGui.QColor("#CCCCCC"))
-            painter.drawLine(0, y, self.width() - 50, y)
+            painter.drawLine(0, y, self.width() - 60, y)
             painter.setPen(QtGui.QColor("#000000"))
-            painter.drawText(self.width() - 45, y + 5, f"{dbfs: 3}db")
-        prevLabel = -1
-        for i, (k, v) in enumerate(zip(self._thresholds, self._smooths)):
-            v = max(v, self._minDbfs)
-            x, y = i * spacing + padLeft, int(math.ceil(-v * unitHeight)) + padTop
-            w, h = spacing - 1, self.height() - y - padBottom
-            painter.fillRect(x, y, w, h, QtGui.QColor("#4477CC"))
+            painter.drawText(self.width() - 55, y + 5, f"{dbfs: 3}db")
+        prevLabel = -10000
+        prevX = -10000
+        span: float = (self.width() - padLeft - padRight) / barCount
+        for i, (k, v) in enumerate(zip(thresholds, smooths)):
+            v = max(v, minDbfs)
+            x, y = int(i * span + padLeft), math.ceil(-v * unitHeight + padTop)
+            w, h = max(int(span - spacing), 1), self.height() - y - padBottom
+            if x - prevX > spacing:
+                painter.fillRect(x, y, w, h, QtGui.QColor("#4477CC"))
+                prevX = x
             hz = str(k) if k < 1000 else ("%.1fK" if k < 10000 else "%.0fK") % (k / 1000)
-            if (i - prevLabel) * spacing > 40:
-                painter.drawText(x + spacing // 2 - 4 * len(hz), self.height() - 3, hz)
+            lx, ly = x + int(span / 2) - 4 * len(hz), self.height() - 3
+            if len(hz) / 2 * 4 <= lx <= self.width() - 10 * len(hz) and (i - prevLabel) * span >= 50:
+                painter.drawText(lx, ly, hz)
                 prevLabel = i
 
     @staticmethod

@@ -87,7 +87,7 @@ class ConfigService(QtCore.QObject):
     @classmethod
     def getDefaultConfig(cls) -> Config:
         screenSize = QtGui.QGuiApplication.primaryScreen().size()
-        windowSize = screenSize / 1.5
+        windowSize = gg(screenSize) / 1.5
         diffSize = (screenSize - windowSize) / 2
         defaultGeometry = QtCore.QRect(QtCore.QPoint(diffSize.width(), diffSize.height()), windowSize)
         from IceSpringMusicPlayer.app import App

@@ -15,8 +15,9 @@ class SpectrumWidgetConfigDialog(QtWidgets.QDialog):
         self._target = target
         self._logger = logging.getLogger("spectrumWidgetConfig")
         self._widgetConfig = self._target.getWidgetConfig()
+        barCounts = [*range(1, 10, 1), *range(10, 100, 10), *range(100, 1001, 100)]
         self._barCountComboBox = QtWidgets.QComboBox()
-        self._barCountComboBox.addItems(list(map(str, range(10, 210, 10))))
+        self._barCountComboBox.addItems(list(map(str, barCounts)))
         self._barCountComboBox.setCurrentText(str(self._widgetConfig.barCount))
         self._distributionComboBox = QtWidgets.QComboBox()
         self._distributionComboBox.addItem(tt.spectrumWidget_frequencyDistributionExponential)
@@ -41,6 +42,10 @@ class SpectrumWidgetConfigDialog(QtWidgets.QDialog):
         self._minDbfsComboBox = QtWidgets.QComboBox()
         self._minDbfsComboBox.addItems(list(map(str, range(-120, 0, 1))))
         self._minDbfsComboBox.setCurrentText(str(self._widgetConfig.minDbfs))
+        spacings = [*range(1, 10, 1), *range(10, 101, 10)]
+        self._spacingComboBox = QtWidgets.QComboBox()
+        self._spacingComboBox.addItems(list(map(str, spacings)))
+        self._spacingComboBox.setCurrentText(str(self._widgetConfig.spacing))
         self._buttonBox = WidgetUtils.createButtonBox(ok=True, cancel=True, apply=True)
         mainLayout = QtWidgets.QGridLayout()
         mainLayout.setColumnStretch(0, 1)
@@ -61,6 +66,8 @@ class SpectrumWidgetConfigDialog(QtWidgets.QDialog):
         mainLayout.addWidget(self._smoothDownComboBox)
         mainLayout.addWidget(QtWidgets.QLabel(tt.spectrumWidget_minDbfs))
         mainLayout.addWidget(self._minDbfsComboBox)
+        mainLayout.addWidget(QtWidgets.QLabel(tt.spectrumWidget_spacing))
+        mainLayout.addWidget(self._spacingComboBox)
         mainLayout.addWidget(WidgetUtils.createExpandingSpacer(), mainLayout.rowCount(), 0, 1, 2)
         mainLayout.addWidget(self._buttonBox, mainLayout.rowCount(), 0, 1, 2)
         self.setLayout(mainLayout)
@@ -79,6 +86,7 @@ class SpectrumWidgetConfigDialog(QtWidgets.QDialog):
             self._widgetConfig.smoothUp = float(self._smoothUpComboBox.currentText()) / 100
             self._widgetConfig.smoothDown = float(self._smoothDownComboBox.currentText()) / 100
             self._widgetConfig.minDbfs = int(self._minDbfsComboBox.currentText())
+            self._widgetConfig.spacing = int(self._spacingComboBox.currentText())
             self._target.widgetConfigChanged.emit()
         if role in [QtWidgets.QDialogButtonBox.AcceptRole, QtWidgets.QDialogButtonBox.RejectRole]:
             self.close()

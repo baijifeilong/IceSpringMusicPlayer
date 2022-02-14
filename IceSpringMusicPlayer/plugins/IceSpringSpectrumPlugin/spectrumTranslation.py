@@ -49,3 +49,6 @@ spectrumWidget_smoothDown.zh_CN = "平滑下降因子"
 spectrumWidget_minDbfs = Text()
 spectrumWidget_minDbfs.en_US = "Minimum Dbfs"
 spectrumWidget_minDbfs.zh_CN = "最小分贝数"
+spectrumWidget_spacing = Text()
+spectrumWidget_spacing.en_US = "Bar Spacing"
+spectrumWidget_spacing.zh_CN = "频谱间距"
