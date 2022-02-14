@@ -50,16 +50,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self._maskWidget = None
         self._initPalette()
         self._initPlayer()
-        self._initMenu()
-        self._initToolbar()
+        self._toolbar = self.addToolBar("Toolbar")
+        self._setupMenuBar()
+        self._setupToolbar()
         self._initStatusBar()
         self.layoutChanged.connect(self._onLayoutChanged)
         self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
         self._app.languageChanged.connect(self._onLanguageChanged)
-        self._pluginService.pluginEnabled.connect(self._doRefreshMenuBarAndToolBar)
-        self._pluginService.pluginDisabled.connect(self._doRefreshMenuBarAndToolBar)
-        self._pluginService.pluginsInserted.connect(self._doRefreshMenuBarAndToolBar)
-        self._pluginService.pluginsRemoved.connect(self._doRefreshMenuBarAndToolBar)
+        self._pluginService.pluginEnabled.connect(self._setupPluginMenu)
+        self._pluginService.pluginDisabled.connect(self._setupPluginMenu)
+        self._pluginService.pluginsInserted.connect(self._setupPluginMenu)
+        self._pluginService.pluginsRemoved.connect(self._setupPluginMenu)
         self._playlistService.musicParsed.connect(self._onMusicParsed)
 
     def _onMusicParsed(self, progress: int, total: int, music: Music):
@@ -161,15 +162,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _onLanguageChanged(self, language: str):
         self._logger.info("On language changed: %s", language)
-        self._refreshMenuBar()
-        self._refreshToolBar()
+        self._setupMenuBar()
+        self._setupToolbar()
 
-    def _doRefreshMenuBarAndToolBar(self):
-        self._logger.info("Do refresh menu bar and tool bar")
-        self._refreshMenuBar()
-        self._refreshToolBar()
-
-    def _resetPluginsMenu(self):
+    def _setupPluginMenu(self):
         self._pluginsMenu.clear()
         self._pluginsMenu.setTitle(tt.PluginsMenu)
         for plugin in self._config.plugins:
@@ -187,44 +183,18 @@ class MainWindow(QtWidgets.QMainWindow):
                         assert isinstance(item, QtWidgets.QAction)
                         menu.addAction(item)
 
-    def _refreshMenuBar(self):
-        self._logger.info("Refresh menu bar")
-        self._fileMenu.setTitle(tt.FileMenu)
-        self._fileOpenAction.setText(tt.FileMenu_Open)
-        self._fileConfigAction.setText(tt.FileMenu_Config)
-        self._viewMenu.setTitle(tt.ViewMenu)
-        self._viewPlaylistManagerAction.setText(tt.ViewMenu_PlaylistManager)
-        self._layoutMenu.setTitle(tt.LayoutMenu)
-        self._layoutControlsDownAction.setText(tt.LayoutMenu_ControlsDown)
-        self._layoutControlsUpAction.setText(tt.LayoutMenu_ControlsUp)
-        self._layoutDefaultAction.setText(tt.LayoutMenu_Default)
-        self._resetPluginsMenu()
-        self._languageMenu.setTitle(tt.LanguageMenu)
-        self._languageEnglishAction.setText(tt.LanguageMenu_English)
-        self._languageChineseAction.setText(tt.LanguageMenu_Chinese)
-        self._testMenu.setTitle(tt.TestMenu)
-        self._testOneKeyAddAction.setText(tt.TestMenu_OneKeyAdd)
-        self._testLoadTestDataAction.setText(tt.TestMenu_LoadTestData)
-
-    def _refreshToolBar(self):
-        self._logger.info("Refresh tool bar")
-        self._playlistLabel.setText(tt.Toolbar_Playlist)
-        self._editingCheck.setText(tt.Toolbar_Editing)
-        self._toggleLanguageAction.setText(tt.Toolbar_ToggleLanguage)
-
-    def _initMenu(self):
+    def _setupMenuBar(self):
         from IceSpringPlaylistPlugin.playlistManagerWidget import PlaylistManagerWidget
+        self.menuBar().clear()
         self._fileMenu = self.menuBar().addMenu(tt.FileMenu)
         self._fileOpenAction = self._fileMenu.addAction(tt.FileMenu_Open)
         self._fileOpenAction.triggered.connect(self._playlistService.addMusicsFromFileDialog)
         self._fileMenu.addSeparator()
         self._fileConfigAction = self._fileMenu.addAction(tt.FileMenu_Config)
         self._fileConfigAction.triggered.connect(lambda: ConfigDialog().exec_())
-
         self._viewMenu = self.menuBar().addMenu(tt.ViewMenu)
         self._viewPlaylistManagerAction = self._viewMenu.addAction(
             tt.ViewMenu_PlaylistManager, lambda: DialogUtils.execWidget(PlaylistManagerWidget(), withOk=True))
-
         self._layoutMenu = self.menuBar().addMenu(tt.LayoutMenu)
         self._layoutControlsDownAction = self._layoutMenu.addAction(
             tt.LayoutMenu_ControlsDown, lambda: self._changeLayout(self._configService.getControlsDownLayout()))
@@ -232,21 +202,18 @@ class MainWindow(QtWidgets.QMainWindow):
             tt.LayoutMenu_ControlsUp, lambda: self._changeLayout(self._configService.getControlsUpLayout()))
         self._layoutDefaultAction = self._layoutMenu.addAction(
             tt.LayoutMenu_Default, lambda: self._changeLayout(self._configService.getDefaultLayout()))
-
         self._pluginsMenu = self.menuBar().addMenu(tt.PluginsMenu)
-        self._resetPluginsMenu()
-
         self._languageMenu = self.menuBar().addMenu(tt.LanguageMenu)
         self._languageEnglishAction = self._languageMenu.addAction(
             tt.LanguageMenu_English, lambda: self._app.changeLanguage("en_US"))
         self._languageChineseAction = self._languageMenu.addAction(
             tt.LanguageMenu_Chinese, lambda: self._app.changeLanguage("zh_CN"))
-
         self._testMenu = self.menuBar().addMenu(tt.TestMenu)
         self._testOneKeyAddAction = self._testMenu.addAction(
             tt.TestMenu_OneKeyAdd, lambda: self._playlistService.addMusicsFromFolder("~/Music"))
         self._testLoadTestDataAction = self._testMenu.addAction(
             tt.TestMenu_LoadTestData, lambda: self._playlistService.loadTestData())
+        self._setupPluginMenu()
 
     def _onPlaylistComboActivated(self, index: int) -> None:
         self._logger.info("On playlist combo activated at index %d", index)
@@ -262,9 +229,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self._playlistCombo.setCurrentIndex(newIndex)
             self._logger.info("Main window refreshed")
 
-    def _initToolbar(self):
-        toolbar = self.addToolBar("Toolbar")
+    def _setupToolbar(self):
+        toolbar = self._toolbar
         toolbar.setMovable(False)
+        toolbar.clear()
         playlistCombo = QtWidgets.QComboBox(toolbar)
         playlistCombo.addItems([x.name for x in self._player.getPlaylists()])
         playlistCombo.setCurrentIndex(self._player.getFrontPlaylistIndex())
