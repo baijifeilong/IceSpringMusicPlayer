@@ -3,6 +3,7 @@
 import logging
 
 from PySide2 import QtWidgets
+from assertpy import assert_that
 
 import IceSpringSpectrumPlugin.spectrumTranslation as tt
 from IceSpringMusicPlayer.utils.widgetUtils import WidgetUtils
@@ -46,6 +47,16 @@ class SpectrumWidgetConfigDialog(QtWidgets.QDialog):
         self._spacingComboBox = QtWidgets.QComboBox()
         self._spacingComboBox.addItems(list(map(str, spacings)))
         self._spacingComboBox.setCurrentText(str(self._widgetConfig.spacing))
+        self._marginsEdit = QtWidgets.QLineEdit()
+        self._marginsEdit.setText(" ".join(map(str, self._widgetConfig.margins)))
+        self._drawDbfsNumbersCheckBox = QtWidgets.QCheckBox()
+        self._drawDbfsNumbersCheckBox.setChecked(self._widgetConfig.drawDbfsNumbers)
+        self._drawDbfsLinesCheckBox = QtWidgets.QCheckBox()
+        self._drawDbfsLinesCheckBox.setChecked(self._widgetConfig.drawDbfsLines)
+        self._drawFrequencyLabels = QtWidgets.QCheckBox()
+        self._drawFrequencyLabels.setChecked(self._widgetConfig.drawFrequencyLabels)
+        self._overlayDbfsNumbersCheckBox = QtWidgets.QCheckBox()
+        self._overlayDbfsNumbersCheckBox.setChecked(self._widgetConfig.overlayDbfsNumbers)
         self._buttonBox = WidgetUtils.createButtonBox(ok=True, cancel=True, apply=True)
         mainLayout = QtWidgets.QGridLayout()
         mainLayout.setColumnStretch(0, 1)
@@ -68,6 +79,16 @@ class SpectrumWidgetConfigDialog(QtWidgets.QDialog):
         mainLayout.addWidget(self._minDbfsComboBox)
         mainLayout.addWidget(QtWidgets.QLabel(tt.spectrumWidget_spacing))
         mainLayout.addWidget(self._spacingComboBox)
+        mainLayout.addWidget(QtWidgets.QLabel(tt.spectrumWidget_margins))
+        mainLayout.addWidget(self._marginsEdit)
+        mainLayout.addWidget(QtWidgets.QLabel(tt.spectrumWidget_drawDbfsNumbers))
+        mainLayout.addWidget(self._drawDbfsNumbersCheckBox)
+        mainLayout.addWidget(QtWidgets.QLabel(tt.spectrumWidget_drawDbfsLines))
+        mainLayout.addWidget(self._drawDbfsLinesCheckBox)
+        mainLayout.addWidget(QtWidgets.QLabel(tt.spectrumWidget_drawFrequencyLabels))
+        mainLayout.addWidget(self._drawFrequencyLabels)
+        mainLayout.addWidget(QtWidgets.QLabel(tt.spectrumWidget_overlayDbfsNumbers))
+        mainLayout.addWidget(self._overlayDbfsNumbersCheckBox)
         mainLayout.addWidget(WidgetUtils.createExpandingSpacer(), mainLayout.rowCount(), 0, 1, 2)
         mainLayout.addWidget(self._buttonBox, mainLayout.rowCount(), 0, 1, 2)
         self.setLayout(mainLayout)
@@ -87,6 +108,13 @@ class SpectrumWidgetConfigDialog(QtWidgets.QDialog):
             self._widgetConfig.smoothDown = float(self._smoothDownComboBox.currentText()) / 100
             self._widgetConfig.minDbfs = int(self._minDbfsComboBox.currentText())
             self._widgetConfig.spacing = int(self._spacingComboBox.currentText())
+            margins = [int(x) for x in self._marginsEdit.text().strip().split()]
+            assert_that(margins).is_length(4)
+            self._widgetConfig.margins = margins
+            self._widgetConfig.drawDbfsNumbers = self._drawDbfsNumbersCheckBox.isChecked()
+            self._widgetConfig.drawDbfsLines = self._drawDbfsLinesCheckBox.isChecked()
+            self._widgetConfig.drawFrequencyLabels = self._drawFrequencyLabels.isChecked()
+            self._widgetConfig.overlayDbfsNumbers = self._overlayDbfsNumbersCheckBox.isChecked()
             self._target.widgetConfigChanged.emit()
         if role in [QtWidgets.QDialogButtonBox.AcceptRole, QtWidgets.QDialogButtonBox.RejectRole]:
             self.close()

@@ -30,6 +30,11 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
     _smoothUp: float
     _smoothDown: float
     _spacing: int
+    _margins: typing.List[int]
+    _drawDbfsNumbers: bool
+    _drawDbfsLines: bool
+    _drawFrequencyLabels: bool
+    _overlayDbfsNumbers: bool
     _thresholds: typing.List[int]
     _values: typing.List[float]
     _smooths: typing.List[float]
@@ -81,6 +86,7 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._logger.info("On widget config changed")
         self._loadConfig()
 
+    # noinspection DuplicatedCode
     def _loadConfig(self):
         self._logger.info("Load config")
         self._barCount = self._widgetConfig.barCount
@@ -92,6 +98,11 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._smoothDown = self._widgetConfig.smoothDown
         self._minDbfs = self._widgetConfig.minDbfs
         self._spacing = self._widgetConfig.spacing
+        self._margins = self._widgetConfig.margins
+        self._drawDbfsNumbers = self._widgetConfig.drawDbfsNumbers
+        self._drawDbfsLines = self._widgetConfig.drawDbfsLines
+        self._drawFrequencyLabels = self._widgetConfig.drawFrequencyLabels
+        self._overlayDbfsNumbers = self._widgetConfig.overlayDbfsNumbers
         assert_that(self._distribution).is_in("EXPONENTIAL", "LINEAR")
         if self._distribution == "EXPONENTIAL":
             powerRoot = pow(self._maxFrequency / self._baseFrequency, 1 / (self._barCount - 1))
@@ -119,33 +130,45 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._values = self.calcPowerValues(frequencies, powers, self._thresholds, self._minFrequency)
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
-        padRight, padBottom, padLeft = 0, 20, 0
         spacing, barCount, minDbfs = self._spacing, self._barCount, self._minDbfs
+        marginTop, marginRight, marginBottom, marginLeft = self._margins
+        drawDbfsNumbers, drawDbfsLines, drawFrequencyLabels, overlayDbfsNumbers = \
+            self._drawDbfsNumbers, self._drawDbfsLines, self._drawFrequencyLabels, self._overlayDbfsNumbers
+        fontSize = self.font().pointSize()
+        labelHeight = fontSize * 2 if drawFrequencyLabels else 0
+        dbfsWidth = fontSize * 6 if drawDbfsNumbers else 0
+        tailWidth = 0 if overlayDbfsNumbers else dbfsWidth
         thresholds, smooths = self._thresholds, self._smooths
-        unitHeight = (self.height() - padBottom) / (-minDbfs + 5)
-        padTop = int(unitHeight * 5)
+        rect = QtCore.QRect(QtCore.QPoint(marginLeft, marginTop),
+            QtCore.QPoint(self.width() - marginRight - 1, self.height() - marginBottom - 1))
+        unitHeight = max((rect.height() - labelHeight) / (-minDbfs + 5), 0)
+        headerHeight = int(unitHeight * 5)
         painter = QtGui.QPainter(self)
         for dbfs in range(0, minDbfs - 1, -10):
-            y = int(-dbfs * unitHeight + padTop)
-            painter.setPen(QtGui.QColor("#CCCCCC"))
-            painter.drawLine(0, y, self.width() - 60, y)
-            painter.setPen(QtGui.QColor("#000000"))
-            painter.drawText(self.width() - 55, y + 5, f"{dbfs: 3}db")
-        prevLabel = -10000
-        prevX = -10000
-        span: float = (self.width() - padLeft - padRight) / barCount
+            y = int(-dbfs * unitHeight + headerHeight)
+            if drawDbfsLines:
+                painter.setPen(QtGui.QColor("#CCCCCC"))
+                painter.drawLine(rect.left(), rect.top() + y, rect.right() - dbfsWidth, rect.top() + y)
+            if drawDbfsNumbers:
+                painter.setPen(QtGui.QColor("#000000"))
+                painter.drawText(
+                    rect.right() - dbfsWidth + fontSize // 2, rect.top() + y + fontSize // 2, f"{dbfs: 3}db")
+        prevLabelX, prevBarX = -10000, -10000
+        span: float = (rect.width() - tailWidth) / barCount
+        painter.setPen(QtGui.QColor("#000000"))
         for i, (k, v) in enumerate(zip(thresholds, smooths)):
             v = max(v, minDbfs)
-            x, y = int(i * span + padLeft), math.ceil(-v * unitHeight + padTop)
-            w, h = max(int(span - spacing), 1), self.height() - y - padBottom
-            if x - prevX > spacing:
-                painter.fillRect(x, y, w, h, QtGui.QColor("#4477CC"))
-                prevX = x
+            x, y = int(i * span), math.ceil(-v * unitHeight + headerHeight)
+            w, h = max(int(span - spacing), 1), max(rect.height() - y - labelHeight, 0)
+            if x - prevBarX > spacing:
+                painter.fillRect(rect.left() + x, rect.top() + y, w, h, QtGui.QColor("#4477CC"))
+                prevBarX = x
             hz = str(k) if k < 1000 else ("%.1fK" if k < 10000 else "%.0fK") % (k / 1000)
-            lx, ly = x + int(span / 2) - 4 * len(hz), self.height() - 3
-            if len(hz) / 2 * 4 <= lx <= self.width() - 10 * len(hz) and (i - prevLabel) * span >= 50:
-                painter.drawText(lx, ly, hz)
-                prevLabel = i
+            lx, ly = int(x + span / 2 - len(hz) * fontSize / 2), rect.height() - 3
+            if 0 <= lx < rect.right() - len(hz) * fontSize * 1.7 and lx - prevLabelX >= (len(hz) + 2) * fontSize \
+                    and drawFrequencyLabels:
+                painter.drawText(rect.left() + lx, rect.top() + ly, hz)
+                prevLabelX = lx
 
     @staticmethod
     def calcPowerValues(frequencies, powers, thresholds, minFrequency):
@@ -169,7 +192,7 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
             for index in range(0, validIndexes[-1], 1):
                 if values[index] == -120:
                     samples = [x for x in values[max(index - 2, 0):index + 3] if x != -120] or [
-                        x for x in values if x != 90]
+                        x for x in values if x != -120]
                     values[index] = statistics.mean(samples) * ((random.random() - 0.5) * 2 * 0.2 + 1)
         return values
 
