@@ -58,6 +58,8 @@ class PlaylistWidget(IceTableView, PluginWidgetMixin):
         self._player.selectedMusicIndexesChanged.connect(self._onSelectedMusicIndexesChanged)
         self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
         self._player.musicsInserted.connect(self._onMusicsInserted)
+        self._player.musicsRemoved.connect(self._onMusicsRemoved)
+        self._player.musicsSorted.connect(self._onMusicsSorted)
         self._selectAndFollowMusics(self._player.getSelectedMusicIndexes())
         self._loadConfig()
         self.widgetConfigChanged.connect(self._onWidgetConfigChanged)
@@ -186,18 +188,29 @@ class PlaylistWidget(IceTableView, PluginWidgetMixin):
         self._logger.info("Remove musics at indexes: %s", indexes)
         self._player.removeMusicsAtIndexes(indexes)
 
-    def _onMusicsInserted(self, indexes: typing.List[int]):
-        self._logger.info("On musics inserted with count %d", len(indexes))
-        self._logger.info("Notify table new data inserted")
-        self.model().beginInsertRows(QtCore.QModelIndex(), indexes[0], indexes[-1])
-        self.model().endInsertRows()
-        self._logger.info("Clear old selection")
-        self.clearSelection()
-        self._logger.info("Select inserted rows")
-        self._selectRowRange(indexes[0], indexes[-1])
-        self._app.getZoom() < 0.8 and self.resizeRowsToContents()
-        self._logger.info("Scroll first inserted row to center")
-        self._smartScrollToRow(indexes[0])
+    def _onMusicsInserted(self):
+        self._logger.info("On musics inserted, reset table")
+        self._doResetTable()
+
+    def _onMusicsRemoved(self):
+        self._logger.info("On musics removed, reset table")
+        self._doResetTable()
+
+    def _onMusicsSorted(self):
+        self._logger.info("On musics sorted, reset table")
+        self._doResetTable()
+
+    def _doResetTable(self):
+        self._logger.info("Reset model")
+        self.model().endResetModel()
+        self._logger.info("Refresh selected rows")
+        playlist = self._player.getFrontPlaylist().get()
+        self._selectRows(playlist.selectedIndexes)
+        if len(playlist.selectedIndexes) > 0:
+            self._logger.info("Selected indexes not empty")
+            firstSelectedIndex = sorted(playlist.selectedIndexes)[0]
+            self._logger.info("Scroll first selected row %d to center", firstSelectedIndex)
+            self._smartScrollToRow(firstSelectedIndex)
 
     def _onCurrentMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
         self._logger.info("On current music index changed: %d => %d", oldIndex, newIndex)
@@ -268,9 +281,8 @@ class PlaylistModel(QtCore.QAbstractTableModel):
         if self._player.getFrontPlaylist().isAbsent():
             self._logger.info("No playlist, skip")
             return
-        self._player.getFrontPlaylist().orElseThrow(AssertionError).musics.sort(
-            key=lambda x: x.artist if column == 1 else x.title, reverse=order == QtCore.Qt.DescendingOrder)
-        self.endResetModel()
+        self._player.sortMusics(key=lambda x: x.artist if column == 1 else x.title,
+            reverse=order == QtCore.Qt.DescendingOrder)
 
     def notifyDataChangedAtRow(self, row):
         self.dataChanged.emit(self.index(row, 0), self.index(row, 0))

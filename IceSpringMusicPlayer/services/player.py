@@ -30,14 +30,15 @@ if typing.TYPE_CHECKING:
 class Player(QtCore.QObject):
     frontPlaylistIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
     frontPlaylistIndexAboutToBeChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
+    frontPlaylistSorted: QtCore.SignalInstance = QtCore.Signal()
     currentPlaylistIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
     currentMusicIndexChanged: QtCore.SignalInstance = QtCore.Signal(int, int)
     selectedMusicIndexesChanged: QtCore.SignalInstance = QtCore.Signal(set)
     playlistInserted: QtCore.SignalInstance = QtCore.Signal(int)
     playlistsRemoved: QtCore.SignalInstance = QtCore.Signal(list)
-    musicsInserted: QtCore.SignalInstance = QtCore.Signal(list, dict)
-    musicsAboutToBeRemoved: QtCore.SignalInstance = QtCore.Signal(list)
-    musicsRemoved: QtCore.SignalInstance = QtCore.Signal(list, dict)
+    musicsInserted: QtCore.SignalInstance = QtCore.Signal()
+    musicsRemoved: QtCore.SignalInstance = QtCore.Signal()
+    musicsSorted: QtCore.SignalInstance = QtCore.Signal()
     stateChanged: QtCore.SignalInstance = QtCore.Signal(PlayerState)
     durationChanged: QtCore.SignalInstance = QtCore.Signal(int)
     positionChanged: QtCore.SignalInstance = QtCore.Signal(int)
@@ -400,19 +401,14 @@ class Player(QtCore.QObject):
         oldCount = playlist.musics.size()
         oldMusics = playlist.musics[:]
         indexMap = ListUtils.calcIndexMap(oldMusics, playlist.musics)
-        self._logger.info("Inserting...")
+        self._logger.info("Do insert")
         playlist.musics.extend(musics)
-        self._logger.info("Inserted")
-        self._logger.info("Refresh indexes")
-        self._refreshMusicIndexes(indexMap)
-        if self._frontPlaylistIndex != self._currentPlaylistIndex:
-            self._logger.info("Insertion not in current playlist, skip resetting")
-        else:
-            self._logger.info("Reset histories")
-            self._resetHistories()
+        self._logger.info("Refresh selected indexes")
+        playlist.selectedIndexes = {x + oldCount for x in range(len(musics))}
+        self._logger.info("Reset current playlist if necessary")
+        self._resetCurrentPlaylistIfNecessary(indexMap)
         self._logger.info("> musicsInserted signal emitting...")
-        insertedIndexes = [x + oldCount for x in range(len(musics))]
-        self.musicsInserted.emit(insertedIndexes, ListUtils.calcIndexMap(oldMusics, playlist.musics))
+        self.musicsInserted.emit()
         self._logger.info("< musicsInserted signal emitted...")
 
     def removeMusicsAtIndexes(self, indexes: typing.List[int]) -> None:
@@ -421,32 +417,49 @@ class Player(QtCore.QObject):
             self._logger.info("No music to remove, skip")
             return
         playlist = self.getFrontPlaylist().orElseThrow(AssertionError)
-        oldMusics = playlist.musics[:]
-        indexMap = ListUtils.calcIndexMap(oldMusics, playlist.musics)
         if self._frontPlaylistIndex == self._currentPlaylistIndex and self._currentMusicIndex in indexes:
             self._logger.info("Playing music in removed list, stop it")
             self.stop()
-        self._logger.info("> Signal musicsAboutToBeRemoved emitting...")
-        self.musicsAboutToBeRemoved.emit(indexes)
-        self._logger.info("< Signal musicsAboutToBeRemoved emitted.")
-        self._logger.info("Removing...")
+        self._logger.info("Do remove")
+        oldMusics = playlist.musics[:]
         for index in sorted(indexes, reverse=True):
             del playlist.musics[index]
-        self._logger.info("Removed")
-        self._logger.info("Refresh indexes")
-        self._refreshMusicIndexes(indexMap)
-        if self._frontPlaylistIndex != self._currentPlaylistIndex:
-            self._logger.info("Deletion not in current playlist, skip resetting")
+        indexMap = ListUtils.calcIndexMap(oldMusics, playlist.musics)
+        self._logger.info("Refresh selected index")
+        if indexes[0] < len(playlist.musics):
+            playlist.selectedIndexes = {indexes[0]}
+        elif len(playlist.musics) > 0:
+            playlist.selectedIndexes = {}
         else:
-            self._logger.info("Reset histories")
-            self._resetHistories()
+            playlist.selectedIndexes = set()
+        self._logger.info("Reset current playlist if necessary")
+        self._resetCurrentPlaylistIfNecessary(indexMap)
         self._logger.info("> Signal musicsRemoved emitting...")
-        self.musicsRemoved.emit(indexes, ListUtils.calcIndexMap(oldMusics, playlist.musics))
+        self.musicsRemoved.emit()
         self._logger.info("< Signal musicsRemoved emitted.")
 
-    def _refreshMusicIndexes(self, indexMap: typing.Mapping[int, int]) -> None:
-        self._logger.info("Refreshing indexes")
-        refreshedMusicIndex = indexMap.get(self._currentMusicIndex, -1)
-        self._logger.info("Refreshed music index: %d", refreshedMusicIndex)
-        self._currentMusicIndex = refreshedMusicIndex
-        self._logger.info("Current music index updated to %d", self._currentMusicIndex)
+    def sortMusics(self, key, reverse):
+        self._logger.info("Sort front playlist")
+        playlist = self.getFrontPlaylist().orElseThrow(AssertionError)
+        self._logger.info("Do sort")
+        oldMusics = playlist.musics[:]
+        playlist.musics.sort(key=key, reverse=reverse)
+        indexMap = ListUtils.calcIndexMap(oldMusics, playlist.musics)
+        self._logger.info("Refresh selected indexes")
+        playlist.selectedIndexes = {indexMap[x] for x in playlist.selectedIndexes}
+        self._logger.info("Reset current playlist if necessary")
+        self._resetCurrentPlaylistIfNecessary(indexMap)
+        self._logger.info("> Signal musicsSorted emitting...")
+        self.musicsSorted.emit()
+        self._logger.info("< Signal musicsSorted emitted.")
+
+    def _resetCurrentPlaylistIfNecessary(self, indexMap):
+        if self._frontPlaylistIndex != self._currentPlaylistIndex:
+            self._logger.info("Front playlist is not current, skip")
+            return
+        self._logger.info("Reset current playlist")
+        newCurrentMusicIndex = indexMap.get(self._currentMusicIndex, -1)
+        self._logger.info("Update current music index %d => %d", self._currentMusicIndex, newCurrentMusicIndex)
+        self._currentMusicIndex = newCurrentMusicIndex
+        self._logger.info("Reset histories")
+        self._resetHistories()
