@@ -45,7 +45,7 @@ class PlaylistWidget(IceTableView, PluginWidgetMixin):
         self.setColumnWidth(1, int(150 * self._app.getZoom()))
         self.doubleClicked.connect(self._onDoubleClicked)
         self.setIconSize(QtCore.QSize(32, 32) * self._app.getZoom())
-        self.horizontalHeader().setSortIndicator(1, QtCore.Qt.SortOrder.AscendingOrder)
+        self.horizontalHeader().setSortIndicator(-1, QtCore.Qt.SortOrder.AscendingOrder)
         self.setWordWrap(False)
         self.setSortingEnabled(True)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
@@ -190,10 +190,12 @@ class PlaylistWidget(IceTableView, PluginWidgetMixin):
 
     def _onMusicsInserted(self):
         self._logger.info("On musics inserted, reset table")
+        self.horizontalHeader().setSortIndicator(-1, QtCore.Qt.SortOrder.AscendingOrder)
         self._doResetTable()
 
     def _onMusicsRemoved(self):
         self._logger.info("On musics removed, reset table")
+        self.horizontalHeader().setSortIndicator(-1, QtCore.Qt.SortOrder.AscendingOrder)
         self._doResetTable()
 
     def _onMusicsSorted(self):
@@ -275,13 +277,13 @@ class PlaylistModel(QtCore.QAbstractTableModel):
 
     def sort(self, column: int, order: QtCore.Qt.SortOrder = ...) -> None:
         self._logger.info("Sorting...")
-        if column == 0:
-            self._logger.info("Column is zero, skip")
+        if column not in [1, 2]:
+            self._logger.info("Sort not supported on column %d, skip", column)
             return
         if self._player.getFrontPlaylist().isAbsent():
             self._logger.info("No playlist, skip")
             return
-        self._player.sortMusics(key=lambda x: x.artist if column == 1 else x.title,
+        self._player.sortMusics(key=lambda x: {1: x.artist, 2: x.title}[column],
             reverse=order == QtCore.Qt.DescendingOrder)
 
     def notifyDataChangedAtRow(self, row):
