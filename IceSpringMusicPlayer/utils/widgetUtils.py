@@ -1,5 +1,5 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/24 0:26
-
+from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets
 
@@ -21,3 +21,12 @@ class WidgetUtils(object):
         if apply:
             flag |= QtWidgets.QDialogButtonBox.StandardButton.Apply
         return QtWidgets.QDialogButtonBox(gg(flag))
+
+    @staticmethod
+    def createHorizontalExpander():
+        return Just.of(QtWidgets.QWidget()).apply(
+            lambda x: x.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)).value()
+
+    @staticmethod
+    def createHorizontalSpacer(width):
+        return Just.of(QtWidgets.QWidget()).apply(lambda x: x.setFixedWidth(width)).value()

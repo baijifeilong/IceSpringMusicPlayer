@@ -16,7 +16,9 @@ from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.dialogUtils import DialogUtils
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
+from IceSpringMusicPlayer.utils.widgetUtils import WidgetUtils
 from IceSpringMusicPlayer.widgets.maskWidget import MaskWidget
+from IceSpringMusicPlayer.widgets.playlistSelector import PlaylistSelector
 from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
 from IceSpringMusicPlayer.windows.configDialog import ConfigDialog
 
@@ -49,7 +51,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._layoutEditing = False
         self._maskWidget = None
         self._initPalette()
-        self._initPlayer()
         self._toolbar = self.addToolBar("Toolbar")
         self._setupMenuBar()
         self._setupToolbar()
@@ -62,6 +63,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._pluginService.pluginsInserted.connect(self._setupPluginMenu)
         self._pluginService.pluginsRemoved.connect(self._setupPluginMenu)
         self._playlistService.musicParsed.connect(self._onMusicParsed)
+        self._player.positionChanged.connect(self._onPlayerPositionChanged)
+        self._player.currentMusicIndexChanged.connect(self._onMusicIndexChanged)
 
     def _onMusicParsed(self, progress: int, total: int, music: Music):
         self._logger.info("On music parsed: %d/%d %s", progress, total, music.filename)
@@ -132,12 +135,6 @@ class MainWindow(QtWidgets.QMainWindow):
         for child in element.children:
             self._drawElement(child, widget)
 
-    def _initPlayer(self):
-        self._player.frontPlaylistIndexChanged.connect(self._onFrontPlaylistChangedAtIndex)
-        self._player.positionChanged.connect(self._onPlayerPositionChanged)
-        self._player.playlistInserted.connect(self._onPlaylistInserted)
-        self._player.currentMusicIndexChanged.connect(self._onMusicIndexChanged)
-
     def _initStatusBar(self):
         self.statusBar().setAutoFillBackground(True)
         self.statusBar().setPalette(Just.of(QtGui.QPalette()).apply(lambda x: x.setColor(QtGui.QPalette.Window,
@@ -202,6 +199,10 @@ class MainWindow(QtWidgets.QMainWindow):
             tt.LayoutMenu_ControlsUp, lambda: self._changeLayout(self._configService.getControlsUpLayout()))
         self._layoutDefaultAction = self._layoutMenu.addAction(
             tt.LayoutMenu_Default, lambda: self._changeLayout(self._configService.getDefaultLayout()))
+        self._editingAction = self._layoutMenu.addAction(tt.Toolbar_Editing)
+        self._editingAction.setCheckable(True)
+        self._editingAction.setChecked(self._layoutEditing)
+        self._editingAction.triggered.connect(lambda: self.setLayoutEditing(not self._layoutEditing))
         self._pluginsMenu = self.menuBar().addMenu(tt.PluginsMenu)
         self._languageMenu = self.menuBar().addMenu(tt.LanguageMenu)
         self._languageEnglishAction = self._languageMenu.addAction(
@@ -213,45 +214,16 @@ class MainWindow(QtWidgets.QMainWindow):
             tt.TestMenu_OneKeyAdd, lambda: self._playlistService.addMusicsFromFolder("~/Music"))
         self._testLoadTestDataAction = self._testMenu.addAction(
             tt.TestMenu_LoadTestData, lambda: self._playlistService.loadTestData())
-        self._setupPluginMenu()
-
-    def _onPlaylistComboActivated(self, index: int) -> None:
-        self._logger.info("On playlist combo activated at index %d", index)
-        self._player.setFrontPlaylistIndex(index)
-
-    def _onFrontPlaylistChangedAtIndex(self, oldIndex: int, newIndex: int) -> None:
-        self._logger.info("On front playlist changed at index: %d => %d", oldIndex, newIndex)
-        if newIndex == -1:
-            self._logger.info("Front playlist set to index -1, skip")
-        else:
-            self._logger.info("Front playlist set to index %d, refreshing main window", newIndex)
-            self._logger.info("Updating playlist combo")
-            self._playlistCombo.setCurrentIndex(newIndex)
-            self._logger.info("Main window refreshed")
-
-    def _setupToolbar(self):
-        toolbar = self._toolbar
-        toolbar.setMovable(False)
-        toolbar.clear()
-        playlistCombo = QtWidgets.QComboBox(toolbar)
-        playlistCombo.addItems([x.name for x in self._player.getPlaylists()])
-        playlistCombo.setCurrentIndex(self._player.getFrontPlaylistIndex())
-        playlistCombo.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents)
-        playlistCombo.activated.connect(self._onPlaylistComboActivated)
-        self._playlistLabel = QtWidgets.QLabel(tt.Toolbar_Playlist, toolbar)
-        toolbar.addWidget(Just.of(QtWidgets.QWidget()).apply(lambda x: x.setFixedWidth(5)).value())
-        toolbar.addWidget(self._playlistLabel)
-        toolbar.addWidget(playlistCombo)
-        toolbar.addWidget(Just.of(QtWidgets.QWidget()).apply(
-            lambda x: x.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)).value())
-        self._editingCheck = QtWidgets.QCheckBox(tt.Toolbar_Editing, self)
-        self._editingCheck.stateChanged.connect(self._onEditingCheckBoxStateChanged)
-        toolbar.addWidget(self._editingCheck)
-        toolbar.addWidget(Just.of(QtWidgets.QWidget()).apply(lambda x: x.setFixedWidth(10)).value())
-        self._toggleLanguageAction = toolbar.addAction(tt.Toolbar_ToggleLanguage)
+        self._toggleLanguageAction = self._testMenu.addAction(tt.TestMenu_ToggleLanguage)
         self._toggleLanguageAction.triggered.connect(
             lambda: self._app.changeLanguage("zh_CN" if self._config.language == "en_US" else "en_US"))
-        self._playlistCombo = playlistCombo
+        self._setupPluginMenu()
+
+    def _setupToolbar(self):
+        self._toolbar.clear()
+        self._toolbar.setMovable(False)
+        self._toolbar.addWidget(WidgetUtils.createHorizontalSpacer(5))
+        self._toolbar.addWidget(PlaylistSelector())
 
     def setLayoutEditing(self, editing: bool) -> None:
         self._layoutEditing = editing
@@ -279,16 +251,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._logger.info("On editing check box state changed: %s", state)
         assert state in (QtCore.Qt.CheckState.Checked, QtCore.Qt.CheckState.Unchecked)
         self.setLayoutEditing(state == QtCore.Qt.CheckState.Checked)
-
-    def _onPlaylistInserted(self, index: int) -> None:
-        playlist = self._player.getPlaylists()[index]
-        self._logger.info("On playlist inserted: %s", playlist.name)
-        self._playlistCombo.addItem(playlist.name)
-
-    def _onPlaylistsRemovedAtIndexes(self, indexes: typing.List[int]):
-        self._logger.info("On playlist removed: %s", indexes)
-        for index in sorted(indexes, reverse=True):
-            self._playlistCombo.removeItem(index)
 
     def _onMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
         self._logger.info("Music index changed: %d => %d", oldIndex, newIndex)
