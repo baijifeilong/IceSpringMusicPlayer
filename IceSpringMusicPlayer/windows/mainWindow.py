@@ -51,9 +51,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self._layoutEditing = False
         self._maskWidget = None
         self._initPalette()
-        self._toolbar = self.addToolBar("Toolbar")
-        self._setupMenuBar()
-        self._setupToolbar()
+        self._menuToolbar = self.addToolBar("Menu")
+        self._playlistToolbar = self.addToolBar("Playlist")
+        self._setupMenuToolbar()
+        self._setupPlaylistToolbar()
         self._initStatusBar()
         self.layoutChanged.connect(self._onLayoutChanged)
         self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
@@ -159,8 +160,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _onLanguageChanged(self, language: str):
         self._logger.info("On language changed: %s", language)
-        self._setupMenuBar()
-        self._setupToolbar()
+        self._setupMenuToolbar()
+        self._setupPlaylistToolbar()
 
     def _setupPluginMenu(self):
         self._pluginsMenu.clear()
@@ -180,19 +181,19 @@ class MainWindow(QtWidgets.QMainWindow):
                         assert isinstance(item, QtWidgets.QAction)
                         menu.addAction(item)
 
-    def _setupMenuBar(self):
+    def _setupMenuToolbar(self):
         from IceSpringPlaylistPlugin.playlistManagerWidget import PlaylistManagerWidget
-        self.menuBar().clear()
-        self._fileMenu = self.menuBar().addMenu(tt.FileMenu)
+        self._menuToolbar.clear()
+        self._fileMenu = QtWidgets.QMenu(tt.FileMenu)
         self._fileOpenAction = self._fileMenu.addAction(tt.FileMenu_Open)
         self._fileOpenAction.triggered.connect(self._playlistService.addMusicsFromFileDialog)
         self._fileMenu.addSeparator()
         self._fileConfigAction = self._fileMenu.addAction(tt.FileMenu_Config)
         self._fileConfigAction.triggered.connect(lambda: ConfigDialog().exec_())
-        self._viewMenu = self.menuBar().addMenu(tt.ViewMenu)
+        self._viewMenu = QtWidgets.QMenu(tt.ViewMenu)
         self._viewPlaylistManagerAction = self._viewMenu.addAction(
             tt.ViewMenu_PlaylistManager, lambda: DialogUtils.execWidget(PlaylistManagerWidget(), withOk=True))
-        self._layoutMenu = self.menuBar().addMenu(tt.LayoutMenu)
+        self._layoutMenu = QtWidgets.QMenu(tt.LayoutMenu)
         self._layoutControlsDownAction = self._layoutMenu.addAction(
             tt.LayoutMenu_ControlsDown, lambda: self._changeLayout(self._configService.getControlsDownLayout()))
         self._layoutControlsUpAction = self._layoutMenu.addAction(
@@ -203,13 +204,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self._editingAction.setCheckable(True)
         self._editingAction.setChecked(self._layoutEditing)
         self._editingAction.triggered.connect(lambda: self.setLayoutEditing(not self._layoutEditing))
-        self._pluginsMenu = self.menuBar().addMenu(tt.PluginsMenu)
-        self._languageMenu = self.menuBar().addMenu(tt.LanguageMenu)
+        self._pluginsMenu = QtWidgets.QMenu(tt.PluginsMenu)
+        self._languageMenu = QtWidgets.QMenu(tt.LanguageMenu)
         self._languageEnglishAction = self._languageMenu.addAction(
             tt.LanguageMenu_English, lambda: self._app.changeLanguage("en_US"))
         self._languageChineseAction = self._languageMenu.addAction(
             tt.LanguageMenu_Chinese, lambda: self._app.changeLanguage("zh_CN"))
-        self._testMenu = self.menuBar().addMenu(tt.TestMenu)
+        self._testMenu = QtWidgets.QMenu(tt.TestMenu)
         self._testOneKeyAddAction = self._testMenu.addAction(
             tt.TestMenu_OneKeyAdd, lambda: self._playlistService.addMusicsFromFolder("~/Music"))
         self._testLoadTestDataAction = self._testMenu.addAction(
@@ -218,12 +219,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self._toggleLanguageAction.triggered.connect(
             lambda: self._app.changeLanguage("zh_CN" if self._config.language == "en_US" else "en_US"))
         self._setupPluginMenu()
+        self._menuToolbar.addWidget(WidgetUtils.createMenuButton(tt.FileMenu, self._fileMenu))
+        self._menuToolbar.addWidget(WidgetUtils.createMenuButton(tt.ViewMenu, self._viewMenu))
+        self._menuToolbar.addWidget(WidgetUtils.createMenuButton(tt.LayoutMenu, self._layoutMenu))
+        self._menuToolbar.addWidget(WidgetUtils.createMenuButton(tt.PluginsMenu, self._pluginsMenu))
+        self._menuToolbar.addWidget(WidgetUtils.createMenuButton(tt.LanguageMenu, self._languageMenu))
+        self._menuToolbar.addWidget(WidgetUtils.createMenuButton(tt.TestMenu, self._testMenu))
 
-    def _setupToolbar(self):
-        self._toolbar.clear()
-        self._toolbar.setMovable(False)
-        self._toolbar.addWidget(WidgetUtils.createHorizontalSpacer(5))
-        self._toolbar.addWidget(PlaylistSelector())
+    def _setupPlaylistToolbar(self):
+        self._playlistToolbar.clear()
+        self._playlistToolbar.addWidget(WidgetUtils.createHorizontalSpacer(5))
+        self._playlistToolbar.addWidget(PlaylistSelector())
 
     def setLayoutEditing(self, editing: bool) -> None:
         self._layoutEditing = editing

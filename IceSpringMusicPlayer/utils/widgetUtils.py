@@ -30,3 +30,12 @@ class WidgetUtils(object):
     @staticmethod
     def createHorizontalSpacer(width):
         return Just.of(QtWidgets.QWidget()).apply(lambda x: x.setFixedWidth(width)).value()
+
+    @staticmethod
+    def createMenuButton(text: str, menu: QtWidgets.QMenu) -> QtWidgets.QToolButton:
+        toolButton = QtWidgets.QToolButton()
+        toolButton.setText(text)
+        toolButton.setMenu(menu)
+        toolButton.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+        toolButton.setStyleSheet("QToolButton::menu-indicator { image: none; } QToolButton { padding-left: -15px }")
+        return toolButton
