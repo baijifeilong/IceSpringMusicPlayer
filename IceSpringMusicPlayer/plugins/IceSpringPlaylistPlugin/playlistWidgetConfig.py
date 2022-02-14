@@ -11,7 +11,8 @@ class PlaylistWidgetConfig(JsonSupport):
     rowHeight: int
     horizontalScrollBarPolicy: str
     verticalScrollBarPolicy: str
+    showTabBar: bool
 
     @classmethod
     def getDefaultObject(cls) -> PlaylistWidgetConfig:
-        return cls(rowHeight=45, horizontalScrollBarPolicy="AUTO", verticalScrollBarPolicy="AUTO")
+        return cls(rowHeight=45, horizontalScrollBarPolicy="AUTO", verticalScrollBarPolicy="AUTO", showTabBar=True)

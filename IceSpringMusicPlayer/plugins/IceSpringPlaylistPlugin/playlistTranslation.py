@@ -31,3 +31,6 @@ PlaylistWidget_HorizontalScrollBarPolicy.zh_CN = "水平滚动条策略"
 PlaylistWidget_VerticalScrollBarPolicy = Text()
 PlaylistWidget_VerticalScrollBarPolicy.en_US = "Vertical Scroll Bar Policy"
 PlaylistWidget_VerticalScrollBarPolicy.zh_CN = "垂直滚动条策略"
+PlaylistWidget_ShowTabBar = Text()
+PlaylistWidget_ShowTabBar.en_US = "Show Tab Bar"
+PlaylistWidget_ShowTabBar.zh_CN = "显示标签栏"

@@ -27,6 +27,8 @@ class PlaylistWidgetConfigDialog(QtWidgets.QDialog):
         for k, v in scrollPolicies.items():
             self._verticalPolicyComboBox.addItem(v, k)
         self._verticalPolicyComboBox.setCurrentText(scrollPolicies[self._widgetConfig.verticalScrollBarPolicy])
+        self._showTabBarCheckBox = QtWidgets.QCheckBox()
+        self._showTabBarCheckBox.setChecked(self._widgetConfig.showTabBar)
         mainLayout = QtWidgets.QGridLayout()
         mainLayout.setColumnStretch(0, 1)
         mainLayout.setColumnStretch(1, 2)
@@ -36,6 +38,8 @@ class PlaylistWidgetConfigDialog(QtWidgets.QDialog):
         mainLayout.addWidget(self._horizontalPolicyComboBox)
         mainLayout.addWidget(QtWidgets.QLabel(tt.PlaylistWidget_VerticalScrollBarPolicy))
         mainLayout.addWidget(self._verticalPolicyComboBox)
+        mainLayout.addWidget(QtWidgets.QLabel(tt.PlaylistWidget_ShowTabBar))
+        mainLayout.addWidget(self._showTabBarCheckBox)
         mainLayout.addWidget(WidgetUtils.createExpandingSpacer(), mainLayout.rowCount(), 0, 1, 2)
         mainLayout.addWidget(self._buttonBox, mainLayout.rowCount(), 0, 1, 2)
         self.setLayout(mainLayout)
@@ -49,6 +53,7 @@ class PlaylistWidgetConfigDialog(QtWidgets.QDialog):
             self._widgetConfig.rowHeight = int(self._rowHeightComboBox.currentText())
             self._widgetConfig.horizontalScrollBarPolicy = self._horizontalPolicyComboBox.currentData()
             self._widgetConfig.verticalScrollBarPolicy = self._verticalPolicyComboBox.currentData()
+            self._widgetConfig.showTabBar = self._showTabBarCheckBox.isChecked()
             self._target.widgetConfigChanged.emit()
         if role in [QtWidgets.QDialogButtonBox.AcceptRole, QtWidgets.QDialogButtonBox.RejectRole]:
             self.close()

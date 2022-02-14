@@ -32,20 +32,42 @@ class PlaylistWidget(QtWidgets.QWidget, PluginWidgetMixin):
     def __init__(self, config=None) -> None:
         super().__init__()
         self._widgetConfig = config or self.getWidgetConfigClass().getDefaultObject()
+        self._logger = logging.getLogger("playlistWidget")
         self._player = App.instance().getPlayer()
         self._tabBar = QtWidgets.QTabBar()
+        self._tabBar.setSizePolicy(QtWidgets.QSizePolicy.Policy.Maximum, QtWidgets.QSizePolicy.Policy.Maximum)
         self._playlistTable = PlaylistTable(config, self)
         mainLayout = QtWidgets.QVBoxLayout()
         mainLayout.addWidget(self._tabBar)
         mainLayout.addWidget(self._playlistTable)
         mainLayout.setMargin(0)
         self.setLayout(mainLayout)
+        self._tabBar.currentChanged.connect(self._onTabBarCurrentChanged)
+        self.widgetConfigChanged.connect(self._onWidgetConfigChanged)
+        self._player.frontPlaylistIndexChanged.connect(self._onFrontPlaylistIndexChanged)
         self._refreshTabBar()
 
+    def _onWidgetConfigChanged(self):
+        self._logger.info("On widget config changed")
+        self._refreshTabBar()
+
+    def _onTabBarCurrentChanged(self, index):
+        self._logger.info("On tab bar current changed: %d", index)
+        self._player.setFrontPlaylistIndex(index)
+
+    def _onFrontPlaylistIndexChanged(self, oldIndex, newIndex):
+        self._logger.info("On front playlist index changed: %d => %d", oldIndex, newIndex)
+        self._tabBar.setCurrentIndex(newIndex)
+
     def _refreshTabBar(self):
+        self._tabBar.blockSignals(True)
+        for index in reversed(range(self._tabBar.count())):
+            self._tabBar.removeTab(index)
         for playlist in self._player.getPlaylists():
             self._tabBar.addTab(playlist.name)
         self._tabBar.setCurrentIndex(self._player.getFrontPlaylistIndex())
+        self._tabBar.setVisible(self._widgetConfig.showTabBar)
+        self._tabBar.blockSignals(False)
 
 
 class PlaylistTable(IceTableView, PluginWidgetMixin):
