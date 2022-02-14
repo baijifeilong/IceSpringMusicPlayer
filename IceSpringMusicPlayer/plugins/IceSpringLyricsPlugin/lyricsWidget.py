@@ -160,7 +160,7 @@ class LyricsWidget(QtWidgets.QScrollArea, PluginWidgetMixin):
             self._logger.debug("Lyric index changed: %d => %d, refreshing...", previousLyricIndex, lyricIndex)
         self.setProperty("previousLyricIndex", lyricIndex)
         for index in range(len(lyrics)):
-            lyricLabel: QtWidgets.QLabel = self._layout.itemAt(index + 1).widget()
+            lyricLabel: QtWidgets.QLabel = gg(self._layout.itemAt(index + 1).widget())
             color = QtGui.QColor("#e1413c" if index == lyricIndex else "#23557d")
             palette = lyricLabel.palette()
             palette.setColor(QtGui.QPalette.ColorRole.WindowText, color)

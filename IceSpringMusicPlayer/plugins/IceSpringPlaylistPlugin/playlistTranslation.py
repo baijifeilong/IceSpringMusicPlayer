@@ -22,3 +22,6 @@ PlaylistWidget_Name.zh_CN = "播放列表组件"
 PlaylistManagerWidget_Name = Text()
 PlaylistManagerWidget_Name.en_US = "Playlist Manager Widget"
 PlaylistManagerWidget_Name.zh_CN = "播放列表管理器组件"
+PlaylistWidget_RowHeight = Text()
+PlaylistWidget_RowHeight.en_US = "Row Height"
+PlaylistWidget_RowHeight.zh_CN = "行高"

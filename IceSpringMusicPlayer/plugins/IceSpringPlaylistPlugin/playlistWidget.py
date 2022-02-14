@@ -16,16 +16,26 @@ from IceSpringMusicPlayer.controls.iceTableView import IceTableView
 from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.services.playlistService import PlaylistService
+from IceSpringPlaylistPlugin.playlistWidgetConfig import PlaylistWidgetConfig
 
 
 class PlaylistWidget(IceTableView, PluginWidgetMixin):
+    widgetConfigChanged: QtCore.SignalInstance = QtCore.Signal()
     _logger: logging.Logger
     _app: App
     _player: Player
     _playlistService: PlaylistService
 
-    def __init__(self) -> None:
+    @classmethod
+    def getWidgetConfigClass(cls) -> typing.Type[PlaylistWidgetConfig]:
+        return PlaylistWidgetConfig
+
+    def getWidgetConfig(self) -> PlaylistWidgetConfig:
+        return self._widgetConfig
+
+    def __init__(self, config=None) -> None:
         super().__init__()
+        self._widgetConfig = config or self.getWidgetConfigClass().getDefaultObject()
         self._logger = logging.getLogger("playlistTable")
         self._app = App.instance()
         self._player = App.instance().getPlayer()
@@ -35,7 +45,7 @@ class PlaylistWidget(IceTableView, PluginWidgetMixin):
         self.setColumnWidth(1, int(150 * self._app.getZoom()))
         self.doubleClicked.connect(self._onDoubleClicked)
         self.setIconSize(QtCore.QSize(32, 32) * self._app.getZoom())
-        self.horizontalHeader().setSortIndicator(1, QtCore.Qt.AscendingOrder)
+        self.horizontalHeader().setSortIndicator(1, QtCore.Qt.SortOrder.AscendingOrder)
         self.setWordWrap(False)
         self.setSortingEnabled(True)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
@@ -49,9 +59,19 @@ class PlaylistWidget(IceTableView, PluginWidgetMixin):
         self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
         self._player.musicsInserted.connect(self._onMusicsInserted)
         self._selectAndFollowMusics(self._player.getSelectedMusicIndexes())
+        self._loadConfig()
+        self.widgetConfigChanged.connect(self._onWidgetConfigChanged)
+
+    def _onWidgetConfigChanged(self):
+        self._logger.info("On widget config changed")
+        self._loadConfig()
+
+    def _loadConfig(self):
+        self._logger.info("Load config")
+        self.verticalHeader().setDefaultSectionSize(self._widgetConfig.rowHeight)
 
     def model(self) -> "PlaylistModel":
-        return super().model()
+        return gg(super().model())
 
     def _onSelectionChanged(self, selected: QtCore.QItemSelection, deselected: QtCore.QItemSelection) -> None:
         self._logger.info("On selection changed")
@@ -108,11 +128,13 @@ class PlaylistWidget(IceTableView, PluginWidgetMixin):
                 gg(QtCore.QItemSelectionModel.Select, typing.Any) | QtCore.QItemSelectionModel.Rows)
 
     def _onCustomContextMenuRequested(self, pos: QtCore.QPoint) -> None:
+        from IceSpringPlaylistPlugin.playlistWidgetConfigDialog import PlaylistWidgetConfigDialog
         unused(pos)
         menu = QtWidgets.QMenu()
         menu.addAction("Add Musics", self._playlistService.addMusicsFromFileDialog)
         menu.addAction("Add Folder", self._playlistService.addMusicsFromFolderDialog)
         menu.addAction("Remove Musics", self._onRemove)
+        menu.addAction(tt.Plugins_ConfigWidget, lambda: PlaylistWidgetConfigDialog(self).exec_())
         menu.exec_(QtGui.QCursor.pos())
 
     def _onRequestLocateCurrentMusic(self) -> None:
