@@ -19,12 +19,8 @@ from IceSpringMusicPlayer.services.playlistService import PlaylistService
 from IceSpringPlaylistPlugin.playlistWidgetConfig import PlaylistWidgetConfig
 
 
-class PlaylistWidget(IceTableView, PluginWidgetMixin):
+class PlaylistWidget(QtWidgets.QWidget, PluginWidgetMixin):
     widgetConfigChanged: QtCore.SignalInstance = QtCore.Signal()
-    _logger: logging.Logger
-    _app: App
-    _player: Player
-    _playlistService: PlaylistService
 
     @classmethod
     def getWidgetConfigClass(cls) -> typing.Type[PlaylistWidgetConfig]:
@@ -36,6 +32,34 @@ class PlaylistWidget(IceTableView, PluginWidgetMixin):
     def __init__(self, config=None) -> None:
         super().__init__()
         self._widgetConfig = config or self.getWidgetConfigClass().getDefaultObject()
+        self._player = App.instance().getPlayer()
+        self._tabBar = QtWidgets.QTabBar()
+        self._playlistTable = PlaylistTable(config, self)
+        mainLayout = QtWidgets.QVBoxLayout()
+        mainLayout.addWidget(self._tabBar)
+        mainLayout.addWidget(self._playlistTable)
+        mainLayout.setMargin(0)
+        self.setLayout(mainLayout)
+        self._refreshTabBar()
+
+    def _refreshTabBar(self):
+        for playlist in self._player.getPlaylists():
+            self._tabBar.addTab(playlist.name)
+        self._tabBar.setCurrentIndex(self._player.getFrontPlaylistIndex())
+
+
+class PlaylistTable(IceTableView, PluginWidgetMixin):
+    _logger: logging.Logger
+    _widgetConfig: PlaylistWidgetConfig
+    _parent: PlaylistWidget
+    _app: App
+    _player: Player
+    _playlistService: PlaylistService
+
+    def __init__(self, config, parent) -> None:
+        super().__init__()
+        self._widgetConfig = config
+        self._parent = gg(parent)
         self._logger = logging.getLogger("playlistTable")
         self._app = App.instance()
         self._player = App.instance().getPlayer()
@@ -62,7 +86,7 @@ class PlaylistWidget(IceTableView, PluginWidgetMixin):
         self._player.musicsSorted.connect(self._onMusicsSorted)
         self._selectAndFollowMusics(self._player.getSelectedMusicIndexes())
         self._loadConfig()
-        self.widgetConfigChanged.connect(self._onWidgetConfigChanged)
+        self._parent.widgetConfigChanged.connect(self._onWidgetConfigChanged)
 
     def _onWidgetConfigChanged(self):
         self._logger.info("On widget config changed")
@@ -140,7 +164,7 @@ class PlaylistWidget(IceTableView, PluginWidgetMixin):
         menu.addAction("Add Musics", self._playlistService.addMusicsFromFileDialog)
         menu.addAction("Add Folder", self._playlistService.addMusicsFromFolderDialog)
         menu.addAction("Remove Musics", self._onRemove)
-        menu.addAction(tt.Plugins_ConfigWidget, lambda: PlaylistWidgetConfigDialog(self).exec_())
+        menu.addAction(tt.Plugins_ConfigWidget, lambda: PlaylistWidgetConfigDialog(self._parent).exec_())
         menu.exec_(QtGui.QCursor.pos())
 
     def _onRequestLocateCurrentMusic(self) -> None:
