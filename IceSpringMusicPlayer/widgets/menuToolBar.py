@@ -5,8 +5,7 @@ import logging
 import typing
 
 from IceSpringRealOptional.just import Just
-from PySide2 import QtGui
-from PySide2 import QtWidgets
+from PySide2 import QtGui, QtWidgets, QtCore
 
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
@@ -50,6 +49,7 @@ class MenuToolBar(QtWidgets.QToolBar):
     def _setupView(self):
         self.setStyleSheet("QToolButton::menu-indicator { image: none}")
         self._setupMenus()
+        self.installEventFilter(StatusTipFilter(self))
         for menu in self._menus:
             button = QtWidgets.QToolButton()
             button.setMenu(menu)
@@ -168,3 +168,10 @@ class MenuToolBar(QtWidgets.QToolBar):
                     else:
                         assert isinstance(item, QtWidgets.QAction)
                         menu.addAction(item)
+
+
+class StatusTipFilter(QtCore.QObject):
+    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        if isinstance(event, QtGui.QStatusTipEvent):
+            return True
+        return super().eventFilter(watched, event)

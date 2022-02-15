@@ -118,7 +118,7 @@ class ConfigService(QtCore.QObject):
         from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
         return Element(clazz=SplitterWidget, vertical=False, weight=1, config=dict(), children=[
             Element(clazz=SplitterWidget, vertical=True, weight=2, config=dict(), children=[
-                Element(clazz=PlaylistWidget, vertical=False, weight=3, config=dict(), children=[]),
+                Element(clazz=PlaylistWidget, vertical=False, weight=5, config=dict(), children=[]),
                 Element(clazz=SpectrumWidget, vertical=False, weight=1, config=dict(), children=[]),
             ]),
             Element(clazz=LyricsWidget, vertical=False, weight=3, config=dict(), children=[]),

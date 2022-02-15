@@ -32,5 +32,7 @@ class VolumeSlider(FluentSlider):
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         topRight = self.rect().topRight()
         topRight.setY(round(self.rect().height() * 0.25))
-        painter.drawLine(self.rect().bottomLeft(), topRight)
+        bottomLeft = self.rect().bottomLeft()
+        bottomLeft.setY(round(self.rect().height() * 0.8))
+        painter.drawLine(bottomLeft, topRight)
         super().paintEvent(ev)
