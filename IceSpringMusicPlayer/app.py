@@ -6,6 +6,7 @@ import logging
 import sys
 import typing
 
+import qtawesome
 from IceSpringPathLib import Path
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtWidgets, QtCore
@@ -58,6 +59,7 @@ class App(QtWidgets.QApplication):
         self.setFont(self._config.applicationFont)
         self.setApplicationName("Ice Spring Music Player")
         self.setApplicationDisplayName(self.applicationName())
+        self.setWindowIcon(qtawesome.icon("mdi.snowflake"))
         self._mainWindow = MainWindow()
         self._mainWindow.setGeometry(self._config.geometry)
         self.aboutToQuit.connect(self._onAboutToQuit)
