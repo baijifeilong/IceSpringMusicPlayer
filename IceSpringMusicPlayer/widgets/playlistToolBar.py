@@ -5,6 +5,7 @@ from PySide2 import QtWidgets
 
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.utils.widgetUtils import WidgetUtils
 
 
 class PlaylistToolBar(QtWidgets.QToolBar):
@@ -25,8 +26,10 @@ class PlaylistToolBar(QtWidgets.QToolBar):
         self._playlistComboBox = QtWidgets.QComboBox()
         self._playlistComboBox.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents)
         self._playlistComboBox.activated.connect(self._onPlaylistComboBoxActivated)
+        self.addWidget(WidgetUtils.createHorizontalSpacer(5))
         self.addWidget(self._playlistLabel)
         self.addWidget(self._playlistComboBox)
+        self.addWidget(WidgetUtils.createHorizontalSpacer(5))
 
     def _refreshView(self):
         self.setWindowTitle("Playlist")

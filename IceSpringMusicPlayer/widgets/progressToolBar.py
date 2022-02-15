@@ -5,6 +5,7 @@ from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.controls.fluentSlider import FluentSlider
+from IceSpringMusicPlayer.utils.widgetUtils import WidgetUtils
 
 
 class ProgressToolBar(QtWidgets.QToolBar):
@@ -31,7 +32,9 @@ class ProgressToolBar(QtWidgets.QToolBar):
         self._progressSlider.setMaximum(10 ** 9)
         self._progressSlider.setPageStep(self._progressSlider.maximum() // 20)
         self._progressSlider.setSingleStep(self._progressSlider.maximum() // 20)
+        self.addWidget(WidgetUtils.createHorizontalSpacer(5))
         self.addWidget(self._progressSlider)
+        self.addWidget(WidgetUtils.createHorizontalSpacer(5))
 
     def _refreshView(self):
         position = self._player.getRelativePosition()

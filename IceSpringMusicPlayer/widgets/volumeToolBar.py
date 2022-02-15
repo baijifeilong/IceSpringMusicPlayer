@@ -4,6 +4,7 @@ import logging
 from PySide2 import QtWidgets
 
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.utils.widgetUtils import WidgetUtils
 from IceSpringMusicPlayer.widgets.volumeSlider import VolumeSlider
 
 
@@ -25,7 +26,9 @@ class VolumeToolBar(QtWidgets.QToolBar):
         self._volumeSlider = VolumeSlider()
         self._volumeSlider.setPageStep(5)
         self._volumeSlider.setSingleStep(5)
+        self.addWidget(WidgetUtils.createHorizontalSpacer(5))
         self.addWidget(self._volumeSlider)
+        self.addWidget(WidgetUtils.createHorizontalSpacer(5))
 
     def _refreshView(self):
         volume = self._player.getVolume()

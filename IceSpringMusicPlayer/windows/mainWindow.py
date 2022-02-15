@@ -53,8 +53,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.addToolBar(MenuToolBar(self))
         self.addToolBar(ControllerToolBar())
         self.addToolBar(VolumeToolBar())
-        self.addToolBar(ProgressToolBar())
         self.addToolBar(PlaylistToolBar())
+        self.addToolBar(ProgressToolBar())
         self._initStatusBar()
         self.layoutChanged.connect(self._onLayoutChanged)
         self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
@@ -217,3 +217,18 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def moveEvent(self, event: QtGui.QMoveEvent) -> None:
         self._config.geometry = self.geometry()
+
+    def createPopupMenu(self) -> QtWidgets.QMenu:
+        menu = super().createPopupMenu()
+        menu.addSeparator()
+        toolBars: typing.Sequence[QtWidgets.QToolBar] = gg(self.findChildren(QtWidgets.QToolBar))
+        for toolbar in toolBars:
+            if toolbar.rect().contains(toolbar.mapFromGlobal(QtGui.QCursor.pos())):
+                title = "%s %s" % ("Lock" if toolbar.isMovable() else "Unlock", toolbar.windowTitle())
+                menu.addAction(title, lambda toolbar=toolbar: toolbar.setMovable(not toolbar.isMovable()))
+        menu.addSeparator()
+        if any(x.isMovable() for x in toolBars):
+            menu.addAction("Lock All", lambda: list(x.setMovable(False) for x in toolBars))
+        if any(not x.isMovable() for x in toolBars):
+            menu.addAction("Unlock All", lambda: list(x.setMovable(True) for x in toolBars))
+        return menu
