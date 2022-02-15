@@ -19,8 +19,8 @@ if typing.TYPE_CHECKING:
 class MenuToolBar(QtWidgets.QToolBar):
     _menus: typing.List[QtWidgets.QMenu]
 
-    def __init__(self, mainWindow: MainWindow, title):
-        super().__init__(title)
+    def __init__(self, mainWindow: MainWindow):
+        super().__init__()
         self._logger = logging.getLogger("menuToolBar")
         self._app = App.instance()
         self._config = self._app.getConfig()
@@ -28,9 +28,9 @@ class MenuToolBar(QtWidgets.QToolBar):
         self._playlistService = App.instance().getPlaylistService()
         self._configService = App.instance().getConfigService()
         self._pluginService = App.instance().getPluginService()
-        self._setupLayout()
-        self._refreshLayout()
-        self._app.languageChanged.connect(self._refreshLayout)
+        self._setupView()
+        self._refreshView()
+        self._app.languageChanged.connect(self._refreshView)
         self._mainWindow.layoutEditingChanged.connect(self._onLayoutEditingChanged)
         self._pluginService.pluginsInserted.connect(self._refreshMenus)
         self._pluginService.pluginsRemoved.connect(self._refreshMenus)
@@ -43,7 +43,7 @@ class MenuToolBar(QtWidgets.QToolBar):
         self._layoutEditingAction.setChecked(editing)
         self._layoutEditingAction.blockSignals(False)
 
-    def _setupLayout(self):
+    def _setupView(self):
         self.setStyleSheet("QToolButton::menu-indicator { image: none}")
         self._setupMenus()
         for menu in self._menus:
@@ -54,7 +54,8 @@ class MenuToolBar(QtWidgets.QToolBar):
             menu.setProperty("__button", button)
             self.addWidget(button)
 
-    def _refreshLayout(self):
+    def _refreshView(self):
+        self.setWindowTitle("Menu")
         self._refreshMenus()
         for menu in self._menus:
             button: QtWidgets.QToolButton = menu.property("__button")

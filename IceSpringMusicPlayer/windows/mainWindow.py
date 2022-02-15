@@ -14,11 +14,10 @@ from IceSpringMusicPlayer.domains.config import Config, Element
 from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
-from IceSpringMusicPlayer.utils.widgetUtils import WidgetUtils
 from IceSpringMusicPlayer.widgets.controllerWidget import ControllerWidget
 from IceSpringMusicPlayer.widgets.maskWidget import MaskWidget
 from IceSpringMusicPlayer.widgets.menuToolBar import MenuToolBar
-from IceSpringMusicPlayer.widgets.playlistSelector import PlaylistSelector
+from IceSpringMusicPlayer.widgets.playlistToolBar import PlaylistToolBar
 from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
 
 
@@ -49,15 +48,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self._layoutEditing = False
         self._maskWidget = None
         self._initPalette()
-        self.addToolBar(MenuToolBar(self, "Menu"))
-        self._playlistToolbar = self.addToolBar("Playlist")
+        self.addToolBar(MenuToolBar(self))
+        self.addToolBar(PlaylistToolBar())
         self._controllerToolbar = self.addToolBar("Controller")
-        self._setupPlaylistToolbar()
         self._setupControlsToolbar()
         self._initStatusBar()
         self.layoutChanged.connect(self._onLayoutChanged)
         self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
-        self._app.languageChanged.connect(self._onLanguageChanged)
         self._playlistService.musicParsed.connect(self._onMusicParsed)
         self._player.positionChanged.connect(self._onPlayerPositionChanged)
         self._player.currentMusicIndexChanged.connect(self._onMusicIndexChanged)
@@ -152,15 +149,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._logger.info("> Signal app.requestLocateCurrentMusic emitting...")
         self._app.requestLocateCurrentMusic.emit()
         self._logger.info("> Signal app.requestLocateCurrentMusic emitted.")
-
-    def _onLanguageChanged(self, language: str):
-        self._logger.info("On language changed: %s", language)
-        self._setupPlaylistToolbar()
-
-    def _setupPlaylistToolbar(self):
-        self._playlistToolbar.clear()
-        self._playlistToolbar.addWidget(WidgetUtils.createHorizontalSpacer(5))
-        self._playlistToolbar.addWidget(PlaylistSelector())
 
     def _setupControlsToolbar(self):
         self._controllerToolbar.clear()
