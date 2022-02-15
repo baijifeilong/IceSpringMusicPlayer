@@ -1,10 +1,8 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/23 19:28
-import copy
 import json
 import logging
 
 from IceSpringPathLib import Path
-from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.typingUtils import gg
 from IceSpringRealOptional.vector import Vector
 from PySide2 import QtCore, QtGui, QtWidgets
@@ -116,35 +114,12 @@ class ConfigService(QtCore.QObject):
     def getDefaultLayout() -> Element:
         from IceSpringPlaylistPlugin.playlistWidget import PlaylistWidget
         from IceSpringLyricsPlugin.lyricsWidget import LyricsWidget
-        from IceSpringControlsPlugin.controlsWidget import ControlsWidget
+        from IceSpringSpectrumPlugin.spectrumWidget import SpectrumWidget
         from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
         return Element(clazz=SplitterWidget, vertical=False, weight=1, config=dict(), children=[
-            Element(clazz=SplitterWidget, vertical=True, weight=1, config=dict(), children=[
-                Element(clazz=ControlsWidget, vertical=False, weight=1, config=dict(), children=[]),
-                Element(clazz=LyricsWidget, vertical=False, weight=3, config=dict(), children=[]),
-                Element(clazz=PlaylistWidget, vertical=False, weight=5, config=dict(), children=[]),
-            ]),
             Element(clazz=SplitterWidget, vertical=True, weight=2, config=dict(), children=[
                 Element(clazz=PlaylistWidget, vertical=False, weight=3, config=dict(), children=[]),
-                Element(clazz=LyricsWidget, vertical=False, weight=5, config=dict(), children=[]),
-                Element(clazz=ControlsWidget, vertical=False, weight=1, config=dict(), children=[]),
+                Element(clazz=SpectrumWidget, vertical=False, weight=1, config=dict(), children=[]),
             ]),
+            Element(clazz=LyricsWidget, vertical=False, weight=3, config=dict(), children=[]),
         ])
-
-    @staticmethod
-    def getControlsDownLayout():
-        from IceSpringPlaylistPlugin.playlistWidget import PlaylistWidget
-        from IceSpringLyricsPlugin.lyricsWidget import LyricsWidget
-        from IceSpringControlsPlugin.controlsWidget import ControlsWidget
-        from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
-        return Element(clazz=SplitterWidget, vertical=True, weight=1, config=dict(), children=[
-            Element(clazz=SplitterWidget, vertical=False, weight=7, config=dict(), children=[
-                Element(clazz=PlaylistWidget, vertical=False, weight=1, config=dict(), children=[]),
-                Element(clazz=LyricsWidget, vertical=False, weight=1, config=dict(), children=[]),
-            ]),
-            Element(clazz=ControlsWidget, vertical=False, weight=1, config=dict(), children=[]),
-        ])
-
-    @classmethod
-    def getControlsUpLayout(cls):
-        return Just.of(copy.deepcopy(cls.getControlsDownLayout())).apply(lambda x: x.children.reverse()).value()

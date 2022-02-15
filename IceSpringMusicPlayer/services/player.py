@@ -391,8 +391,8 @@ class Player(QtCore.QObject):
     def _calcRandomMusicIndex(self, direction: str) -> int:
         assert direction in ["PREVIOUS", "NEXT"]
         playlist = self.getCurrentPlaylist().orElseThrow(AssertionError)
-        thisHour = pendulum.now().set(minute=0, second=0, microsecond=0)
-        digest = hashlib.md5(f"{thisHour}:{direction}:{self._playedCount}".encode()).hexdigest()
+        thisMinute = pendulum.now().set(second=0, microsecond=0)
+        digest = hashlib.md5(f"{thisMinute}:{direction}:{self._playedCount}".encode()).hexdigest()
         randomMusicIndex = int(digest, 16) % playlist.musics.size()
         return randomMusicIndex if randomMusicIndex != self._currentMusicIndex \
             else (randomMusicIndex + 1) % len(playlist.musics)

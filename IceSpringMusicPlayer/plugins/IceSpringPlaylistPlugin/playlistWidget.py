@@ -36,7 +36,7 @@ class PlaylistWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._player = App.instance().getPlayer()
         self._tabBar = QtWidgets.QTabBar()
         self._tabBar.setSizePolicy(QtWidgets.QSizePolicy.Policy.Maximum, QtWidgets.QSizePolicy.Policy.Maximum)
-        self._playlistTable = PlaylistTable(config, self)
+        self._playlistTable = PlaylistTable(self._widgetConfig, self)
         mainLayout = QtWidgets.QVBoxLayout()
         mainLayout.addWidget(self._tabBar)
         mainLayout.addWidget(self._playlistTable)
