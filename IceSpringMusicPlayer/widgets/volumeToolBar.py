@@ -1,10 +1,10 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/2/15 17:08
 import logging
 
-from PySide2 import QtWidgets, QtCore
+from PySide2 import QtWidgets
 
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.controls.fluentSlider import FluentSlider
+from IceSpringMusicPlayer.widgets.volumeSlider import VolumeSlider
 
 
 class VolumeToolBar(QtWidgets.QToolBar):
@@ -22,8 +22,9 @@ class VolumeToolBar(QtWidgets.QToolBar):
         self._volumeSlider.valueChanged.connect(self._player.setVolume)
 
     def _setupView(self):
-        self._volumeSlider = FluentSlider(QtCore.Qt.Orientation.Horizontal)
-        self._volumeSlider.setMaximum(100)
+        self._volumeSlider = VolumeSlider()
+        self._volumeSlider.setPageStep(5)
+        self._volumeSlider.setSingleStep(5)
         self.addWidget(self._volumeSlider)
 
     def _refreshView(self):

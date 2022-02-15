@@ -29,6 +29,8 @@ class ProgressToolBar(QtWidgets.QToolBar):
     def _setupView(self):
         self._progressSlider = FluentSlider(QtCore.Qt.Orientation.Horizontal)
         self._progressSlider.setMaximum(10 ** 9)
+        self._progressSlider.setPageStep(self._progressSlider.maximum() // 20)
+        self._progressSlider.setSingleStep(self._progressSlider.maximum() // 20)
         self.addWidget(self._progressSlider)
 
     def _refreshView(self):
