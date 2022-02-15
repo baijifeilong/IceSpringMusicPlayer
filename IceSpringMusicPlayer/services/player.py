@@ -14,6 +14,7 @@ from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.maybe import Maybe
 from IceSpringRealOptional.vector import Vector
 from PySide2 import QtMultimedia, QtCore
+from assertpy import assert_that
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.domains.config import Config
@@ -101,6 +102,15 @@ class Player(QtCore.QObject):
 
     def getPosition(self) -> int:
         return int(self._proxy.position() // self._getBugRateOrOne())
+
+    def getRelativePosition(self) -> float:
+        return 0 if self._proxy.duration() == -1 else self._proxy.position() / self._proxy.duration()
+
+    def setRelativePosition(self, position: float):
+        qtPosition = int(position * self._proxy.duration())
+        self._logger.info("Set relative position: %f (qt=%d)", position, qtPosition)
+        assert_that(position).is_between(0, 1)
+        self._proxy.setPosition(qtPosition)
 
     def getState(self) -> PlayerState:
         return Just.of(self._proxy.state()).map(PlayerState.fromQt).value()

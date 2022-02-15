@@ -18,6 +18,7 @@ from IceSpringMusicPlayer.widgets.controllerToolBar import ControllerToolBar
 from IceSpringMusicPlayer.widgets.maskWidget import MaskWidget
 from IceSpringMusicPlayer.widgets.menuToolBar import MenuToolBar
 from IceSpringMusicPlayer.widgets.playlistToolBar import PlaylistToolBar
+from IceSpringMusicPlayer.widgets.progressToolBar import ProgressToolBar
 from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
 
 
@@ -51,6 +52,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.addToolBar(MenuToolBar(self))
         self.addToolBar(PlaylistToolBar())
         self.addToolBar(ControllerToolBar())
+        self.addToolBar(ProgressToolBar())
         self._initStatusBar()
         self.layoutChanged.connect(self._onLayoutChanged)
         self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
