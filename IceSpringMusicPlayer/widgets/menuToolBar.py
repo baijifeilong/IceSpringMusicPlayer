@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import typing
 
+from IceSpringRealOptional.just import Just
 from PySide2 import QtGui
 from PySide2 import QtWidgets
 
@@ -53,6 +54,8 @@ class MenuToolBar(QtWidgets.QToolBar):
             button = QtWidgets.QToolButton()
             button.setMenu(menu)
             button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+            button.sizeHint = lambda button=button: Just.of(QtWidgets.QToolButton.sizeHint(button)).apply(
+                lambda x: x.setWidth(round(x.width() * 0.8))).value()
             menu.mouseMoveEvent = lambda event, button=button, menu=menu: self._onMouseMove(menu, event, button)
             menu.setProperty("__button", button)
             self.addWidget(button)
