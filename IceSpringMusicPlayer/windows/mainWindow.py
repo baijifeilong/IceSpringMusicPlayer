@@ -20,6 +20,7 @@ from IceSpringMusicPlayer.widgets.menuToolBar import MenuToolBar
 from IceSpringMusicPlayer.widgets.playlistToolBar import PlaylistToolBar
 from IceSpringMusicPlayer.widgets.progressToolBar import ProgressToolBar
 from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
+from IceSpringMusicPlayer.widgets.volumeToolBar import VolumeToolBar
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -50,9 +51,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self._maskWidget = None
         self._initPalette()
         self.addToolBar(MenuToolBar(self))
-        self.addToolBar(PlaylistToolBar())
         self.addToolBar(ControllerToolBar())
+        self.addToolBar(VolumeToolBar())
         self.addToolBar(ProgressToolBar())
+        self.addToolBar(PlaylistToolBar())
         self._initStatusBar()
         self.layoutChanged.connect(self._onLayoutChanged)
         self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
