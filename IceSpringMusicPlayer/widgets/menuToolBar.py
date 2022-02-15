@@ -30,12 +30,15 @@ class MenuToolBar(QtWidgets.QToolBar):
         self._pluginService = App.instance().getPluginService()
         self._setupView()
         self._refreshView()
+        self._setupEvents()
+
+    def _setupEvents(self):
         self._app.languageChanged.connect(self._refreshView)
-        self._mainWindow.layoutEditingChanged.connect(self._onLayoutEditingChanged)
         self._pluginService.pluginsInserted.connect(self._refreshMenus)
         self._pluginService.pluginsRemoved.connect(self._refreshMenus)
         self._pluginService.pluginEnabled.connect(self._refreshMenus)
         self._pluginService.pluginDisabled.connect(self._refreshMenus)
+        self._mainWindow.layoutEditingChanged.connect(self._onLayoutEditingChanged)
 
     def _onLayoutEditingChanged(self, editing: bool):
         self._logger.info("On layout editing changed: %s", editing)

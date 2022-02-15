@@ -14,7 +14,7 @@ from IceSpringMusicPlayer.domains.config import Config, Element
 from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
-from IceSpringMusicPlayer.widgets.controllerWidget import ControllerWidget
+from IceSpringMusicPlayer.widgets.controllerToolBar import ControllerToolBar
 from IceSpringMusicPlayer.widgets.maskWidget import MaskWidget
 from IceSpringMusicPlayer.widgets.menuToolBar import MenuToolBar
 from IceSpringMusicPlayer.widgets.playlistToolBar import PlaylistToolBar
@@ -50,8 +50,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._initPalette()
         self.addToolBar(MenuToolBar(self))
         self.addToolBar(PlaylistToolBar())
-        self._controllerToolbar = self.addToolBar("Controller")
-        self._setupControlsToolbar()
+        self.addToolBar(ControllerToolBar())
         self._initStatusBar()
         self.layoutChanged.connect(self._onLayoutChanged)
         self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
@@ -149,10 +148,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._logger.info("> Signal app.requestLocateCurrentMusic emitting...")
         self._app.requestLocateCurrentMusic.emit()
         self._logger.info("> Signal app.requestLocateCurrentMusic emitted.")
-
-    def _setupControlsToolbar(self):
-        self._controllerToolbar.clear()
-        self._controllerToolbar.addWidget(ControllerWidget())
 
     def setLayoutEditing(self, editing: bool) -> None:
         self._layoutEditing = editing
