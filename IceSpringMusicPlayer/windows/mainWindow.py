@@ -8,20 +8,18 @@ from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtGui, QtWidgets
 
-from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.domains.config import Config, Element
 from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.services.player import Player
-from IceSpringMusicPlayer.utils.dialogUtils import DialogUtils
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
 from IceSpringMusicPlayer.utils.widgetUtils import WidgetUtils
 from IceSpringMusicPlayer.widgets.controllerWidget import ControllerWidget
 from IceSpringMusicPlayer.widgets.maskWidget import MaskWidget
+from IceSpringMusicPlayer.widgets.menuToolBar import MenuToolBar
 from IceSpringMusicPlayer.widgets.playlistSelector import PlaylistSelector
 from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
-from IceSpringMusicPlayer.windows.configDialog import ConfigDialog
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -34,7 +32,6 @@ class MainWindow(QtWidgets.QMainWindow):
     _statusLabel: QtWidgets.QLabel
     _playlistCombo: QtWidgets.QComboBox
     _layoutEditing: bool
-    _editingCheck: QtWidgets.QCheckBox
     _maskWidget: typing.Optional[MaskWidget]
     _fileMenu: QtWidgets.QMenu
 
@@ -52,20 +49,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self._layoutEditing = False
         self._maskWidget = None
         self._initPalette()
-        self._menuToolbar = self.addToolBar("Menu")
+        self.addToolBar(MenuToolBar(self, "Menu"))
         self._playlistToolbar = self.addToolBar("Playlist")
         self._controllerToolbar = self.addToolBar("Controller")
-        self._setupMenuToolbar()
         self._setupPlaylistToolbar()
         self._setupControlsToolbar()
         self._initStatusBar()
         self.layoutChanged.connect(self._onLayoutChanged)
         self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
         self._app.languageChanged.connect(self._onLanguageChanged)
-        self._pluginService.pluginEnabled.connect(self._setupPluginMenu)
-        self._pluginService.pluginDisabled.connect(self._setupPluginMenu)
-        self._pluginService.pluginsInserted.connect(self._setupPluginMenu)
-        self._pluginService.pluginsRemoved.connect(self._setupPluginMenu)
         self._playlistService.musicParsed.connect(self._onMusicParsed)
         self._player.positionChanged.connect(self._onPlayerPositionChanged)
         self._player.currentMusicIndexChanged.connect(self._onMusicIndexChanged)
@@ -104,7 +96,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def calcLayout(self) -> Element:
         return self._widgetToElement(self.centralWidget())
 
-    def _changeLayout(self, layout: Element) -> None:
+    def changeLayout(self, layout: Element) -> None:
         self._logger.info("Change layout")
         self._config.layout = layout
         self.loadLayout(self._config.layout)
@@ -163,71 +155,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _onLanguageChanged(self, language: str):
         self._logger.info("On language changed: %s", language)
-        self._setupMenuToolbar()
         self._setupPlaylistToolbar()
-
-    def _setupPluginMenu(self):
-        self._pluginsMenu.clear()
-        self._pluginsMenu.setTitle(tt.PluginsMenu)
-        for plugin in self._config.plugins:
-            items = plugin.clazz.getPluginMenus()
-            if not plugin.disabled:
-                menu = self._pluginsMenu.addMenu(plugin.clazz.getPluginName())
-                menu.addAction(tt.PluginsMenu_AboutPlugin,
-                    lambda plugin=plugin: QtWidgets.QMessageBox.about(QtWidgets.QApplication.activeWindow(),
-                        tt.PluginsMenu_AboutPlugin, plugin.clazz.getPluginDescription()))
-                for item in items:
-                    item.setParent(menu)
-                    if isinstance(item, QtWidgets.QMenu):
-                        menu.addMenu(item)
-                    else:
-                        assert isinstance(item, QtWidgets.QAction)
-                        menu.addAction(item)
-
-    def _setupMenuToolbar(self):
-        from IceSpringPlaylistPlugin.playlistManagerWidget import PlaylistManagerWidget
-        self._menuToolbar.clear()
-        self._fileMenu = QtWidgets.QMenu(tt.FileMenu)
-        self._fileOpenAction = self._fileMenu.addAction(tt.FileMenu_Open)
-        self._fileOpenAction.triggered.connect(self._playlistService.addMusicsFromFileDialog)
-        self._fileMenu.addSeparator()
-        self._fileConfigAction = self._fileMenu.addAction(tt.FileMenu_Config)
-        self._fileConfigAction.triggered.connect(lambda: ConfigDialog().exec_())
-        self._viewMenu = QtWidgets.QMenu(tt.ViewMenu)
-        self._viewPlaylistManagerAction = self._viewMenu.addAction(
-            tt.ViewMenu_PlaylistManager, lambda: DialogUtils.execWidget(PlaylistManagerWidget(), withOk=True))
-        self._layoutMenu = QtWidgets.QMenu(tt.LayoutMenu)
-        self._layoutControlsDownAction = self._layoutMenu.addAction(
-            tt.LayoutMenu_ControlsDown, lambda: self._changeLayout(self._configService.getControlsDownLayout()))
-        self._layoutControlsUpAction = self._layoutMenu.addAction(
-            tt.LayoutMenu_ControlsUp, lambda: self._changeLayout(self._configService.getControlsUpLayout()))
-        self._layoutDefaultAction = self._layoutMenu.addAction(
-            tt.LayoutMenu_Default, lambda: self._changeLayout(self._configService.getDefaultLayout()))
-        self._editingAction = self._layoutMenu.addAction(tt.Toolbar_Editing)
-        self._editingAction.setCheckable(True)
-        self._editingAction.setChecked(self._layoutEditing)
-        self._editingAction.triggered.connect(lambda: self.setLayoutEditing(not self._layoutEditing))
-        self._pluginsMenu = QtWidgets.QMenu(tt.PluginsMenu)
-        self._languageMenu = QtWidgets.QMenu(tt.LanguageMenu)
-        self._languageEnglishAction = self._languageMenu.addAction(
-            tt.LanguageMenu_English, lambda: self._app.changeLanguage("en_US"))
-        self._languageChineseAction = self._languageMenu.addAction(
-            tt.LanguageMenu_Chinese, lambda: self._app.changeLanguage("zh_CN"))
-        self._testMenu = QtWidgets.QMenu(tt.TestMenu)
-        self._testOneKeyAddAction = self._testMenu.addAction(
-            tt.TestMenu_OneKeyAdd, lambda: self._playlistService.addMusicsFromFolder("~/Music"))
-        self._testLoadTestDataAction = self._testMenu.addAction(
-            tt.TestMenu_LoadTestData, lambda: self._playlistService.loadTestData())
-        self._toggleLanguageAction = self._testMenu.addAction(tt.TestMenu_ToggleLanguage)
-        self._toggleLanguageAction.triggered.connect(
-            lambda: self._app.changeLanguage("zh_CN" if self._config.language == "en_US" else "en_US"))
-        self._setupPluginMenu()
-        self._menuToolbar.addWidget(WidgetUtils.createMenuButton(tt.FileMenu, self._fileMenu))
-        self._menuToolbar.addWidget(WidgetUtils.createMenuButton(tt.ViewMenu, self._viewMenu))
-        self._menuToolbar.addWidget(WidgetUtils.createMenuButton(tt.LayoutMenu, self._layoutMenu))
-        self._menuToolbar.addWidget(WidgetUtils.createMenuButton(tt.PluginsMenu, self._pluginsMenu))
-        self._menuToolbar.addWidget(WidgetUtils.createMenuButton(tt.LanguageMenu, self._languageMenu))
-        self._menuToolbar.addWidget(WidgetUtils.createMenuButton(tt.TestMenu, self._testMenu))
 
     def _setupPlaylistToolbar(self):
         self._playlistToolbar.clear()
@@ -244,6 +172,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.layoutEditingChanged.emit(editing)
         self._logger.info("< Signal layoutEditingChanged emitted...")
 
+    def toggleLayoutEditing(self):
+        self._logger.info("Toggle layout editing")
+        self.setLayoutEditing(not self._layoutEditing)
+
     def _onLayoutEditingChanged(self, editing: bool) -> None:
         if editing:
             self._logger.info("Create mask widget")
@@ -252,9 +184,6 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self._maskWidget.setParent(gg(None))
             self._maskWidget = None
-        self._editingCheck.blockSignals(True)
-        self._editingCheck.setChecked(editing)
-        self._editingCheck.blockSignals(False)
         self._logger.info("Refresh splitter handles")
         for widget in self.findChildren(SplitterWidget):
             gg(widget, SplitterWidget).refreshHandles()
