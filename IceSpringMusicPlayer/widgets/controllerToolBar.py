@@ -5,6 +5,7 @@ import qtawesome
 from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 
 
 class ControllerToolBar(QtWidgets.QToolBar):
@@ -18,24 +19,30 @@ class ControllerToolBar(QtWidgets.QToolBar):
 
     def _setupEvents(self):
         self._player.stateChanged.connect(self._refreshView)
+        self._player.playbackModeChanged.connect(self._refreshView)
         self._playButton.clicked.connect(self._player.togglePlayPause)
         self._stopButton.clicked.connect(self._player.stop)
         self._prevButton.clicked.connect(self._player.playPrevious)
         self._nextButton.clicked.connect(self._player.playNext)
+        self._modeButton.clicked.connect(self._player.togglePlaybackMode)
 
     def _setupView(self):
         self._playButton = QtWidgets.QToolButton()
         self._stopButton = QtWidgets.QToolButton()
         self._prevButton = QtWidgets.QToolButton()
         self._nextButton = QtWidgets.QToolButton()
-        for button in (self._playButton, self._stopButton, self._prevButton, self._nextButton):
+        self._modeButton = QtWidgets.QToolButton()
+        for button in (self._playButton, self._stopButton, self._prevButton, self._nextButton, self._modeButton):
             button.sizeHint = lambda: QtCore.QSize(25, 25)
             self.addWidget(button)
 
     def _refreshView(self):
         self.setWindowTitle("Controller")
+        mode = self._player.getPlaybackMode()
         playIconName = "mdi.pause" if self._player.getState().isPlaying() else "mdi.play"
+        modeIconName = {PlaybackMode.LOOP: "mdi.repeat", PlaybackMode.RANDOM: "mdi.shuffle"}[mode]
         self._playButton.setIcon(qtawesome.icon(playIconName))
         self._stopButton.setIcon(qtawesome.icon("mdi.stop"))
         self._prevButton.setIcon(qtawesome.icon("mdi.step-backward"))
         self._nextButton.setIcon(qtawesome.icon("mdi.step-forward"))
+        self._modeButton.setIcon(qtawesome.icon(modeIconName))

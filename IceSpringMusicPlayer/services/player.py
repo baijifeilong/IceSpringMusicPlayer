@@ -191,6 +191,10 @@ class Player(QtCore.QObject):
         self.playbackModeChanged.emit(mode)
         self._logger.info("< Signal playbackModeChanged emitted.")
 
+    def togglePlaybackMode(self) -> None:
+        self._logger.info("Toggle playback mode")
+        self.setPlaybackMode(self._playbackMode.next())
+
     def getPlaylists(self) -> Vector[Playlist]:
         return self._playlists
 
