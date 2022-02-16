@@ -144,7 +144,7 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         unitHeight = max((rect.height() - labelHeight) / (-minDbfs + 5), 0)
         headerHeight = int(unitHeight * 5)
         painter = QtGui.QPainter(self)
-        prevDbfsY = rect.top() + headerHeight - 0.5 * fontSize
+        prevDbfsY = -10000
         for dbfs in range(0, minDbfs - 1, -10):
             y = int(-dbfs * unitHeight + headerHeight)
             if drawDbfsLines:
@@ -153,7 +153,7 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
             if drawDbfsNumbers:
                 painter.setPen(QtGui.QColor("#000000"))
                 dbfsY = rect.top() + y + fontSize // 2
-                if dbfsY - prevDbfsY >= fontSize * 1.5:
+                if dbfsY - prevDbfsY >= fontSize * 1.5 and dbfsY - rect.top() >= fontSize:
                     painter.drawText(rect.right() - dbfsWidth + fontSize // 2, dbfsY, f"{dbfs: 3}db")
                     prevDbfsY = dbfsY
         prevLabelX, prevBarX = -10000, -10000
