@@ -6,20 +6,20 @@ from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.common.toolBarMixin import ToolBarMixin
+from IceSpringMusicPlayer.common.toolbarMixin import ToolbarMixin
 from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 from IceSpringMusicPlayer.tt import Text
 
 
-class ControllerToolBar(QtWidgets.QToolBar, ToolBarMixin):
+class ControllerToolbar(QtWidgets.QToolBar, ToolbarMixin):
 
     @classmethod
-    def getToolBarTitle(cls) -> Text:
-        return tt.ToolBar_Controller
+    def getToolbarTitle(cls) -> Text:
+        return tt.Toolbar_Controller
 
     def __init__(self, parent):
         super().__init__(parent)
-        self._logger = logging.getLogger("controllerToolBar")
+        self._logger = logging.getLogger("controllerToolbar")
         self._player = App.instance().getPlayer()
         self._setupView()
         self._refreshView()

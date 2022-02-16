@@ -11,18 +11,18 @@ from PySide2 import QtCore, QtGui, QtWidgets
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
-from IceSpringMusicPlayer.common.toolBarMixin import ToolBarMixin
-from IceSpringMusicPlayer.domains.config import Config, Element, ToolBar
+from IceSpringMusicPlayer.common.toolbarMixin import ToolbarMixin
+from IceSpringMusicPlayer.domains.config import Config, Element, Toolbar
 from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
-from IceSpringMusicPlayer.widgets.controllerToolBar import ControllerToolBar
+from IceSpringMusicPlayer.widgets.controllerToolbar import ControllerToolbar
 from IceSpringMusicPlayer.widgets.maskWidget import MaskWidget
-from IceSpringMusicPlayer.widgets.menuToolBar import MenuToolBar
-from IceSpringMusicPlayer.widgets.playlistToolBar import PlaylistToolBar
-from IceSpringMusicPlayer.widgets.progressToolBar import ProgressToolBar
+from IceSpringMusicPlayer.widgets.menuToolbar import MenuToolbar
+from IceSpringMusicPlayer.widgets.playlistToolbar import PlaylistToolbar
+from IceSpringMusicPlayer.widgets.progressToolbar import ProgressToolbar
 from IceSpringMusicPlayer.widgets.splitterWidget import SplitterWidget
-from IceSpringMusicPlayer.widgets.volumeToolBar import VolumeToolBar
+from IceSpringMusicPlayer.widgets.volumeToolbar import VolumeToolbar
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -40,7 +40,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self._toolBarClasses = [MenuToolBar, ControllerToolBar, VolumeToolBar, PlaylistToolBar, ProgressToolBar]
+        self._toolbarClasses = [MenuToolbar, ControllerToolbar, VolumeToolbar, PlaylistToolbar, ProgressToolbar]
         self._logger = logging.getLogger("mainWindow")
         self._positionLogger = logging.getLogger("position")
         self._positionLogger.setLevel(logging.INFO)
@@ -64,7 +64,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _onAboutToPersistConfig(self):
         self._logger.info("On about to persist config")
-        self._config.toolBars = [ToolBar(clazz=type(x), movable=x.isMovable()) for x in
+        self._config.toolbars = [Toolbar(clazz=type(x), movable=x.isMovable()) for x in
             self.findChildren(QtWidgets.QToolBar)]
         self._config.geometry = self.saveGeometry().data()
         self._config.state = self.saveState().data()
@@ -75,11 +75,11 @@ class MainWindow(QtWidgets.QMainWindow):
         diffSize = (screenSize - windowSize) / 2
         defaultGeometry = QtCore.QRect(QtCore.QPoint(diffSize.width(), diffSize.height()), windowSize)
         self.setGeometry(defaultGeometry)
-        for item in self._config.toolBars:
-            toolBar: QtWidgets.QToolBar = item.clazz(self)
-            toolBar.setObjectName(item.clazz.__name__)
-            toolBar.setMovable(item.movable)
-            self.addToolBar(toolBar)
+        for item in self._config.toolbars:
+            toolbar: QtWidgets.QToolBar = item.clazz(self)
+            toolbar.setObjectName(item.clazz.__name__)
+            toolbar.setMovable(item.movable)
+            self.addToolBar(toolbar)
         self.restoreGeometry(QtCore.QByteArray(gg(self._config.geometry)))
         self.restoreState(QtCore.QByteArray(gg(self._config.state)))
 
@@ -242,31 +242,31 @@ class MainWindow(QtWidgets.QMainWindow):
     def createPopupMenu(self) -> QtWidgets.QMenu:
         menu = super().createPopupMenu()
         menu.clear()
-        toolBars: typing.Sequence[QtWidgets.QToolBar] = gg(self.findChildren(QtWidgets.QToolBar))
-        for clazz in self._toolBarClasses:
-            assert issubclass(clazz, ToolBarMixin)
-            toolBar = next((x for x in toolBars if isinstance(x, clazz)), None)
-            action = menu.addAction(clazz.getToolBarTitle())
+        toolbars: typing.Sequence[QtWidgets.QToolBar] = gg(self.findChildren(QtWidgets.QToolBar))
+        for clazz in self._toolbarClasses:
+            assert issubclass(clazz, ToolbarMixin)
+            toolbar = next((x for x in toolbars if isinstance(x, clazz)), None)
+            action = menu.addAction(clazz.getToolbarTitle())
             action.setCheckable(True)
-            action.setChecked(toolBar is not None)
-            action.triggered.connect(lambda clazz=clazz, toolBar=toolBar: self.addToolBar(
-                clazz(self)) if toolBar is None else self.removeToolBar(toolBar))
+            action.setChecked(toolbar is not None)
+            action.triggered.connect(lambda clazz=clazz, toolbar=toolbar: self.addToolBar(
+                clazz(self)) if toolbar is None else self.removeToolBar(toolbar))
         menu.addSeparator()
-        for toolBar in toolBars:
-            if toolBar.rect().contains(toolBar.mapFromGlobal(QtGui.QCursor.pos())):
-                title = tt.Toolbar_Lock % gg(toolBar).getToolBarTitle()
+        for toolbar in toolbars:
+            if toolbar.rect().contains(toolbar.mapFromGlobal(QtGui.QCursor.pos())):
+                title = tt.Toolbar_Lock % gg(toolbar).getToolbarTitle()
                 action = QtWidgets.QAction(title, menu)
                 action.setCheckable(True)
-                action.setChecked(not toolBar.isMovable())
-                action.triggered.connect(lambda *args, toolBar=toolBar: toolBar.setMovable(not toolBar.isMovable()))
+                action.setChecked(not toolbar.isMovable())
+                action.triggered.connect(lambda *args, toolbar=toolbar: toolbar.setMovable(not toolbar.isMovable()))
                 menu.addAction(action)
         menu.addSeparator()
         lockAllAction = QtWidgets.QAction(tt.Toolbar_LockAll, menu)
-        lockAllAction.setDisabled(all(not x.isMovable() for x in toolBars))
-        lockAllAction.triggered.connect(lambda: list(x.setMovable(False) for x in toolBars))
+        lockAllAction.setDisabled(all(not x.isMovable() for x in toolbars))
+        lockAllAction.triggered.connect(lambda: list(x.setMovable(False) for x in toolbars))
         unlockAllAction = QtWidgets.QAction(tt.Toolbar_UnlockAll, menu)
-        unlockAllAction.setDisabled(all(x.isMovable() for x in toolBars))
-        unlockAllAction.triggered.connect(lambda: list(x.setMovable(True) for x in toolBars))
+        unlockAllAction.setDisabled(all(x.isMovable() for x in toolbars))
+        unlockAllAction.triggered.connect(lambda: list(x.setMovable(True) for x in toolbars))
         menu.addAction(lockAllAction)
         menu.addAction(unlockAllAction)
         return menu

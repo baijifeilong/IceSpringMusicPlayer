@@ -8,15 +8,15 @@ from IceSpringRealOptional.vector import Vector
 from PySide2 import QtCore, QtWidgets
 
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.domains.config import Config, Element, ToolBar
+from IceSpringMusicPlayer.domains.config import Config, Element, Toolbar
 from IceSpringMusicPlayer.domains.plugin import Plugin
 from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 from IceSpringMusicPlayer.services.pluginService import PluginService
-from IceSpringMusicPlayer.widgets.controllerToolBar import ControllerToolBar
-from IceSpringMusicPlayer.widgets.menuToolBar import MenuToolBar
-from IceSpringMusicPlayer.widgets.playlistToolBar import PlaylistToolBar
-from IceSpringMusicPlayer.widgets.progressToolBar import ProgressToolBar
-from IceSpringMusicPlayer.widgets.volumeToolBar import VolumeToolBar
+from IceSpringMusicPlayer.widgets.controllerToolbar import ControllerToolbar
+from IceSpringMusicPlayer.widgets.menuToolbar import MenuToolbar
+from IceSpringMusicPlayer.widgets.playlistToolbar import PlaylistToolbar
+from IceSpringMusicPlayer.widgets.progressToolbar import ProgressToolbar
+from IceSpringMusicPlayer.widgets.volumeToolbar import VolumeToolbar
 
 
 class ConfigService(QtCore.QObject):
@@ -101,12 +101,12 @@ class ConfigService(QtCore.QObject):
             language="en_US",
             geometry=b"",
             state=b"",
-            toolBars=[
-                ToolBar(clazz=MenuToolBar, movable=False),
-                ToolBar(clazz=ControllerToolBar, movable=False),
-                ToolBar(clazz=VolumeToolBar, movable=False),
-                ToolBar(clazz=PlaylistToolBar, movable=False),
-                ToolBar(clazz=ProgressToolBar, movable=False),
+            toolbars=[
+                Toolbar(clazz=MenuToolbar, movable=False),
+                Toolbar(clazz=ControllerToolbar, movable=False),
+                Toolbar(clazz=VolumeToolbar, movable=False),
+                Toolbar(clazz=PlaylistToolbar, movable=False),
+                Toolbar(clazz=ProgressToolbar, movable=False),
             ],
             iconSize=48,
             applicationFont=QtWidgets.QApplication.font(),

@@ -9,7 +9,7 @@ from PySide2 import QtGui, QtWidgets, QtCore
 
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.common.toolBarMixin import ToolBarMixin
+from IceSpringMusicPlayer.common.toolbarMixin import ToolbarMixin
 from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.utils.dialogUtils import DialogUtils
 from IceSpringMusicPlayer.utils.signalUtils import SignalUtils
@@ -19,14 +19,14 @@ if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.windows.mainWindow import MainWindow
 
 
-class MenuToolBar(QtWidgets.QToolBar, ToolBarMixin):
+class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
     @classmethod
-    def getToolBarTitle(cls) -> Text:
-        return tt.ToolBar_Menu
+    def getToolbarTitle(cls) -> Text:
+        return tt.Toolbar_Menu
 
     def __init__(self, parent: MainWindow):
         super().__init__()
-        self._logger = logging.getLogger("menuToolBar")
+        self._logger = logging.getLogger("menuToolbar")
         self._app = App.instance()
         self._config = self._app.getConfig()
         self._mainWindow = parent
@@ -75,8 +75,8 @@ class MenuToolBar(QtWidgets.QToolBar, ToolBarMixin):
     @staticmethod
     def _onMouseMove(menu: QtWidgets.QMenu, event: QtGui.QMouseEvent):
         button = menu.property("__button")
-        toolBar = button.parentWidget()
-        hover = toolBar.childAt(toolBar.mapFromGlobal(QtGui.QCursor.pos()))
+        toolbar = button.parentWidget()
+        hover = toolbar.childAt(toolbar.mapFromGlobal(QtGui.QCursor.pos()))
         if isinstance(hover, QtWidgets.QToolButton) and hover != button:
             menu.close()
             hover.showMenu()

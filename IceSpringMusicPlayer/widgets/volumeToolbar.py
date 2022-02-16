@@ -5,21 +5,21 @@ from PySide2 import QtWidgets
 
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.common.toolBarMixin import ToolBarMixin
+from IceSpringMusicPlayer.common.toolbarMixin import ToolbarMixin
 from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.utils.widgetUtils import WidgetUtils
 from IceSpringMusicPlayer.widgets.volumeSlider import VolumeSlider
 
 
-class VolumeToolBar(QtWidgets.QToolBar, ToolBarMixin):
+class VolumeToolbar(QtWidgets.QToolBar, ToolbarMixin):
 
     @classmethod
-    def getToolBarTitle(cls) -> Text:
-        return tt.ToolBar_Volume
+    def getToolbarTitle(cls) -> Text:
+        return tt.Toolbar_Volume
 
     def __init__(self, parent):
         super().__init__(parent)
-        self._logger = logging.getLogger("volumeToolBar")
+        self._logger = logging.getLogger("volumeToolbar")
         self._app = App.instance()
         self._player = self._app.getPlayer()
         self._setupView()

@@ -2,7 +2,7 @@
 from IceSpringMusicPlayer.tt import Text
 
 
-class ToolBarMixin(object):
+class ToolbarMixin(object):
     @classmethod
-    def getToolBarTitle(cls) -> Text:
+    def getToolbarTitle(cls) -> Text:
         raise NotImplementedError

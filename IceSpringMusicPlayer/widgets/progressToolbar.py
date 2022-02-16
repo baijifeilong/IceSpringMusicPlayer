@@ -5,21 +5,21 @@ from PySide2 import QtWidgets, QtCore
 
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.common.toolBarMixin import ToolBarMixin
+from IceSpringMusicPlayer.common.toolbarMixin import ToolbarMixin
 from IceSpringMusicPlayer.common.widgetMixin import WidgetMixin
 from IceSpringMusicPlayer.controls.fluentSlider import FluentSlider
 from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.utils.widgetUtils import WidgetUtils
 
 
-class ProgressToolBar(QtWidgets.QToolBar, ToolBarMixin, WidgetMixin):
+class ProgressToolbar(QtWidgets.QToolBar, ToolbarMixin, WidgetMixin):
     @classmethod
-    def getToolBarTitle(cls) -> Text:
-        return tt.ToolBar_Progress
+    def getToolbarTitle(cls) -> Text:
+        return tt.Toolbar_Progress
 
     def __init__(self, parent):
         super().__init__(parent)
-        self._logger = logging.getLogger("progressToolBar")
+        self._logger = logging.getLogger("progressToolbar")
         self._logger.setLevel(logging.INFO)
         self._app = App.instance()
         self._player = self._app.getPlayer()

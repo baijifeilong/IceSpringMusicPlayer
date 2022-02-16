@@ -5,22 +5,22 @@ from PySide2 import QtWidgets
 
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.common.toolBarMixin import ToolBarMixin
+from IceSpringMusicPlayer.common.toolbarMixin import ToolbarMixin
 from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.utils.widgetUtils import WidgetUtils
 
 
-class PlaylistToolBar(QtWidgets.QToolBar, ToolBarMixin):
+class PlaylistToolbar(QtWidgets.QToolBar, ToolbarMixin):
 
     @classmethod
-    def getToolBarTitle(cls) -> Text:
-        return tt.ToolBar_Playlist
+    def getToolbarTitle(cls) -> Text:
+        return tt.Toolbar_Playlist
 
     def __init__(self, parent):
         super().__init__(parent)
         self._app = App.instance()
         self._player = self._app.getPlayer()
-        self._logger = logging.getLogger("playlistToolBar")
+        self._logger = logging.getLogger("playlistToolbar")
         self._setupView()
         self._refreshView()
         self._app.languageChanged.connect(self._refreshView)

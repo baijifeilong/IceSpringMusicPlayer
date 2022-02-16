@@ -28,7 +28,7 @@ class Element(object):
 
 
 @dataclass
-class ToolBar(object):
+class Toolbar(object):
     clazz: typing.Type
     movable: bool
 
@@ -38,7 +38,7 @@ class Config(object):
     language: str
     geometry: bytes
     state: bytes
-    toolBars: typing.List[ToolBar]
+    toolbars: typing.List[Toolbar]
     iconSize: int
     applicationFont: QtGui.QFont
     lyricFont: QtGui.QFont
@@ -113,5 +113,5 @@ class Config(object):
         elif all(x in jd for x in ("clazz", "disabled")):
             return Plugin(**jd)
         elif all(x in jd for x in ("clazz", "movable")):
-            return ToolBar(**jd)
+            return Toolbar(**jd)
         return jd
