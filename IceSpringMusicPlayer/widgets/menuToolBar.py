@@ -67,7 +67,6 @@ class MenuToolBar(QtWidgets.QToolBar, ToolBarMixin):
             self.addWidget(button)
 
     def _refreshView(self):
-        self.setWindowTitle("Menu")
         self._refreshMenus()
         for button in self.findChildren(QtWidgets.QToolButton):
             if button.menu() is not None:

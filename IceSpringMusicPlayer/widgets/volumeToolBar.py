@@ -41,7 +41,6 @@ class VolumeToolBar(QtWidgets.QToolBar, ToolBarMixin):
     def _refreshView(self):
         volume = self._player.getVolume()
         self._logger.debug("Refresh view at volume: %d", volume)
-        self.setWindowTitle("Volume")
         self._volumeSlider.blockSignals(True)
         self._volumeSlider.setValue(volume)
         self._volumeSlider.blockSignals(False)

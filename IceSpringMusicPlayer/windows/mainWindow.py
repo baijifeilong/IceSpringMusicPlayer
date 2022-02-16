@@ -12,7 +12,7 @@ from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.common.toolBarMixin import ToolBarMixin
-from IceSpringMusicPlayer.domains.config import Config, Element
+from IceSpringMusicPlayer.domains.config import Config, Element, ToolBar
 from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.timedeltaUtils import TimedeltaUtils
@@ -53,21 +53,35 @@ class MainWindow(QtWidgets.QMainWindow):
         self._layoutEditing = False
         self._maskWidget = None
         self._initPalette()
-        self._setupToolBars()
+        self._loadConfig()
         self._initStatusBar()
         self.layoutChanged.connect(self._onLayoutChanged)
         self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
         self._playlistService.musicParsed.connect(self._onMusicParsed)
         self._player.positionChanged.connect(self._onPlayerPositionChanged)
         self._player.currentMusicIndexChanged.connect(self._onMusicIndexChanged)
+        self._app.aboutToPersistConfig.connect(self._onAboutToPersistConfig)
 
-    def _setupToolBars(self):
+    def _onAboutToPersistConfig(self):
+        self._logger.info("On about to persist config")
+        self._config.toolBars = [ToolBar(clazz=type(x), movable=x.isMovable()) for x in
+            self.findChildren(QtWidgets.QToolBar)]
+        self._config.geometry = self.saveGeometry().data()
+        self._config.state = self.saveState().data()
+
+    def _loadConfig(self):
+        screenSize = QtGui.QGuiApplication.primaryScreen().size()
+        windowSize = gg(screenSize) / 1.5
+        diffSize = (screenSize - windowSize) / 2
+        defaultGeometry = QtCore.QRect(QtCore.QPoint(diffSize.width(), diffSize.height()), windowSize)
+        self.setGeometry(defaultGeometry)
         for item in self._config.toolBars:
             toolBar: QtWidgets.QToolBar = item.clazz(self)
+            toolBar.setObjectName(item.clazz.__name__)
             toolBar.setMovable(item.movable)
-            if not item.geometry.isEmpty():
-                toolBar.setGeometry(item.geometry)
             self.addToolBar(toolBar)
+        self.restoreGeometry(QtCore.QByteArray(gg(self._config.geometry)))
+        self.restoreState(QtCore.QByteArray(gg(self._config.state)))
 
     def _onMusicParsed(self, progress: int, total: int, music: Music):
         self._logger.info("On music parsed: %d/%d %s", progress, total, music.filename)

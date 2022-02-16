@@ -44,7 +44,6 @@ class ProgressToolBar(QtWidgets.QToolBar, ToolBarMixin, WidgetMixin):
     def _refreshView(self):
         position = self._player.getRelativePosition()
         self._logger.debug("Refresh view at position: %f", position)
-        self.setWindowTitle("Progress")
         self._progressSlider.blockSignals(True)
         self._progressSlider.setValue(int(position * self._progressSlider.maximum()))
         self._progressSlider.setDisabled(self._player.getState().isStopped())

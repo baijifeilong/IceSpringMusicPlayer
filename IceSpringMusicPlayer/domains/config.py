@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import enum
 import importlib
 import typing
@@ -29,14 +30,14 @@ class Element(object):
 @dataclass
 class ToolBar(object):
     clazz: typing.Type
-    geometry: QtCore.QRect
     movable: bool
 
 
 @dataclass
 class Config(object):
     language: str
-    geometry: QtCore.QRect
+    geometry: bytes
+    state: bytes
     toolBars: typing.List[ToolBar]
     iconSize: int
     applicationFont: QtGui.QFont
@@ -71,6 +72,8 @@ class Config(object):
             return obj.__class__.pythonToJson(obj)
         elif isinstance(obj, dict):
             return obj
+        elif isinstance(obj, bytes):
+            return "@Bytes(%s)" % base64.b64encode(obj).decode()
         else:
             return obj.__dict__
 
@@ -87,6 +90,8 @@ class Config(object):
                 v = set(v)
             elif k == "playbackMode":
                 v = PlaybackMode(v)
+            elif isinstance(v, str) and v.startswith("@Bytes("):
+                v = base64.b64decode(v[len("@Bytes("):-1])
             jd[k] = v
         if all(x in jd for x in ("clazz", "children")):
             return Element(**jd)
@@ -107,6 +112,6 @@ class Config(object):
             return font
         elif all(x in jd for x in ("clazz", "disabled")):
             return Plugin(**jd)
-        elif all(x in jd for x in ("clazz", "geometry", "movable")):
+        elif all(x in jd for x in ("clazz", "movable")):
             return ToolBar(**jd)
         return jd

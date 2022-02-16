@@ -39,7 +39,6 @@ class PlaylistToolBar(QtWidgets.QToolBar, ToolBarMixin):
         self.addWidget(WidgetUtils.createHorizontalSpacer(5))
 
     def _refreshView(self):
-        self.setWindowTitle("Playlist")
         self._playlistLabel.setText(tt.Toolbar_PlaylistLabel)
         self._playlistComboBox.blockSignals(True)
         self._playlistComboBox.clear()

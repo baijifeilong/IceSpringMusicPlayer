@@ -45,7 +45,6 @@ class ControllerToolBar(QtWidgets.QToolBar, ToolBarMixin):
             self.addWidget(button)
 
     def _refreshView(self):
-        self.setWindowTitle("Controller")
         mode = self._player.getPlaybackMode()
         playIconName = "mdi.pause" if self._player.getState().isPlaying() else "mdi.play"
         modeIconName = {PlaybackMode.LOOP: "mdi.repeat", PlaybackMode.RANDOM: "mdi.shuffle"}[mode]

@@ -26,6 +26,7 @@ class App(QtWidgets.QApplication):
     requestLocateCurrentMusic: QtCore.SignalInstance = QtCore.Signal()
     configChanged: QtCore.SignalInstance = QtCore.Signal()
     languageChanged: QtCore.SignalInstance = QtCore.Signal(str)
+    aboutToPersistConfig: QtCore.SignalInstance = QtCore.Signal()
 
     _logger: logging.Logger
     _config: Config
@@ -61,7 +62,6 @@ class App(QtWidgets.QApplication):
         self.setApplicationDisplayName(self.applicationName())
         self.setWindowIcon(qtawesome.icon("mdi.snowflake"))
         self._mainWindow = MainWindow()
-        self._mainWindow.setGeometry(self._config.geometry)
         self.aboutToQuit.connect(self._onAboutToQuit)
         self.configChanged.connect(self._onConfigChanged)
 
@@ -86,6 +86,9 @@ class App(QtWidgets.QApplication):
 
     def _onAboutToQuit(self):
         self._logger.info("On about to quit")
+        self._logger.info("> Signal aboutToPersistConfig emitting...")
+        self.aboutToPersistConfig.emit()
+        self._logger.info("< Signal aboutToPersistConfig emitted.")
         self._configService.persistConfig()
 
     def exec_(self) -> int:

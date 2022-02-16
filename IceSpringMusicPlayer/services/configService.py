@@ -5,7 +5,7 @@ import logging
 from IceSpringPathLib import Path
 from IceSpringRealOptional.typingUtils import gg
 from IceSpringRealOptional.vector import Vector
-from PySide2 import QtCore, QtGui, QtWidgets
+from PySide2 import QtCore, QtWidgets
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.domains.config import Config, Element, ToolBar
@@ -89,10 +89,6 @@ class ConfigService(QtCore.QObject):
 
     @classmethod
     def getDefaultConfig(cls) -> Config:
-        screenSize = QtGui.QGuiApplication.primaryScreen().size()
-        windowSize = gg(screenSize) / 1.5
-        diffSize = (screenSize - windowSize) / 2
-        defaultGeometry = QtCore.QRect(QtCore.QPoint(diffSize.width(), diffSize.height()), windowSize)
         from IceSpringMusicPlayer.app import App
         plugins = []
         for clazz in App.instance().getPluginService().getPluginClasses():
@@ -103,13 +99,14 @@ class ConfigService(QtCore.QObject):
             ))
         return Config(
             language="en_US",
-            geometry=defaultGeometry,
+            geometry=b"",
+            state=b"",
             toolBars=[
-                ToolBar(clazz=MenuToolBar, geometry=QtCore.QRect(), movable=False),
-                ToolBar(clazz=ControllerToolBar, geometry=QtCore.QRect(), movable=False),
-                ToolBar(clazz=VolumeToolBar, geometry=QtCore.QRect(), movable=False),
-                ToolBar(clazz=PlaylistToolBar, geometry=QtCore.QRect(), movable=False),
-                ToolBar(clazz=ProgressToolBar, geometry=QtCore.QRect(), movable=False),
+                ToolBar(clazz=MenuToolBar, movable=False),
+                ToolBar(clazz=ControllerToolBar, movable=False),
+                ToolBar(clazz=VolumeToolBar, movable=False),
+                ToolBar(clazz=PlaylistToolBar, movable=False),
+                ToolBar(clazz=ProgressToolBar, movable=False),
             ],
             iconSize=48,
             applicationFont=QtWidgets.QApplication.font(),
