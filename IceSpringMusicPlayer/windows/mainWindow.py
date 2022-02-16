@@ -8,6 +8,7 @@ from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.typingUtils import gg
 from PySide2 import QtCore, QtGui, QtWidgets
 
+from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.common.toolBarMixin import ToolBarMixin
@@ -237,12 +238,21 @@ class MainWindow(QtWidgets.QMainWindow):
             action.triggered.connect(lambda clazz=clazz, toolBar=toolBar: self.addToolBar(
                 clazz(self)) if toolBar is None else self.removeToolBar(toolBar))
         menu.addSeparator()
-        for toolbar in toolBars:
-            if toolbar.rect().contains(toolbar.mapFromGlobal(QtGui.QCursor.pos())):
-                title = "%s %s" % ("Lock" if toolbar.isMovable() else "Unlock", toolbar.windowTitle())
-                menu.addAction(title, lambda toolbar=toolbar: toolbar.setMovable(not toolbar.isMovable()))
-        if any(x.isMovable() for x in toolBars):
-            menu.addAction("Lock All", lambda: list(x.setMovable(False) for x in toolBars))
-        if any(not x.isMovable() for x in toolBars):
-            menu.addAction("Unlock All", lambda: list(x.setMovable(True) for x in toolBars))
+        for toolBar in toolBars:
+            if toolBar.rect().contains(toolBar.mapFromGlobal(QtGui.QCursor.pos())):
+                title = tt.Toolbar_Lock % gg(toolBar).getToolBarTitle()
+                action = QtWidgets.QAction(title, menu)
+                action.setCheckable(True)
+                action.setChecked(not toolBar.isMovable())
+                action.triggered.connect(lambda *args, toolBar=toolBar: toolBar.setMovable(not toolBar.isMovable()))
+                menu.addAction(action)
+        menu.addSeparator()
+        lockAllAction = QtWidgets.QAction(tt.Toolbar_LockAll, menu)
+        lockAllAction.setDisabled(all(not x.isMovable() for x in toolBars))
+        lockAllAction.triggered.connect(lambda: list(x.setMovable(False) for x in toolBars))
+        unlockAllAction = QtWidgets.QAction(tt.Toolbar_UnlockAll, menu)
+        unlockAllAction.setDisabled(all(x.isMovable() for x in toolBars))
+        unlockAllAction.triggered.connect(lambda: list(x.setMovable(True) for x in toolBars))
+        menu.addAction(lockAllAction)
+        menu.addAction(unlockAllAction)
         return menu
