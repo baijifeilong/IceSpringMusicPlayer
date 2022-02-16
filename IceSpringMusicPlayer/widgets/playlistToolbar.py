@@ -32,6 +32,7 @@ class PlaylistToolbar(QtWidgets.QToolBar, ToolbarMixin):
         self._playlistLabel = QtWidgets.QLabel()
         self._playlistComboBox = QtWidgets.QComboBox()
         self._playlistComboBox.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents)
+        self._playlistComboBox.contextMenuEvent = QtWidgets.QWidget().contextMenuEvent
         self._playlistComboBox.activated.connect(self._onPlaylistComboBoxActivated)
         self.addWidget(WidgetUtils.createHorizontalSpacer(5))
         self.addWidget(self._playlistLabel)
