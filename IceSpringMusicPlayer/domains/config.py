@@ -27,9 +27,17 @@ class Element(object):
 
 
 @dataclass
+class ToolBar(object):
+    clazz: typing.Type
+    geometry: QtCore.QRect
+    movable: bool
+
+
+@dataclass
 class Config(object):
     language: str
     geometry: QtCore.QRect
+    toolBars: typing.List[ToolBar]
     iconSize: int
     applicationFont: QtGui.QFont
     lyricFont: QtGui.QFont
@@ -99,4 +107,6 @@ class Config(object):
             return font
         elif all(x in jd for x in ("clazz", "disabled")):
             return Plugin(**jd)
+        elif all(x in jd for x in ("clazz", "geometry", "movable")):
+            return ToolBar(**jd)
         return jd

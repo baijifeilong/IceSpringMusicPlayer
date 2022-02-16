@@ -8,10 +8,15 @@ from IceSpringRealOptional.vector import Vector
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.app import App
-from IceSpringMusicPlayer.domains.config import Config, Element
+from IceSpringMusicPlayer.domains.config import Config, Element, ToolBar
 from IceSpringMusicPlayer.domains.plugin import Plugin
 from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 from IceSpringMusicPlayer.services.pluginService import PluginService
+from IceSpringMusicPlayer.widgets.controllerToolBar import ControllerToolBar
+from IceSpringMusicPlayer.widgets.menuToolBar import MenuToolBar
+from IceSpringMusicPlayer.widgets.playlistToolBar import PlaylistToolBar
+from IceSpringMusicPlayer.widgets.progressToolBar import ProgressToolBar
+from IceSpringMusicPlayer.widgets.volumeToolBar import VolumeToolBar
 
 
 class ConfigService(QtCore.QObject):
@@ -99,6 +104,13 @@ class ConfigService(QtCore.QObject):
         return Config(
             language="en_US",
             geometry=defaultGeometry,
+            toolBars=[
+                ToolBar(clazz=MenuToolBar, geometry=QtCore.QRect(), movable=False),
+                ToolBar(clazz=ControllerToolBar, geometry=QtCore.QRect(), movable=False),
+                ToolBar(clazz=VolumeToolBar, geometry=QtCore.QRect(), movable=False),
+                ToolBar(clazz=PlaylistToolBar, geometry=QtCore.QRect(), movable=False),
+                ToolBar(clazz=ProgressToolBar, geometry=QtCore.QRect(), movable=False),
+            ],
             iconSize=48,
             applicationFont=QtWidgets.QApplication.font(),
             lyricFont=QtWidgets.QApplication.font(),

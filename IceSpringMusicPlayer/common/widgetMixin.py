@@ -7,4 +7,4 @@ from IceSpringMusicPlayer.utils.signalUtils import SignalUtils
 
 class WidgetMixin(object):
     def gcSlot(self: QtCore.QObject, func):
-        return SignalUtils.gcSignal(self, func)
+        return SignalUtils.gcSlot(self, func)

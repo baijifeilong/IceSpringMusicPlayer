@@ -52,16 +52,16 @@ class MenuToolBar(QtWidgets.QToolBar, ToolBarMixin):
         self._layoutEditingAction.blockSignals(False)
 
     def _setupView(self):
-        self.setStyleSheet("QToolButton::menu-indicator { image: none}")
+        self.setStyleSheet("QToolButton::menu-indicator { image: none }")
         self.installEventFilter(StatusTipFilter(self))
         for menu in self._setupMenus():
             button = QtWidgets.QToolButton()
             button.setMenu(menu)
             button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
-            button.sizeHint = SignalUtils.gcSignal(button,
+            button.sizeHint = SignalUtils.gcSlot(button,
                 lambda self: Just.of(QtWidgets.QToolButton.sizeHint(self)).apply(
                     lambda x: x.setWidth(round(x.width() * 0.8))).value())
-            menu.mouseMoveEvent = SignalUtils.gcSignal(menu,
+            menu.mouseMoveEvent = SignalUtils.gcSlot(menu,
                 lambda self, event, slot=self._onMouseMove: slot(self, event))
             menu.setProperty("__button", button)
             self.addWidget(button)

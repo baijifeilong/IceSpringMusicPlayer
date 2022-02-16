@@ -14,12 +14,11 @@ class SignalUtils(object):
             .apply(lambda x: setattr(cls, str(uuid.uuid4()), x)).value().signal
 
     @staticmethod
-    def gcSignal(instance: QtCore.QObject, func):
+    def gcSlot(instance: QtCore.QObject, func):
         assert_that(len(inspect.getfullargspec(func).args)).is_greater_than_or_equal_to(1)
         assert_that(inspect.getfullargspec(func).args[0]).is_equal_to("self")
-        # assert_that(inspect.getclosurevars(func).nonlocals).is_empty()
         _type = type(instance)
-        _name = f"__lambda_{id(func)}"
+        _name = f"__slot_{id(func)}"
         instance.destroyed.connect(lambda: setattr(_type, _name, None))
         setattr(_type, _name, func)
         return getattr(instance, _name)

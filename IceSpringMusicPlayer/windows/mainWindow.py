@@ -52,16 +52,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self._layoutEditing = False
         self._maskWidget = None
         self._initPalette()
-        for clazz in self._toolBarClasses:
-            toolBar = clazz(self)
-            toolBar.setMovable(False)
-            self.addToolBar(toolBar)
+        self._setupToolBars()
         self._initStatusBar()
         self.layoutChanged.connect(self._onLayoutChanged)
         self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
         self._playlistService.musicParsed.connect(self._onMusicParsed)
         self._player.positionChanged.connect(self._onPlayerPositionChanged)
         self._player.currentMusicIndexChanged.connect(self._onMusicIndexChanged)
+
+    def _setupToolBars(self):
+        for item in self._config.toolBars:
+            toolBar: QtWidgets.QToolBar = item.clazz(self)
+            toolBar.setMovable(item.movable)
+            if not item.geometry.isEmpty():
+                toolBar.setGeometry(item.geometry)
+            self.addToolBar(toolBar)
 
     def _onMusicParsed(self, progress: int, total: int, music: Music):
         self._logger.info("On music parsed: %d/%d %s", progress, total, music.filename)
