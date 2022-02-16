@@ -9,22 +9,27 @@ from PySide2 import QtGui, QtWidgets, QtCore
 
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.common.toolBarMixin import ToolBarMixin
+from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.utils.dialogUtils import DialogUtils
+from IceSpringMusicPlayer.utils.signalUtils import SignalUtils
 from IceSpringMusicPlayer.windows.configDialog import ConfigDialog
 
 if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.windows.mainWindow import MainWindow
 
 
-class MenuToolBar(QtWidgets.QToolBar):
-    _menus: typing.List[QtWidgets.QMenu]
+class MenuToolBar(QtWidgets.QToolBar, ToolBarMixin):
+    @classmethod
+    def getToolBarTitle(cls) -> Text:
+        return tt.ToolBar_Menu
 
-    def __init__(self, mainWindow: MainWindow):
+    def __init__(self, parent: MainWindow):
         super().__init__()
         self._logger = logging.getLogger("menuToolBar")
         self._app = App.instance()
         self._config = self._app.getConfig()
-        self._mainWindow = mainWindow
+        self._mainWindow = parent
         self._playlistService = App.instance().getPlaylistService()
         self._configService = App.instance().getConfigService()
         self._pluginService = App.instance().getPluginService()
@@ -48,26 +53,39 @@ class MenuToolBar(QtWidgets.QToolBar):
 
     def _setupView(self):
         self.setStyleSheet("QToolButton::menu-indicator { image: none}")
-        self._setupMenus()
         self.installEventFilter(StatusTipFilter(self))
-        for menu in self._menus:
+        for menu in self._setupMenus():
             button = QtWidgets.QToolButton()
             button.setMenu(menu)
             button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
-            button.sizeHint = lambda button=button: Just.of(QtWidgets.QToolButton.sizeHint(button)).apply(
-                lambda x: x.setWidth(round(x.width() * 0.8))).value()
-            menu.mouseMoveEvent = lambda event, button=button, menu=menu: self._onMouseMove(menu, event, button)
+            button.sizeHint = SignalUtils.gcSignal(button,
+                lambda self: Just.of(QtWidgets.QToolButton.sizeHint(self)).apply(
+                    lambda x: x.setWidth(round(x.width() * 0.8))).value())
+            menu.mouseMoveEvent = SignalUtils.gcSignal(menu,
+                lambda self, event, slot=self._onMouseMove: slot(self, event))
             menu.setProperty("__button", button)
             self.addWidget(button)
 
     def _refreshView(self):
         self.setWindowTitle("Menu")
         self._refreshMenus()
-        for menu in self._menus:
-            button: QtWidgets.QToolButton = menu.property("__button")
-            button.setText(button.menu().title())
+        for button in self.findChildren(QtWidgets.QToolButton):
+            if button.menu() is not None:
+                button.setText(button.menu().title())
 
-    def _onMouseMove(self, menu: QtWidgets.QMenu, event: QtGui.QMouseEvent, button: QtWidgets.QToolButton):
+    @staticmethod
+    def _onMouseMove(menu: QtWidgets.QMenu, event: QtGui.QMouseEvent):
+        button = menu.property("__button")
+        toolBar = button.parentWidget()
+        hover = toolBar.childAt(toolBar.mapFromGlobal(QtGui.QCursor.pos()))
+        if isinstance(hover, QtWidgets.QToolButton) and hover != button:
+            menu.close()
+            hover.showMenu()
+        else:
+            return QtWidgets.QMenu.mouseMoveEvent(menu, event)
+
+    @staticmethod
+    def _onMouseMoveX(self, menu: QtWidgets.QMenu, event: QtGui.QMouseEvent, button: QtWidgets.QToolButton):
         hover = self.childAt(self.mapFromGlobal(QtGui.QCursor.pos()))
         if isinstance(hover, QtWidgets.QToolButton) and hover != button:
             menu.close()
@@ -77,6 +95,12 @@ class MenuToolBar(QtWidgets.QToolBar):
 
     def _setupMenus(self):
         from IceSpringPlaylistPlugin.playlistManagerWidget import PlaylistManagerWidget
+        app = self._app
+        mainWindow = self._mainWindow
+        playlistService = self._playlistService
+        configService = self._configService
+        config = self._config
+
         self._openAction = QtWidgets.QAction()
         self._openAction.triggered.connect(self._playlistService.addMusicsFromFileDialog)
         self._configAction = QtWidgets.QAction()
@@ -94,7 +118,7 @@ class MenuToolBar(QtWidgets.QToolBar):
 
         self._resetDefaultLayoutAction = QtWidgets.QAction()
         self._resetDefaultLayoutAction.triggered.connect(
-            lambda: self._mainWindow.changeLayout(self._configService.getDefaultLayout()))
+            lambda: mainWindow.changeLayout(configService.getDefaultLayout()))
         self._layoutEditingAction = QtWidgets.QAction()
         self._layoutEditingAction.setCheckable(True)
         self._layoutEditingAction.setChecked(self._mainWindow.getLayoutEditing())
@@ -107,26 +131,25 @@ class MenuToolBar(QtWidgets.QToolBar):
 
         self._languageMenu = QtWidgets.QMenu()
         self._englishAction = QtWidgets.QAction()
-        self._englishAction.triggered.connect(lambda: self._app.changeLanguage("en_US"))
+        self._englishAction.triggered.connect(lambda: app.changeLanguage("en_US"))
         self._chineseAction = QtWidgets.QAction()
-        self._chineseAction.triggered.connect(lambda: self._app.changeLanguage("zh_CN"))
+        self._chineseAction.triggered.connect(lambda: app.changeLanguage("zh_CN"))
         self._languageMenu.addAction(self._englishAction)
         self._languageMenu.addAction(self._chineseAction)
 
         self._testMenu = QtWidgets.QMenu()
         self._oneKeyAddAction = QtWidgets.QAction()
-        self._oneKeyAddAction.triggered.connect(lambda: self._playlistService.addMusicsFromFolder("~/Music"))
+        self._oneKeyAddAction.triggered.connect(lambda: playlistService.addMusicsFromFolder("~/Music"))
         self._loadTestDataAction = QtWidgets.QAction()
-        self._loadTestDataAction.triggered.connect(lambda: self._playlistService.loadTestData())
+        self._loadTestDataAction.triggered.connect(lambda: playlistService.loadTestData())
         self._toggleLanguageAction = QtWidgets.QAction()
         self._toggleLanguageAction.triggered.connect(
-            lambda: self._app.changeLanguage("zh_CN" if self._config.language == "en_US" else "en_US"))
+            lambda: app.changeLanguage("zh_CN" if config.language == "en_US" else "en_US"))
         self._testMenu.addAction(self._oneKeyAddAction)
         self._testMenu.addAction(self._loadTestDataAction)
         self._testMenu.addAction(self._toggleLanguageAction)
 
-        self._menus = [self._fileMenu, self._viewMenu, self._layoutMenu, self._pluginsMenu, self._languageMenu,
-            self._testMenu]
+        return [self._fileMenu, self._viewMenu, self._layoutMenu, self._pluginsMenu, self._languageMenu, self._testMenu]
 
     def _refreshMenus(self):
         self._fileMenu.setTitle(tt.FileMenu)

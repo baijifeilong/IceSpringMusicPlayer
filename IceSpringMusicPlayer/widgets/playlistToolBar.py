@@ -5,12 +5,19 @@ from PySide2 import QtWidgets
 
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.common.toolBarMixin import ToolBarMixin
+from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.utils.widgetUtils import WidgetUtils
 
 
-class PlaylistToolBar(QtWidgets.QToolBar):
-    def __init__(self):
-        super().__init__()
+class PlaylistToolBar(QtWidgets.QToolBar, ToolBarMixin):
+
+    @classmethod
+    def getToolBarTitle(cls) -> Text:
+        return tt.ToolBar_Playlist
+
+    def __init__(self, parent):
+        super().__init__(parent)
         self._app = App.instance()
         self._player = self._app.getPlayer()
         self._logger = logging.getLogger("playlistToolBar")
@@ -33,7 +40,7 @@ class PlaylistToolBar(QtWidgets.QToolBar):
 
     def _refreshView(self):
         self.setWindowTitle("Playlist")
-        self._playlistLabel.setText(tt.Toolbar_Playlist)
+        self._playlistLabel.setText(tt.Toolbar_PlaylistLabel)
         self._playlistComboBox.blockSignals(True)
         self._playlistComboBox.clear()
         self._playlistComboBox.addItems([x.name for x in self._player.getPlaylists()])

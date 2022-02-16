@@ -4,13 +4,21 @@ import logging
 import qtawesome
 from PySide2 import QtWidgets, QtCore
 
+from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.common.toolBarMixin import ToolBarMixin
 from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
+from IceSpringMusicPlayer.tt import Text
 
 
-class ControllerToolBar(QtWidgets.QToolBar):
-    def __init__(self):
-        super().__init__()
+class ControllerToolBar(QtWidgets.QToolBar, ToolBarMixin):
+
+    @classmethod
+    def getToolBarTitle(cls) -> Text:
+        return tt.ToolBar_Controller
+
+    def __init__(self, parent):
+        super().__init__(parent)
         self._logger = logging.getLogger("controllerToolBar")
         self._player = App.instance().getPlayer()
         self._setupView()

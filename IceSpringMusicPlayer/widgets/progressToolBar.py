@@ -3,14 +3,22 @@ import logging
 
 from PySide2 import QtWidgets, QtCore
 
+from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.common.toolBarMixin import ToolBarMixin
+from IceSpringMusicPlayer.common.widgetMixin import WidgetMixin
 from IceSpringMusicPlayer.controls.fluentSlider import FluentSlider
+from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.utils.widgetUtils import WidgetUtils
 
 
-class ProgressToolBar(QtWidgets.QToolBar):
-    def __init__(self):
-        super().__init__()
+class ProgressToolBar(QtWidgets.QToolBar, ToolBarMixin, WidgetMixin):
+    @classmethod
+    def getToolBarTitle(cls) -> Text:
+        return tt.ToolBar_Progress
+
+    def __init__(self, parent):
+        super().__init__(parent)
         self._logger = logging.getLogger("progressToolBar")
         self._logger.setLevel(logging.INFO)
         self._app = App.instance()
@@ -21,11 +29,8 @@ class ProgressToolBar(QtWidgets.QToolBar):
 
     def _setupEvents(self):
         self._player.positionChanged.connect(self._refreshView)
-        self._progressSlider.valueChanged.connect(self._onProgressSliderValueChanged)
-
-    def _onProgressSliderValueChanged(self, value: int):
-        self._logger.info("On progress slider value changed: %d", value)
-        self._player.setRelativePosition(value / self._progressSlider.maximum())
+        self._progressSlider.valueChanged.connect(
+            self.gcSlot(lambda self, value: self._player.setRelativePosition(value / self._progressSlider.maximum())))
 
     def _setupView(self):
         self._progressSlider = FluentSlider(QtCore.Qt.Orientation.Horizontal)

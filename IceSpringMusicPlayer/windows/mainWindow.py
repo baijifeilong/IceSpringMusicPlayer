@@ -10,6 +10,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
+from IceSpringMusicPlayer.common.toolBarMixin import ToolBarMixin
 from IceSpringMusicPlayer.domains.config import Config, Element
 from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.services.player import Player
@@ -38,6 +39,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self._toolBarClasses = [MenuToolBar, ControllerToolBar, VolumeToolBar, PlaylistToolBar, ProgressToolBar]
         self._logger = logging.getLogger("mainWindow")
         self._positionLogger = logging.getLogger("position")
         self._positionLogger.setLevel(logging.INFO)
@@ -50,11 +52,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self._layoutEditing = False
         self._maskWidget = None
         self._initPalette()
-        self.addToolBar(MenuToolBar(self))
-        self.addToolBar(ControllerToolBar())
-        self.addToolBar(VolumeToolBar())
-        self.addToolBar(PlaylistToolBar())
-        self.addToolBar(ProgressToolBar())
+        for clazz in self._toolBarClasses:
+            toolBar = clazz(self)
+            toolBar.setMovable(False)
+            self.addToolBar(toolBar)
         self._initStatusBar()
         self.layoutChanged.connect(self._onLayoutChanged)
         self.layoutEditingChanged.connect(self._onLayoutEditingChanged)
@@ -220,13 +221,21 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def createPopupMenu(self) -> QtWidgets.QMenu:
         menu = super().createPopupMenu()
-        menu.addSeparator()
+        menu.clear()
         toolBars: typing.Sequence[QtWidgets.QToolBar] = gg(self.findChildren(QtWidgets.QToolBar))
+        for clazz in self._toolBarClasses:
+            assert issubclass(clazz, ToolBarMixin)
+            toolBar = next((x for x in toolBars if isinstance(x, clazz)), None)
+            action = menu.addAction(clazz.getToolBarTitle())
+            action.setCheckable(True)
+            action.setChecked(toolBar is not None)
+            action.triggered.connect(lambda clazz=clazz, toolBar=toolBar: self.addToolBar(
+                clazz(self)) if toolBar is None else self.removeToolBar(toolBar))
+        menu.addSeparator()
         for toolbar in toolBars:
             if toolbar.rect().contains(toolbar.mapFromGlobal(QtGui.QCursor.pos())):
                 title = "%s %s" % ("Lock" if toolbar.isMovable() else "Unlock", toolbar.windowTitle())
                 menu.addAction(title, lambda toolbar=toolbar: toolbar.setMovable(not toolbar.isMovable()))
-        menu.addSeparator()
         if any(x.isMovable() for x in toolBars):
             menu.addAction("Lock All", lambda: list(x.setMovable(False) for x in toolBars))
         if any(not x.isMovable() for x in toolBars):
