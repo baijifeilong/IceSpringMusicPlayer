@@ -142,8 +142,10 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin, WidgetMixin):
         self._playlistManagerAction = QtWidgets.QAction()
         self._playlistManagerAction.triggered.connect(
             lambda: DialogUtils.execWidget(PlaylistManagerWidget(), withOk=True))
-        self._resetDefaultLayoutAction = QtWidgets.QAction()
-        self._resetDefaultLayoutAction.triggered.connect(
+        self._resetToolbarsAction = QtWidgets.QAction()
+        self._resetToolbarsAction.triggered.connect(self._mainWindow.resetToolbars)
+        self._resetLayoutAction = QtWidgets.QAction()
+        self._resetLayoutAction.triggered.connect(
             lambda: mainWindow.changeLayout(configService.getDefaultLayout()))
         self._layoutEditingAction = QtWidgets.QAction()
         self._layoutEditingAction.setCheckable(True)
@@ -154,7 +156,9 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin, WidgetMixin):
         self._viewMenu.addSeparator()
         self._viewMenu.addAction(self._playlistManagerAction)
         self._viewMenu.addSeparator()
-        self._viewMenu.addAction(self._resetDefaultLayoutAction)
+        self._viewMenu.addAction(self._resetToolbarsAction)
+        self._viewMenu.addAction(self._resetLayoutAction)
+        self._viewMenu.addSeparator()
         self._viewMenu.addAction(self._layoutEditingAction)
 
         self._playbackModeMenu = QtWidgets.QMenu()
@@ -242,7 +246,8 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin, WidgetMixin):
 
         self._viewMenu.setTitle(tt.ViewMenu)
         self._playlistManagerAction.setText(tt.ViewMenu_PlaylistManager)
-        self._resetDefaultLayoutAction.setText(tt.LayoutMenu_Default)
+        self._resetToolbarsAction.setText(tt.LayoutMenu_ResetToolbars)
+        self._resetLayoutAction.setText(tt.LayoutMenu_ResetLayout)
         self._layoutEditingAction.setText(tt.Toolbar_Editing)
         self._sortByMenu.setTitle(tt.SortByMenu)
         self._sortByArtistAction.setText(tt.SortByMenu_Artist)

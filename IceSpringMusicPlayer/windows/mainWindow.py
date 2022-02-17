@@ -69,17 +69,20 @@ class MainWindow(QtWidgets.QMainWindow):
         self._config.geometry = self.saveGeometry().data()
         self._config.state = self.saveState().data()
 
+    def _loadToolbars(self, definitions):
+        for item in definitions:
+            toolbar: QtWidgets.QToolBar = item.clazz(self)
+            toolbar.setObjectName(item.clazz.__name__)
+            toolbar.setMovable(item.movable)
+            self.addToolBar(toolbar)
+
     def _loadConfig(self):
         screenSize = QtGui.QGuiApplication.primaryScreen().size()
         windowSize = gg(screenSize) / 1.5
         diffSize = (screenSize - windowSize) / 2
         defaultGeometry = QtCore.QRect(QtCore.QPoint(diffSize.width(), diffSize.height()), windowSize)
         self.setGeometry(defaultGeometry)
-        for item in self._config.toolbars:
-            toolbar: QtWidgets.QToolBar = item.clazz(self)
-            toolbar.setObjectName(item.clazz.__name__)
-            toolbar.setMovable(item.movable)
-            self.addToolBar(toolbar)
+        self._loadToolbars(self._config.toolbars)
         self.restoreGeometry(QtCore.QByteArray(gg(self._config.geometry)))
         self.restoreState(QtCore.QByteArray(gg(self._config.state)))
 
@@ -116,6 +119,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def calcLayout(self) -> Element:
         return self._widgetToElement(self.centralWidget())
+
+    def resetToolbars(self):
+        self._logger.info("Reset toolbars")
+        for toolbar in self.findChildren(QtWidgets.QToolBar):
+            self.removeToolBar(toolbar)
+        self._loadToolbars(self._configService.getDefaultConfig().toolbars)
 
     def changeLayout(self, layout: Element) -> None:
         self._logger.info("Change layout")
