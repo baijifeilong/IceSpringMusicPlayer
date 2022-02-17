@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import typing
 
-from IceSpringRealOptional.typingUtils import unused
+from IceSpringRealOptional.typingUtils import unused, gg
 from PySide2 import QtCore, QtWidgets, QtGui
 
 from IceSpringMusicPlayer.app import App
@@ -30,7 +30,7 @@ class PlaylistManagerWidget(IceTableView, PluginWidgetMixin):
         self._player.playlistInserted.connect(self._onPlaylistInserted)
 
     def model(self) -> PlaylistManagerModel:
-        return super().model()
+        return gg(super().model())
 
     def _onDoubleClicked(self, modelIndex: QtCore.QModelIndex) -> None:
         index = modelIndex.row()

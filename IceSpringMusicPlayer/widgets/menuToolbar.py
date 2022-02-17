@@ -109,12 +109,11 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
         self._fileMenu.addSeparator()
         self._fileMenu.addAction(self._configAction)
 
+        self._editMenu = QtWidgets.QMenu()
+
         self._playlistManagerAction = QtWidgets.QAction()
         self._playlistManagerAction.triggered.connect(
             lambda: DialogUtils.execWidget(PlaylistManagerWidget(), withOk=True))
-        self._viewMenu = QtWidgets.QMenu()
-        self._viewMenu.addAction(self._playlistManagerAction)
-
         self._resetDefaultLayoutAction = QtWidgets.QAction()
         self._resetDefaultLayoutAction.triggered.connect(
             lambda: mainWindow.changeLayout(configService.getDefaultLayout()))
@@ -122,21 +121,24 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
         self._layoutEditingAction.setCheckable(True)
         self._layoutEditingAction.setChecked(self._mainWindow.getLayoutEditing())
         self._layoutEditingAction.triggered.connect(self._mainWindow.toggleLayoutEditing)
-        self._layoutMenu = QtWidgets.QMenu()
-        self._layoutMenu.addAction(self._resetDefaultLayoutAction)
-        self._layoutMenu.addAction(self._layoutEditingAction)
+        self._viewMenu = QtWidgets.QMenu()
+        self._viewMenu.addAction(self._playlistManagerAction)
+        self._viewMenu.addSeparator()
+        self._viewMenu.addAction(self._resetDefaultLayoutAction)
+        self._viewMenu.addAction(self._layoutEditingAction)
+
+        self._playbackMenu = QtWidgets.QMenu()
 
         self._pluginsMenu = QtWidgets.QMenu()
 
-        self._languageMenu = QtWidgets.QMenu()
         self._englishAction = QtWidgets.QAction()
         self._englishAction.triggered.connect(lambda: app.changeLanguage("en_US"))
         self._chineseAction = QtWidgets.QAction()
         self._chineseAction.triggered.connect(lambda: app.changeLanguage("zh_CN"))
+        self._languageMenu = QtWidgets.QMenu()
         self._languageMenu.addAction(self._englishAction)
         self._languageMenu.addAction(self._chineseAction)
 
-        self._testMenu = QtWidgets.QMenu()
         self._oneKeyAddAction = QtWidgets.QAction()
         self._oneKeyAddAction.triggered.connect(lambda: playlistService.addMusicsFromFolder("~/Music"))
         self._loadTestDataAction = QtWidgets.QAction()
@@ -144,22 +146,34 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
         self._toggleLanguageAction = QtWidgets.QAction()
         self._toggleLanguageAction.triggered.connect(
             lambda: app.changeLanguage("zh_CN" if config.language == "en_US" else "en_US"))
+        self._testMenu = QtWidgets.QMenu()
         self._testMenu.addAction(self._oneKeyAddAction)
         self._testMenu.addAction(self._loadTestDataAction)
         self._testMenu.addAction(self._toggleLanguageAction)
 
-        return [self._fileMenu, self._viewMenu, self._layoutMenu, self._pluginsMenu, self._languageMenu, self._testMenu]
+        self._aboutAction = QtWidgets.QAction()
+        self._aboutAction.triggered.connect(
+            lambda: QtWidgets.QMessageBox.about(self.parentWidget(), tt.HelpMenu_AboutTitle, tt.HelpMenu_AboutText))
+        self._helpMenu = QtWidgets.QMenu()
+        self._helpMenu.addMenu(self._languageMenu)
+        self._helpMenu.addMenu(self._testMenu)
+        self._helpMenu.addAction(self._aboutAction)
+
+        return [self._fileMenu, self._editMenu, self._viewMenu, self._playbackMenu, self._pluginsMenu, self._helpMenu]
 
     def _refreshMenus(self):
         self._fileMenu.setTitle(tt.FileMenu)
         self._openAction.setText(tt.FileMenu_Open)
         self._configAction.setText(tt.FileMenu_Config)
 
+        self._editMenu.setTitle(tt.EditMenu)
+
         self._viewMenu.setTitle(tt.ViewMenu)
         self._playlistManagerAction.setText(tt.ViewMenu_PlaylistManager)
-        self._layoutMenu.setTitle(tt.LayoutMenu)
         self._resetDefaultLayoutAction.setText(tt.LayoutMenu_Default)
         self._layoutEditingAction.setText(tt.Toolbar_Editing)
+
+        self._playbackMenu.setTitle(tt.PlaybackMenu)
 
         self._pluginsMenu.setTitle(tt.PluginsMenu)
         self._setupPluginsMenu()
@@ -172,6 +186,9 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
         self._oneKeyAddAction.setText(tt.TestMenu_OneKeyAdd)
         self._loadTestDataAction.setText(tt.TestMenu_LoadTestData)
         self._toggleLanguageAction.setText(tt.TestMenu_ToggleLanguage)
+
+        self._helpMenu.setTitle(tt.HelpMenu)
+        self._aboutAction.setText(tt.HelpMenu_About)
 
     def _setupPluginsMenu(self):
         self._pluginsMenu.clear()

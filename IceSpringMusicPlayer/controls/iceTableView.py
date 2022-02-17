@@ -33,8 +33,8 @@ class IceTableView(QtWidgets.QTableView):
             "background-color:white; padding:2px; font-weight: light; }")
         self.horizontalHeader().setHighlightSections(False)
         tablePalette = self.palette()
-        tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.Highlight,
-            tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.Highlight))
-        tablePalette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.HighlightedText,
-            tablePalette.color(QtGui.QPalette.Active, QtGui.QPalette.HighlightedText))
+        tablePalette.setColor(QtGui.QPalette.ColorGroup.Inactive, QtGui.QPalette.ColorRole.Highlight,
+            tablePalette.color(QtGui.QPalette.ColorGroup.Active, QtGui.QPalette.ColorRole.Highlight))
+        tablePalette.setColor(QtGui.QPalette.ColorGroup.Inactive, QtGui.QPalette.ColorRole.HighlightedText,
+            tablePalette.color(QtGui.QPalette.ColorGroup.Active, QtGui.QPalette.ColorRole.HighlightedText))
         self.setPalette(tablePalette)

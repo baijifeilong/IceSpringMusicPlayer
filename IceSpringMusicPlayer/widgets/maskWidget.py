@@ -18,6 +18,7 @@ class MaskWidget(QtWidgets.QWidget):
 
     def __init__(self, parent: QtWidgets.QMainWindow) -> None:
         super().__init__(parent)
+        self._parent = parent
         self._app = App.instance()
         self._replaceable = None
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
@@ -39,7 +40,7 @@ class MaskWidget(QtWidgets.QWidget):
     def paintEvent(self, arg__1: QtGui.QPaintEvent) -> None:
         if self._replaceable is not None:
             rect = QtCore.QRect(
-                self.mapFromGlobal(self._replaceable.parent().mapToGlobal(self._replaceable.pos())),
+                self.mapFromGlobal(self._replaceable.parentWidget().mapToGlobal(self._replaceable.pos())),
                 self._replaceable.size())
             QtGui.QPainter(self).fillRect(rect, QtGui.QColor("#55FF0000"))
 
@@ -90,10 +91,10 @@ class MaskWidget(QtWidgets.QWidget):
         self._app.getMainWindow().layoutChanged.emit()
 
     def _calcReplaceable(self, pos) -> ReplacerMixin:
-        widget = self.parent().centralWidget().childAt(pos)
+        widget = self._parent.centralWidget().childAt(pos)
         while (not isinstance(widget, ReplacerMixin)) and (widget is not None):
             widget = widget.parentWidget()
         if widget is None:
-            widget = self.parent().centralWidget()
+            widget = self._parent.centralWidget()
         assert isinstance(widget, ReplacerMixin)
         return widget
