@@ -40,6 +40,7 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
 
     def _setupEvents(self):
         self._app.languageChanged.connect(self._refreshView)
+        self._player.stateChanged.connect(self._refreshPlaybackMenu)
         self._pluginService.pluginsInserted.connect(self._refreshMenus)
         self._pluginService.pluginsRemoved.connect(self._refreshMenus)
         self._pluginService.pluginEnabled.connect(self._refreshMenus)
@@ -137,7 +138,19 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
         self._viewMenu.addAction(self._resetDefaultLayoutAction)
         self._viewMenu.addAction(self._layoutEditingAction)
 
+        self._playPauseAction = QtWidgets.QAction()
+        self._playPauseAction.triggered.connect(self._player.togglePlayPause)
+        self._stopAction = QtWidgets.QAction()
+        self._stopAction.triggered.connect(self._player.stop)
+        self._previousAction = QtWidgets.QAction()
+        self._previousAction.triggered.connect(self._player.playPrevious)
+        self._nextAction = QtWidgets.QAction()
+        self._nextAction.triggered.connect(self._player.playNext)
         self._playbackMenu = QtWidgets.QMenu()
+        self._playbackMenu.addAction(self._playPauseAction)
+        self._playbackMenu.addAction(self._stopAction)
+        self._playbackMenu.addAction(self._previousAction)
+        self._playbackMenu.addAction(self._nextAction)
 
         self._pluginsMenu = QtWidgets.QMenu()
 
@@ -171,6 +184,13 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
 
         return [self._fileMenu, self._editMenu, self._viewMenu, self._playbackMenu, self._pluginsMenu, self._helpMenu]
 
+    def _refreshPlaybackMenu(self):
+        playing = self._player.getState().isPlaying()
+        self._playPauseAction.setText(tt.PlaybackMenu_Pause if playing else tt.PlaybackMenu_Play)
+        self._stopAction.setText(tt.PlaybackMenu_Stop)
+        self._previousAction.setText(tt.PlaybackMenu_Previous)
+        self._nextAction.setText(tt.PlaybackMenu_Next)
+
     # noinspection DuplicatedCode
     def _refreshMenus(self):
         self._fileMenu.setTitle(tt.FileMenu)
@@ -188,6 +208,7 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
         self._layoutEditingAction.setText(tt.Toolbar_Editing)
 
         self._playbackMenu.setTitle(tt.PlaybackMenu)
+        self._refreshPlaybackMenu()
 
         self._pluginsMenu.setTitle(tt.PluginsMenu)
         self._setupPluginsMenu()
