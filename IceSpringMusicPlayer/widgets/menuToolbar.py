@@ -11,6 +11,7 @@ from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.toolbarMixin import ToolbarMixin
 from IceSpringMusicPlayer.common.widgetMixin import WidgetMixin
+from IceSpringMusicPlayer.enums.playbackMode import PlaybackMode
 from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.utils.dialogUtils import DialogUtils
 from IceSpringMusicPlayer.utils.signalUtils import SignalUtils
@@ -42,6 +43,7 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin, WidgetMixin):
     def _setupEvents(self):
         self._app.languageChanged.connect(self._refreshView)
         self._player.stateChanged.connect(self._refreshPlaybackMenu)
+        self._player.playbackModeChanged.connect(self._refreshPlaybackMenu)
         self._pluginService.pluginsInserted.connect(self._refreshMenus)
         self._pluginService.pluginsRemoved.connect(self._refreshMenus)
         self._pluginService.pluginEnabled.connect(self._refreshMenus)
@@ -143,6 +145,13 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin, WidgetMixin):
         self._viewMenu.addAction(self._resetDefaultLayoutAction)
         self._viewMenu.addAction(self._layoutEditingAction)
 
+        self._playbackModeMenu = QtWidgets.QMenu()
+        for mode in PlaybackMode:
+            action = QtWidgets.QAction(self._playbackModeMenu)
+            action.setCheckable(True)
+            action.triggered.connect(lambda *args, player=self._player, mode=mode: player.setPlaybackMode(mode))
+            action.setData(mode)
+            self._playbackModeMenu.addAction(action)
         self._playPauseAction = QtWidgets.QAction()
         self._playPauseAction.triggered.connect(self._player.togglePlayPause)
         self._stopAction = QtWidgets.QAction()
@@ -156,6 +165,7 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin, WidgetMixin):
         self._playbackMenu.addAction(self._stopAction)
         self._playbackMenu.addAction(self._previousAction)
         self._playbackMenu.addAction(self._nextAction)
+        self._playbackMenu.addMenu(self._playbackModeMenu)
 
         self._pluginsMenu = QtWidgets.QMenu()
 
@@ -189,12 +199,22 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin, WidgetMixin):
 
         return [self._fileMenu, self._editMenu, self._viewMenu, self._playbackMenu, self._pluginsMenu, self._helpMenu]
 
+    # noinspection DuplicatedCode
     def _refreshPlaybackMenu(self):
         playing = self._player.getState().isPlaying()
         self._playPauseAction.setText(tt.PlaybackMenu_Pause if playing else tt.PlaybackMenu_Play)
         self._stopAction.setText(tt.PlaybackMenu_Stop)
         self._previousAction.setText(tt.PlaybackMenu_Previous)
         self._nextAction.setText(tt.PlaybackMenu_Next)
+        self._playbackModeMenu.setTitle(tt.PlaybackModeMenu)
+        modeDict = {
+            PlaybackMode.LOOP: tt.PlaybackModeMenu_Loop,
+            PlaybackMode.RANDOM: tt.PlaybackModeMenu_Random,
+            PlaybackMode.REPEAT: tt.PlaybackModeMenu_Repeat,
+        }
+        for action in self._playbackModeMenu.actions():
+            action.setText(modeDict[action.data()])
+            action.setChecked(self._player.getPlaybackMode() == action.data())
 
     # noinspection DuplicatedCode
     def _refreshMenus(self):
