@@ -47,7 +47,11 @@ class ControllerToolbar(QtWidgets.QToolBar, ToolbarMixin):
     def _refreshView(self):
         mode = self._player.getPlaybackMode()
         playIconName = "mdi.pause" if self._player.getState().isPlaying() else "mdi.play"
-        modeIconName = {PlaybackMode.LOOP: "mdi.repeat", PlaybackMode.RANDOM: "mdi.shuffle"}[mode]
+        modeIconName = {
+            PlaybackMode.LOOP: "mdi.repeat",
+            PlaybackMode.RANDOM: "mdi.shuffle",
+            PlaybackMode.REPEAT: "mdi.repeat-once",
+        }[mode]
         self._playButton.setIcon(qtawesome.icon(playIconName))
         self._stopButton.setIcon(qtawesome.icon("mdi.stop"))
         self._prevButton.setIcon(qtawesome.icon("mdi.step-backward"))

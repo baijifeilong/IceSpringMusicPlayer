@@ -8,6 +8,7 @@ import enum
 class PlaybackMode(enum.Enum):
     LOOP = "LOOP"
     RANDOM = "RANDOM"
+    REPEAT = "REPEAT"
 
     def next(self) -> PlaybackMode:
         return dict(zip(PlaybackMode, list(PlaybackMode)[1:] + list(PlaybackMode)[:1]))[self]
@@ -17,3 +18,6 @@ class PlaybackMode(enum.Enum):
 
     def isRandom(self) -> bool:
         return self == self.__class__.RANDOM
+
+    def isRepeat(self) -> bool:
+        return self == self.__class__.REPEAT

@@ -160,6 +160,9 @@ class PlaylistTable(IceTableView, PluginWidgetMixin):
 
     def _onDoubleClicked(self, modelIndex: QtCore.QModelIndex):
         self._logger.info("On double clicked at %d", modelIndex.row())
+        self._logger.info("Set current playlist to front")
+        self._player.setCurrentPlaylistIndex(self._player.getFrontPlaylistIndex())
+        self._logger.info("Play music at index %d", modelIndex.row())
         self._player.playMusicAtIndex(modelIndex.row())
 
     def _smartScrollToRow(self, index):

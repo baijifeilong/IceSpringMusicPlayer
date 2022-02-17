@@ -71,6 +71,7 @@ class Player(QtCore.QObject):
         self._histories = dict()
         self._historyPosition = -1
         self._playedCount = 0
+        self._isStoppedByTime = False
         self._samples = np.array([])
         self._proxy = QtMultimedia.QMediaPlayer(self)
         self._proxy.setVolume(50)
@@ -78,16 +79,23 @@ class Player(QtCore.QObject):
         self._proxy.durationChanged.connect(self._onProxyDurationChanged)
         self._proxy.positionChanged.connect(self._onProxyPositionChanged)
 
+    def isStoppedByUser(self):
+        return self.getState().isStopped() and self._proxy.position() != self._proxy.duration()
+
+    def isStoppedByTime(self):
+        return self.getState().isStopped() and self._proxy.position() == self._proxy.duration()
+
     def _onProxyStateChanged(self, qtState):
         self._logger.info("Proxy state changed: %s", qtState)
         state = PlayerState.fromQt(qtState)
+        self._logger.info("> Signal stateChanged emitting...")
         self.stateChanged.emit(state)
+        self._logger.info("< Signal stateChanged emitted.")
         if state.isStopped():
-            self._logger.info("    Proxy stopped at position %d / %d", self._proxy.position(), self._proxy.duration())
-            self._logger.info("    Player stopped at position %d / %d", self.getPosition(), self.getDuration())
-            if self._proxy.position() == self._proxy.duration():
-                self._logger.info("Position equals to duration, play next")
-                self.playNext()
+            self._isStoppedByTime = self._proxy.position() == self._proxy.duration()
+            if self._isStoppedByTime:
+                self._logger.info("Stopped by time, time play next")
+                self._timePlayNext()
 
     def _onProxyDurationChanged(self, duration):
         self._logger.info("Proxy duration changed: %d", duration)
@@ -142,6 +150,9 @@ class Player(QtCore.QObject):
             self._proxy.play()
         elif selectedMusicIndex != -1:
             self._logger.info("Selected music index is not -1, play it")
+            self._logger.info("Set current playlist to front")
+            self.setCurrentPlaylistIndex(self.getFrontPlaylistIndex())
+            self._logger.info("Play music at index %d", selectedMusicIndex)
             self.playMusicAtIndex(selectedMusicIndex)
         else:
             self._logger.info("Selected music index is -1, play next")
@@ -346,8 +357,6 @@ class Player(QtCore.QObject):
 
     def playMusicAtIndex(self, index: int) -> None:
         self._logger.info("Play music at index: %d", index)
-        self._logger.info("Set current playlist to front")
-        self.setCurrentPlaylistIndex(self._frontPlaylistIndex)
         self._logger.info("Update play history at relative position %d (+1)", index)
         self._updatePlayHistoryAtRelativePosition(index, 1)
         self._logger.info("Play music at index %d", index)
@@ -362,24 +371,35 @@ class Player(QtCore.QObject):
         if previousMusicIndex == -1:
             self._logger.info("Calculated previous music index -1, no music to play, skip")
             return
-        self._logger.info("Update play history at relative position %d (-1)", previousMusicIndex)
-        self._updatePlayHistoryAtRelativePosition(previousMusicIndex, -1)
-        self._logger.info("Play music at index %d", previousMusicIndex)
-        self._doPlayMusicAtIndex(previousMusicIndex)
+        self._doPlayMusicAtIndexWithHistory(previousMusicIndex, isPrevious=True)
 
     def playNext(self):
         self._logger.info("Play next")
-        if self.getState().isStopped():
-            self._logger.info("Player stopped, set current playlist to front")
+        if self.getState().isStopped() and not self._isStoppedByTime:
+            self._logger.info("Player stopped by user, set current playlist to front")
             self.setCurrentPlaylistIndex(self._frontPlaylistIndex)
         nextMusicIndex = self._calcNextMusicIndex()
         if nextMusicIndex == -1:
             self._logger.info("Calculated next music index is -1, no music to play, skip")
             return
-        self._logger.info("Update play history at relative position %d (+1)", nextMusicIndex)
-        self._updatePlayHistoryAtRelativePosition(nextMusicIndex, 1)
-        self._logger.info("Play music at index %d", nextMusicIndex)
-        self._doPlayMusicAtIndex(nextMusicIndex)
+        self._doPlayMusicAtIndexWithHistory(nextMusicIndex)
+
+    def _doPlayMusicAtIndexWithHistory(self, index, isPrevious=False):
+        self._logger.info("Update play history at relative position %d (+1)", index)
+        self._updatePlayHistoryAtRelativePosition(index, -1 if isPrevious else 1)
+        self._logger.info("Play music at index %d", index)
+        self._doPlayMusicAtIndex(index)
+
+    def _timePlayNext(self):
+        self._logger.info("Time play next")
+        if self._playbackMode.isRepeat():
+            self._logger.info("Playback mode is repeat, resume play")
+            self._proxy.play()
+            return
+        nextMusicIndex = self._calcNextMusicIndex()
+        assert_that(nextMusicIndex).is_not_equal_to(-1)
+        self._logger.info("Play music at index with history: %d", nextMusicIndex)
+        self._doPlayMusicAtIndexWithHistory(nextMusicIndex)
 
     def _updatePlayHistoryAtRelativePosition(self, musicIndex: int, relativePosition: int) -> None:
         self._historyPosition += relativePosition
@@ -395,8 +415,8 @@ class Player(QtCore.QObject):
             else (self._currentMusicIndex + 1) % len(playlist.musics)
         historyNextMusicIndex = self._histories.get(self._historyPosition + 1, -1)
         randomNextMusicIndex = self._calcRandomMusicIndex("NEXT")
-        nonLoopNextMusicIndex = historyNextMusicIndex if historyNextMusicIndex != -1 else randomNextMusicIndex
-        return loopNextMusicIndex if self._playbackMode.isLoop() else nonLoopNextMusicIndex
+        randomNextMusicIndex = historyNextMusicIndex if historyNextMusicIndex != -1 else randomNextMusicIndex
+        return randomNextMusicIndex if self._playbackMode.isRandom() else loopNextMusicIndex
 
     def _calcRandomMusicIndex(self, direction: str) -> int:
         assert direction in ["PREVIOUS", "NEXT"]

@@ -156,7 +156,11 @@ class ControlsWidget(QtWidgets.QWidget, PluginWidgetMixin):
 
     def _refreshPlaybackButton(self):
         mode = self._player.getPlaybackMode()
-        iconName = {PlaybackMode.LOOP: "mdi.repeat", PlaybackMode.RANDOM: "mdi.shuffle"}[mode]
+        iconName = {
+            PlaybackMode.LOOP: "mdi.repeat",
+            PlaybackMode.RANDOM: "mdi.shuffle",
+            PlaybackMode.REPEAT: "mdi.repeat-once",
+        }[mode]
         self._playbackButton.setIcon(qtawesome.icon(iconName))
 
     def _onCurrentMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
