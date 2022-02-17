@@ -82,7 +82,7 @@ PlaybackMenu_Previous.en_US = "Previous"
 PlaybackMenu_Previous.zh_CN = "上一首"
 PlaybackMenu_Next = Text()
 PlaybackMenu_Next.en_US = "Next"
-PlaybackMenu_Next.en_US = "下一首"
+PlaybackMenu_Next.zh_CN = "下一首"
 
 LanguageMenu = Text()
 LanguageMenu.en_US = "Lan&guage"

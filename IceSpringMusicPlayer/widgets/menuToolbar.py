@@ -10,6 +10,7 @@ from PySide2 import QtGui, QtWidgets, QtCore
 from IceSpringMusicPlayer import tt
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.toolbarMixin import ToolbarMixin
+from IceSpringMusicPlayer.common.widgetMixin import WidgetMixin
 from IceSpringMusicPlayer.tt import Text
 from IceSpringMusicPlayer.utils.dialogUtils import DialogUtils
 from IceSpringMusicPlayer.utils.signalUtils import SignalUtils
@@ -19,7 +20,7 @@ if typing.TYPE_CHECKING:
     from IceSpringMusicPlayer.windows.mainWindow import MainWindow
 
 
-class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
+class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin, WidgetMixin):
     @classmethod
     def getToolbarTitle(cls) -> Text:
         return tt.Toolbar_Menu
@@ -56,7 +57,10 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
     def _setupView(self):
         self.setStyleSheet("QToolButton::menu-indicator { image: none }")
         self.installEventFilter(StatusTipFilter(self))
+        palette = QtGui.QPalette()
+        palette.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor("#F9F9F9"))
         for menu in self._setupMenus():
+            menu.setPalette(palette)
             button = QtWidgets.QToolButton()
             button.setMenu(menu)
             button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
@@ -94,6 +98,7 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
         else:
             return QtWidgets.QMenu.mouseMoveEvent(menu, event)
 
+    # noinspection DuplicatedCode
     def _setupMenus(self):
         from IceSpringPlaylistPlugin.playlistManagerWidget import PlaylistManagerWidget
         app = self._app
@@ -175,8 +180,8 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
         self._testMenu.addAction(self._toggleLanguageAction)
 
         self._aboutAction = QtWidgets.QAction()
-        self._aboutAction.triggered.connect(lambda parent=self.parentWidget(): QtWidgets.QMessageBox.about(
-            parent, tt.HelpMenu_AboutTitle, tt.HelpMenu_AboutText))
+        self._aboutAction.triggered.connect(self.gcSlot(lambda self: QtWidgets.QMessageBox.about(
+            self.parentWidget(), tt.HelpMenu_AboutTitle, tt.HelpMenu_AboutText)))
         self._helpMenu = QtWidgets.QMenu()
         self._helpMenu.addMenu(self._languageMenu)
         self._helpMenu.addMenu(self._testMenu)
