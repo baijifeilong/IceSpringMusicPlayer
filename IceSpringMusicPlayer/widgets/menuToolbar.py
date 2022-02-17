@@ -30,6 +30,7 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
         self._app = App.instance()
         self._config = self._app.getConfig()
         self._mainWindow = parent
+        self._player = App.instance().getPlayer()
         self._playlistService = App.instance().getPlaylistService()
         self._configService = App.instance().getConfigService()
         self._pluginService = App.instance().getPluginService()
@@ -100,16 +101,25 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
         configService = self._configService
         config = self._config
 
-        self._openAction = QtWidgets.QAction()
-        self._openAction.triggered.connect(self._playlistService.addMusicsFromFileDialog)
+        self._addFilesAction = QtWidgets.QAction()
+        self._addFilesAction.triggered.connect(self._playlistService.addMusicsFromFileDialog)
+        self._addFolderAction = QtWidgets.QAction()
+        self._addFolderAction.triggered.connect(self._playlistService.addMusicsFromFolderDialog)
         self._configAction = QtWidgets.QAction()
         self._configAction.triggered.connect(lambda: ConfigDialog().exec_())
         self._fileMenu = QtWidgets.QMenu()
-        self._fileMenu.addAction(self._openAction)
+        self._fileMenu.addAction(self._addFilesAction)
+        self._fileMenu.addAction(self._addFolderAction)
         self._fileMenu.addSeparator()
         self._fileMenu.addAction(self._configAction)
 
+        self._selectAllAction = QtWidgets.QAction()
+        self._selectAllAction.triggered.connect(self._player.selectAllMusics)
+        self._removeSelectionAction = QtWidgets.QAction()
+        self._removeSelectionAction.triggered.connect(self._player.removeSelectedMusics)
         self._editMenu = QtWidgets.QMenu()
+        self._editMenu.addAction(self._selectAllAction)
+        self._editMenu.addAction(self._removeSelectionAction)
 
         self._playlistManagerAction = QtWidgets.QAction()
         self._playlistManagerAction.triggered.connect(
@@ -152,8 +162,8 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
         self._testMenu.addAction(self._toggleLanguageAction)
 
         self._aboutAction = QtWidgets.QAction()
-        self._aboutAction.triggered.connect(
-            lambda: QtWidgets.QMessageBox.about(self.parentWidget(), tt.HelpMenu_AboutTitle, tt.HelpMenu_AboutText))
+        self._aboutAction.triggered.connect(lambda parent=self.parentWidget(): QtWidgets.QMessageBox.about(
+            parent, tt.HelpMenu_AboutTitle, tt.HelpMenu_AboutText))
         self._helpMenu = QtWidgets.QMenu()
         self._helpMenu.addMenu(self._languageMenu)
         self._helpMenu.addMenu(self._testMenu)
@@ -161,12 +171,16 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin):
 
         return [self._fileMenu, self._editMenu, self._viewMenu, self._playbackMenu, self._pluginsMenu, self._helpMenu]
 
+    # noinspection DuplicatedCode
     def _refreshMenus(self):
         self._fileMenu.setTitle(tt.FileMenu)
-        self._openAction.setText(tt.FileMenu_Open)
+        self._addFilesAction.setText(tt.FileMenu_AddFiles)
+        self._addFolderAction.setText(tt.FileMenu_AddFolder)
         self._configAction.setText(tt.FileMenu_Config)
 
         self._editMenu.setTitle(tt.EditMenu)
+        self._selectAllAction.setText(tt.EditMenu_SelectAll)
+        self._removeSelectionAction.setText(tt.EditMenu_RemoveSelection)
 
         self._viewMenu.setTitle(tt.ViewMenu)
         self._playlistManagerAction.setText(tt.ViewMenu_PlaylistManager)

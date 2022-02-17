@@ -283,6 +283,16 @@ class Player(QtCore.QObject):
         self.selectedMusicIndexesChanged.emit(indexes)
         self._logger.info("< Signal selectedMusicIndexesChanged emitted.")
 
+    def selectAllMusics(self):
+        self._logger.info("Select all")
+        playlist = self.getFrontPlaylist().orElse(None)
+        if playlist is None:
+            self._logger.info("No front playlist, skip")
+            return
+        indexes = {x for x in range(len(playlist.musics))}
+        self._logger.info("Do select all with %d indexes", len(indexes))
+        self.setSelectedMusicIndexes(indexes)
+
     def getSelectedMusicIndexes(self) -> typing.Set[int]:
         return self.getFrontPlaylist().map(lambda x: x.selectedIndexes).orElse(set())
 
@@ -437,7 +447,21 @@ class Player(QtCore.QObject):
         self.musicsInserted.emit()
         self._logger.info("< musicsInserted signal emitted...")
 
-    def removeMusicsAtIndexes(self, indexes: typing.List[int]) -> None:
+    def removeSelectedMusics(self):
+        self._logger.info("Remove selected musics")
+        playlist = self.getFrontPlaylist().orElse(None)
+        if playlist is None:
+            self._logger.info("No playlist to operate, skip")
+            return
+        indexes = self.getSelectedMusicIndexes()
+        if len(indexes) == 0:
+            self._logger.info("No music to remove, skip")
+            return
+        self._logger.info("Do remove selected musics")
+        self.removeMusicsAtIndexes(indexes)
+
+    def removeMusicsAtIndexes(self, indexes: typing.Set[int]) -> None:
+        indexes = sorted(indexes)
         self._logger.info("Removing musics at indexes: %s", indexes)
         if len(indexes) == 0:
             self._logger.info("No music to remove, skip")

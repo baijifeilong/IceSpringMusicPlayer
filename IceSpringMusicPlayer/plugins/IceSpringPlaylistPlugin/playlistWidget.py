@@ -230,7 +230,7 @@ class PlaylistTable(IceTableView, PluginWidgetMixin):
         self.verticalScrollBar().setValue(scrollLocation)
 
     def _onRemove(self):
-        indexes = sorted(set(x.row() for x in self.selectedIndexes()))
+        indexes = set(x.row() for x in self.selectedIndexes())
         self._logger.info("Remove musics at indexes: %s", indexes)
         self._player.removeMusicsAtIndexes(indexes)
 
