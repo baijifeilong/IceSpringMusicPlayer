@@ -189,6 +189,8 @@ class ControlsWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._logger.info("Player duration changed: %d", duration)
         self._logger.info("Update progress slider max value")
         self._progressSlider.setMaximum(duration)
+        self._progressSlider.setPageStep(duration // 25)
+        self._progressSlider.setSingleStep(duration // 25)
 
     def _onPlayerPositionChanged(self, position):
         if self._player.getState().isStopped():

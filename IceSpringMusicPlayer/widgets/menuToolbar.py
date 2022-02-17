@@ -129,6 +129,16 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin, WidgetMixin):
         self._editMenu.addAction(self._selectAllAction)
         self._editMenu.addAction(self._removeSelectionAction)
 
+        self._sortByArtistAction = QtWidgets.QAction()
+        self._sortByArtistAction.triggered.connect(
+            lambda *args, player=self._player: player.sortMusics(key=lambda x: x.artist))
+        self._sortByTitleAction = QtWidgets.QAction()
+        self._sortByTitleAction.triggered.connect(
+            lambda *args, player=self._player: player.sortMusics(key=lambda x: x.title))
+        self._sortByMenu = QtWidgets.QMenu()
+        self._sortByMenu.addAction(self._sortByArtistAction)
+        self._sortByMenu.addAction(self._sortByTitleAction)
+
         self._playlistManagerAction = QtWidgets.QAction()
         self._playlistManagerAction.triggered.connect(
             lambda: DialogUtils.execWidget(PlaylistManagerWidget(), withOk=True))
@@ -140,6 +150,8 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin, WidgetMixin):
         self._layoutEditingAction.setChecked(self._mainWindow.getLayoutEditing())
         self._layoutEditingAction.triggered.connect(self._mainWindow.toggleLayoutEditing)
         self._viewMenu = QtWidgets.QMenu()
+        self._viewMenu.addMenu(self._sortByMenu)
+        self._viewMenu.addSeparator()
         self._viewMenu.addAction(self._playlistManagerAction)
         self._viewMenu.addSeparator()
         self._viewMenu.addAction(self._resetDefaultLayoutAction)
@@ -165,6 +177,7 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin, WidgetMixin):
         self._playbackMenu.addAction(self._stopAction)
         self._playbackMenu.addAction(self._previousAction)
         self._playbackMenu.addAction(self._nextAction)
+        self._playbackMenu.addSeparator()
         self._playbackMenu.addMenu(self._playbackModeMenu)
 
         self._pluginsMenu = QtWidgets.QMenu()
@@ -231,6 +244,9 @@ class MenuToolbar(QtWidgets.QToolBar, ToolbarMixin, WidgetMixin):
         self._playlistManagerAction.setText(tt.ViewMenu_PlaylistManager)
         self._resetDefaultLayoutAction.setText(tt.LayoutMenu_Default)
         self._layoutEditingAction.setText(tt.Toolbar_Editing)
+        self._sortByMenu.setTitle(tt.SortByMenu)
+        self._sortByArtistAction.setText(tt.SortByMenu_Artist)
+        self._sortByTitleAction.setText(tt.SortByMenu_Title)
 
         self._playbackMenu.setTitle(tt.PlaybackMenu)
         self._refreshPlaybackMenu()

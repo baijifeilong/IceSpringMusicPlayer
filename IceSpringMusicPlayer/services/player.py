@@ -508,7 +508,7 @@ class Player(QtCore.QObject):
         self.musicsRemoved.emit()
         self._logger.info("< Signal musicsRemoved emitted.")
 
-    def sortMusics(self, key, reverse):
+    def sortMusics(self, key, reverse=False):
         self._logger.info("Sort front playlist")
         playlist = self.getFrontPlaylist().orElseThrow(AssertionError)
         self._logger.info("Do sort")
