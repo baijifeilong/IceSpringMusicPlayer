@@ -3,3 +3,7 @@ venv
 __pycache__
 config.json
 recycles
+build/
+dist/
+*.spec
+*.7z
