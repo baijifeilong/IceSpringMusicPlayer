@@ -7,3 +7,6 @@ build/
 dist/
 *.spec
 *.7z
+*.exe
+*.obj
+*.res
