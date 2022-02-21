@@ -10,3 +10,5 @@ dist/
 *.exe
 *.obj
 *.res
+*.pyc
+*.pyo

@@ -119,6 +119,7 @@ class PluginService(QtCore.QObject):
         now = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         targetPath = Path(f"IceSpringMusicPlayer/recycles/{now}/{stem}")
         self._logger.info("Plugin is backup to %s", targetPath)
+        targetPath.parent.mkdir(parents=True, exist_ok=True)
         path.copytree(targetPath)
         path.rmtree()
         self._logger.info("Remove plugin from registry")
