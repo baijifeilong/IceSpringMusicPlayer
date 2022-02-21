@@ -126,10 +126,5 @@ for file in Path().glob("*"):
             logging.info(f"Removing file %s...", file.name)
             file.unlink()
 
-exit()
-os.chdir("../..")
-logging.info(f"Checking for {name}.7z")
-if Path(f"{name}.7z").exists():
-    logging.info("Target archive exists, removing...")
-    Path(f"{name}.7z").unlink()
-os.system(f"cd dist && 7z a -mx=9 ../{name}.7z {name}")
+Path(f"{name}.7z").unlink(missing_ok=True)
+os.system(f"cd ../../dist && 7z a -mx=9 ../{name}.7z {name}")
