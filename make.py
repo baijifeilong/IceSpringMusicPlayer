@@ -52,7 +52,7 @@ for path in Path(root).glob("**/*.pyc"):
 
 logging.info("Copying application source files...")
 for path in Path(f"../../{name}").glob("**/*.py"):
-    target = path.relative_to(Path("../.."))
+    target = path.relative_to("../..")
     logging.debug("Copying %s => %s", path.absolute(), target.absolute())
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(path, target)
@@ -73,7 +73,7 @@ for path in Path().glob("*"):
 
 logging.info("Merging pydll to pylib...")
 for path in Path("pydll").glob("**/*"):
-    target = Path("pylib") / path.relative_to(Path("pydll"))
+    target = Path("pylib") / path.relative_to("pydll")
     logging.debug("Copying %s => %s", path.absolute(), target.absolute())
     if path.is_file() and not target.exists():
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -82,7 +82,7 @@ for path in Path("pydll").glob("**/*"):
 logging.info("Copying resources....")
 for path in Path("../../resources").glob("**/*"):
     if path.suffix in (".ico", ".png"):
-        target = path.relative_to(Path("../.."))
+        target = path.relative_to("../..")
         target.parent.mkdir(parents=True, exist_ok=True)
         logging.info("Copying resource %s => %s", path, target)
         shutil.copyfile(path, target)
