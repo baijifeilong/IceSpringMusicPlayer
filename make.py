@@ -31,29 +31,38 @@ else:
 logging.info("Change directory to application root")
 os.chdir(f"dist/{name}")
 
-logging.info("Moving python dependencies to pylib...")
+logging.info("Unzipping base_library.zip...")
+shutil.unpack_archive("base_library.zip")
+
+logging.info("Moving python dependencies to Lib...")
 for path in Path().glob("*"):
     if path.is_dir() or path.suffix in (".pyc", ".pyd"):
-        target = Path("pylib") / path
+        target = Path("Lib") / path
         logging.debug("Moving %s => %s", path.absolute(), target.absolute())
         target.parent.mkdir(parents=True, exist_ok=True)
         if not target.exists():
             shutil.move(str(path), str(target))
 
+logging.info("Adding lost modules...")
+for module in ("site", "_sitebuiltins"):
+    origin = Path(importlib.util.find_spec(module).origin)
+    logging.info("Copying file %s...", origin)
+    shutil.copyfile(origin, f"Lib/{origin.name}")
+
 logging.info("Removing application compiled files")
-shutil.rmtree(f"pylib/{name}")
+shutil.rmtree(f"Lib/{name}")
 
 removingPyc = True
 logging.info("Remove pyc enabled: %s", removingPyc)
 if removingPyc:
     logging.info("Changing .pyc/.pyo to .py...")
     count = 0
-    for path in Path("pylib").glob("**/*"):
+    for path in Path("Lib").glob("**/*"):
         if path.suffix not in (".pyc", ".pyo"):
             continue
         if "__pycache__" in path.parts:
             continue
-        module = ".".join(x for x in path.relative_to("pylib").with_suffix("").parts if x != "__init__")
+        module = ".".join(x for x in path.relative_to("Lib").with_suffix("").parts if x != "__init__")
         origin = importlib.util.find_spec(module).origin
         if origin is not None and Path(origin).exists() and Path(origin).suffix == ".py":
             count += 1
@@ -61,10 +70,6 @@ if removingPyc:
             logging.debug("Copying %d %s => %s", count, origin, path.with_suffix(".py"))
             shutil.copyfile(origin, path.with_suffix(".py"))
     logging.info("%d .pyc/.pyo files processed", count)
-
-logging.info("Copying pydub source files...")
-shutil.copyfile(importlib.util.find_spec("pydub.utils").origin, "pylib/pydub/utils.py")
-shutil.copyfile(importlib.util.find_spec("pydub.audio_segment").origin, "pylib/pydub/audio_segment.py")
 
 logging.info("Copying application source files...")
 for path in Path(f"../../{name}").glob("**/*.py"):
@@ -83,8 +88,8 @@ for path in Path("../../resources").glob("**/*"):
         shutil.copyfile(path, target)
 
 logging.info("Copying ffmpeg....")
-ffmpegPath = Path(r"~\scoop\apps\ffmpeg\current\bin\ffmpeg.exe").expanduser()
-shutil.copyfile(ffmpegPath, "ffmpeg.exe")
+shutil.copyfile(Path(r"~\scoop\apps\ffmpeg\current\bin\ffmpeg.exe").expanduser(), "ffmpeg.exe")
+shutil.copyfile(Path(r"~\scoop\apps\ffmpeg\current\bin\ffprobe.exe").expanduser(), "ffprobe.exe")
 
 logging.info("Compiling exe...")
 vs = r"C:\Program Files (x86)\Microsoft Visual Studio\2019"
@@ -100,7 +105,7 @@ del main.obj resources.res
 """.strip().splitlines()
 proc = Popen("cmd", stdin=PIPE, stdout=PIPE, stderr=PIPE)
 for command in commands:
-    logging.info("Executing command: %s", command)
+    logging.info("Executing: %s", command)
     proc.stdin.write(f"{command}\n".encode("ansi"))
 out, err = proc.communicate()
 logging.info("Compiled result: %d", proc.returncode)
