@@ -1,7 +1,6 @@
 import importlib.util
 import logging
 import os
-import pathlib
 import shutil
 import sys
 from subprocess import Popen, PIPE
@@ -12,46 +11,29 @@ from PyInstaller.utils.hooks import collect_submodules
 
 from IceSpringMusicPlayer.utils.logUtils import LogUtils
 
-name = "IceSpringMusicPlayer"
-projectRoot = Path().absolute()
-ffmpegPath = Path(r"~\scoop\apps\ffmpeg\current\bin\ffmpeg.exe").expanduser()
-decompiler = Path("resources/pyinstxtractor.py").absolute()
-excluded_files = """
-Qt5DataVisualization.dll
-Qt5Pdf.dll
-Qt5Quick.dll
-Qt5VirtualKeyboard.dll
-d3dcompiler_47.dll
-libGLESv2.dll
-opengl32sw.dll
-base_library.zip
-""".strip().splitlines()
-
 LogUtils.initLogging()
+logging.getLogger().setLevel(logging.INFO)
 
-logging.info("Building...")
-logging.info("Checking for dist directory...")
-if pathlib.Path(f"dist/{name}").exists():
-    logging.info(f"Folder dist/{name} exists, removing...")
-    shutil.rmtree(f"dist/{name}")
+name = "IceSpringMusicPlayer"
+logging.info("Removing application directory if exists...")
+Path(f"dist/{name}").rmtree(ignore_errors=True)
 
-logging.info(f"Checking for {name}.7z")
-if pathlib.Path(f"{name}.7z").exists():
-    logging.info("Target archive exists, removing...")
-    pathlib.Path(f"{name}.7z").unlink()
-
-logging.info("Packing...")
-imports = collect_submodules('IceSpringMusicPlayer')
-imports += ["statistics", "scipy.signal"]
-hiddenImports = [("--hidden-import", x) for x in imports]
-hiddenImports = [y for x in hiddenImports for y in x]
-PyInstaller.__main__.run(["main.py", "--noconsole", "--noupx", *hiddenImports, "--name", name])
+logging.info("Checking for backup directory...")
+if Path(f"dist/{name}-backup").exists():
+    logging.info("Backup directory exists, restoring it...")
+    Path(f"dist/{name}-backup").copytree(Path(f"dist/{name}"))
+else:
+    logging.info("Backup directory not exists, regenerating it...")
+    imports = collect_submodules('IceSpringMusicPlayer') + ["statistics", "scipy.signal"]
+    hiddenImports = [("--hidden-import", x) for x in imports]
+    hiddenImports = [y for x in hiddenImports for y in x]
+    PyInstaller.__main__.run(["main.py", "--noconsole", "--noupx", *hiddenImports, "--name", name])
+    Path(f"dist/{name}").copytree(Path(f"dist/{name}-backup"))
 
 logging.info("Change directory to application root")
-os.chdir(projectRoot / "dist" / name)
-
+os.chdir(f"dist/{name}")
 logging.info("Extract pyinstaller package...")
-os.system(f"{sys.executable} {decompiler} {name}.exe")
+os.system(f"{sys.executable} ../../resources/pyinstxtractor.py {name}.exe")
 
 logging.info("Copying 3rd libraries to pylib...")
 root = Path(f"{name}.exe_extracted/PYZ-00.pyz_extracted")
@@ -69,12 +51,12 @@ for path in Path(root).glob("**/*.pyc"):
     shutil.copyfile(origin, target)
 
 logging.info("Copying application source files...")
-for path in (projectRoot / name).glob("**/*.py"):
-    target = Path() / path.relative_to(projectRoot)
+for path in Path(f"../../{name}").glob("**/*.py"):
+    target = path.relative_to(Path("../.."))
     logging.debug("Copying %s => %s", path.absolute(), target.absolute())
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(path, target)
-shutil.copyfile(projectRoot / "main.py", "main.py")
+shutil.copyfile("../../main.py", "main.py")
 
 logging.info("Moving python dynamic libraries to pydll...")
 for path in Path().glob("*"):
@@ -96,56 +78,58 @@ for path in Path("pydll").glob("**/*"):
     if path.is_file() and not target.exists():
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(path, target)
-    else:
-        logging.warning("Skipped")
 
 logging.info("Copying resources....")
-for path in (projectRoot / "resources").glob("**/*"):
+for path in Path("../../resources").glob("**/*"):
     if path.suffix in (".ico", ".png"):
-        target = path.relative_to(projectRoot)
+        target = path.relative_to(Path("../.."))
         target.parent.mkdir(parents=True, exist_ok=True)
         logging.info("Copying resource %s => %s", path, target)
         shutil.copyfile(path, target)
 
 logging.info("Copying ffmpeg....")
+ffmpegPath = Path(r"~\scoop\apps\ffmpeg\current\bin\ffmpeg.exe").expanduser()
 shutil.copyfile(ffmpegPath, "ffmpeg.exe")
 
 logging.info("Compiling exe...")
-logging.info("Changing to resources directory...")
-os.chdir(projectRoot / "resources")
 vs = r"C:\Program Files (x86)\Microsoft Visual Studio\2019"
 python = Path(r"~\scoop\apps\python37\current").expanduser()
 flag = "/SUBSYSTEM:windows /ENTRY:mainCRTStartup"
 commands = rf"""
+cd ../../resources
 "{vs}"\BuildTools\VC\Auxiliary\Build\vcvarsall.bat x86_amd64
 rc.exe resources.rc
 cl.exe /c main.c -I {python}\include
 cl.exe main.obj /link /LIBPATH {python}\libs\python37.lib resources.res {flag}
+del main.obj resources.res
 """.strip().splitlines()
 proc = Popen("cmd", stdin=PIPE, stdout=PIPE, stderr=PIPE)
 for command in commands:
-    print("Executing command", command)
+    logging.info("Executing command: %s", command)
     proc.stdin.write(f"{command}\n".encode("ansi"))
 out, err = proc.communicate()
-logging.info("STDOUT: %s", out.decode("ansi"))
-logging.warning("STDERR: %s", err.decode("ansi"))
+logging.info("Compiled result: %d", proc.returncode)
 
-os.chdir(projectRoot / "dist" / name)
-logging.info("Copying exe...")
-shutil.copyfile(projectRoot / "resources" / "main.exe", f"{name}.exe")
-
-logging.info("Removing unused folders")
-for folder in (f"{name}.exe_extracted", "pydll"):
-    logging.debug(f"Remove folder {folder}")
-    shutil.rmtree(folder)
+logging.info("Moving exe...")
+Path(f"{name}.exe").unlink()
+shutil.move("../../resources/main.exe", f"{name}.exe")
 
 logging.info("Cleaning...")
-os.chdir(projectRoot / "dist" / name)
-for file in Path().glob("**/*"):
-    print(file)
+excluded_files = "Qt5DataVisualization.dll Qt5Pdf.dll Qt5Quick.dll Qt5VirtualKeyboard.dll d3dcompiler_47.dll " \
+                 f"libGLESv2.dll opengl32sw.dll base_library.zip {name}.exe_extracted pydll".split()
+for file in Path().glob("*"):
     if file.name in excluded_files:
-        logging.info(f"Removing {file.name}")
-        file.unlink()
+        if file.is_dir():
+            logging.info(f"Removing folder %s...", file.name)
+            shutil.rmtree(file)
+        else:
+            logging.info(f"Removing file %s...", file.name)
+            file.unlink()
 
-os.chdir(projectRoot)
-# os.system(f"cd dist && 7z a -mx=9 ../{name}.7z {name}")
+exit()
+os.chdir("../..")
+logging.info(f"Checking for {name}.7z")
+if Path(f"{name}.7z").exists():
+    logging.info("Target archive exists, removing...")
+    Path(f"{name}.7z").unlink()
+os.system(f"cd dist && 7z a -mx=9 ../{name}.7z {name}")
