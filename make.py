@@ -1,7 +1,9 @@
 import importlib.util
 import logging
 import os
+import re
 import shutil
+import sys
 from subprocess import Popen, PIPE
 
 import PyInstaller.__main__
@@ -11,10 +13,15 @@ from PyInstaller.utils.hooks import collect_submodules
 from IceSpringMusicPlayer.utils.logUtils import LogUtils
 
 name = "IceSpringMusicPlayer"
+vsHome = Path(r"C:\Program Files (x86)\Microsoft Visual Studio\2019").absolute()
+ffmpegHome = Path("./ffmpeg").absolute()
+assert vsHome.exists()
+assert ffmpegHome.exists()
+
 LogUtils.initLogging()
 logging.getLogger().setLevel(logging.INFO)
 logging.info("Removing application directory if exists...")
-Path(f"dist/{name}").rmtree(ignore_errors=True)
+Path(f"dist/{name}").exists() and Path(f"dist/{name}").rmtree()
 
 logging.info("Checking for backup directory...")
 if Path(f"dist/{name}-backup").exists():
@@ -88,19 +95,19 @@ for path in Path("../../resources").glob("**/*"):
         shutil.copyfile(path, target)
 
 logging.info("Copying ffmpeg....")
-shutil.copyfile(Path(r"~\scoop\apps\ffmpeg\current\bin\ffmpeg.exe").expanduser(), "ffmpeg.exe")
-shutil.copyfile(Path(r"~\scoop\apps\ffmpeg\current\bin\ffprobe.exe").expanduser(), "ffprobe.exe")
+for file in ffmpegHome.glob("*"):
+    if re.match(r"^(ffmpeg\.exe|ffprobe\.exe|.+\.dll)$", file.name):
+        shutil.copyfile(file, file.name)
 
 logging.info("Compiling exe...")
-vs = r"C:\Program Files (x86)\Microsoft Visual Studio\2019"
-python = Path(r"~\scoop\apps\python37\current").expanduser()
 flag = "/SUBSYSTEM:windows /ENTRY:mainCRTStartup"
 commands = rf"""
 cd ../../resources
-"{vs}"\BuildTools\VC\Auxiliary\Build\vcvarsall.bat x86_amd64
+"{vsHome}"\BuildTools\VC\Auxiliary\Build\vcvarsall.bat x86_amd64
 rc.exe resources.rc
-cl.exe /c main.c -I {python}\include
-cl.exe main.obj resources.res /link /LIBPATH {python}\libs\python37.lib {flag}
+cl.exe /c main.c -I {sys.base_prefix}\include
+cl.exe /Fe{name}.exe main.obj resources.res /link /LIBPATH {sys.base_prefix}\libs\python37.lib {flag}
+cl.exe /Fe{name}Debug.exe main.obj resources.res /link /LIBPATH {sys.base_prefix}\libs\python37.lib
 del main.obj resources.res
 """.strip().splitlines()
 proc = Popen("cmd", stdin=PIPE, stdout=PIPE, stderr=PIPE)
@@ -112,7 +119,9 @@ logging.info("Compiled result: %d", proc.returncode)
 
 logging.info("Moving exe...")
 Path(f"{name}.exe").unlink()
-shutil.move("../../resources/main.exe", f"{name}.exe")
+shutil.move(f"../../resources/{name}.exe", f"{name}.exe")
+shutil.move(f"../../resources/{name}Debug.exe", f"{name}Debug.exe")
+shutil.copyfile(f"{sys.base_prefix}/python.exe", "python.exe")
 
 logging.info("Cleaning...")
 excluded_files = "Qt5DataVisualization.dll Qt5Pdf.dll Qt5Quick.dll Qt5VirtualKeyboard.dll d3dcompiler_47.dll " \
