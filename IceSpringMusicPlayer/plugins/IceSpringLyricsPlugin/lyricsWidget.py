@@ -1,5 +1,6 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/1/12 20:39
 import logging
+import time
 import typing
 from typing import Any
 
@@ -14,6 +15,7 @@ from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
 from IceSpringMusicPlayer.controls.clickableLabel import ClickableLabel
+from IceSpringMusicPlayer.enums.playerState import PlayerState
 from IceSpringMusicPlayer.services.player import Player
 from IceSpringMusicPlayer.utils.layoutUtils import LayoutUtils
 from IceSpringMusicPlayer.utils.lyricUtils import LyricUtils
@@ -40,8 +42,23 @@ class LyricsWidget(QtWidgets.QScrollArea, PluginWidgetMixin):
         self._logger.setLevel(logging.INFO)
         self._app = App.instance()
         self._player = self._app.getPlayer()
+        self._lyrics: typing.Dict[int, str] = dict()
+        self._prevLyricIndex = -1
+        self._timer = QtCore.QTimer()
+        self._loadConfig()
+        self._setupView()
+        self._resetLayout()
+        self._setupLyrics()
+        self.horizontalScrollBar().rangeChanged.connect(
+            lambda *args, bar=self.horizontalScrollBar(): bar.setValue((bar.maximum() + bar.minimum()) // 2))
+        self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
+        self.widgetConfigChanged.connect(self._onWidgetConfigChanged)
+        self._player.stateChanged.connect(self.onPlayerStateChanged)
         self._player.currentMusicIndexChanged.connect(self._onCurrentMusicIndexChanged)
-        self._player.positionChanged.connect(self._onPlayerPositionChanged)
+        self._player.positionChanged.connect(self._onTick)
+        self._timer.timeout.connect(self._onTick)
+
+    def _setupView(self):
         self.setWidget(QtWidgets.QWidget(self))
         layout = QtWidgets.QVBoxLayout(self.widget())
         layout.setMargin(0)
@@ -49,17 +66,17 @@ class LyricsWidget(QtWidgets.QScrollArea, PluginWidgetMixin):
         self.widget().setLayout(layout)
         self.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
         self.setWidgetResizable(True)
-        self.horizontalScrollBar().rangeChanged.connect(
-            lambda *args, bar=self.horizontalScrollBar(): bar.setValue((bar.maximum() + bar.minimum()) // 2))
         self._layout = layout
-        self._resetLayout()
-        self._setupLyrics()
-        self.widgetConfigChanged.connect(self._onWidgetConfigChanged)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        self.customContextMenuRequested.connect(self._onCustomContextMenuRequested)
         self.setPalette(Just.of(self.palette()).apply(
             lambda x: x.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor("white"))).value())
-        self._loadConfig()
+
+    def onPlayerStateChanged(self, state: PlayerState):
+        self._logger.info("On player state changed: %s", state)
+        if state.isPlaying():
+            self._timer.start(100)
+        else:
+            self._timer.stop()
 
     def _loadConfig(self):
         policies = dict(AUTO=QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded,
@@ -86,14 +103,6 @@ class LyricsWidget(QtWidgets.QScrollArea, PluginWidgetMixin):
     def _onWidgetConfigChanged(self):
         self._logger.info("On config changed, Update font to: %s", self._widgetConfig.font)
         self._loadConfig()
-
-    def _onPlayerPositionChanged(self, position: int) -> None:
-        self._logger.debug("Player position changed: %d", position)
-        if self._player.getState().isStopped():
-            self._logger.info("Player stopped, skip to refresh lyrics")
-        else:
-            self._logger.debug("Player not stopped, start to refresh lyrics")
-            self._refreshLyrics()
 
     def _onCurrentMusicIndexChanged(self, oldIndex: int, newIndex: int) -> None:
         unused(oldIndex)
@@ -123,8 +132,8 @@ class LyricsWidget(QtWidgets.QScrollArea, PluginWidgetMixin):
         self._logger.info("Parsing lyrics")
         lyrics = LyricUtils.parseLyrics(lyricsText)
         self._logger.info("Lyrics count: %d", len(lyrics))
-        self.setProperty("lyrics", lyrics)
-        self.setProperty("previousLyricIndex", -1)
+        self._lyrics = lyrics
+        self._prevLyricIndex = -1
         LayoutUtils.clearLayout(self._layout)
         self._layout.addSpacing(self.height() // 2)
         for position, lyric in list(lyrics.items())[:]:
@@ -140,26 +149,22 @@ class LyricsWidget(QtWidgets.QScrollArea, PluginWidgetMixin):
         self.verticalScrollBar().setValue(0)
         self._logger.info("<< Lyrics set up")
 
-    def _refreshLyrics(self, forceRefresh=False):
-        self._logger.debug("Refresh lyrics")
-        if self._player.getState().isStopped():
-            self._logger.info("Player stopped, skip refresh, return")
+    def _onTick(self):
+        self._logger.debug("On tick: %f", time.time())
+        if not bool(self._lyrics):
+            self._logger.debug("No lyrics, return")
             return
-        position = self._player.getPosition()
-        self._logger.debug("Refreshing lyrics at position: %d", position)
-        lyrics: typing.Dict[int, str] = self.property("lyrics")
-        previousLyricIndex = self.property("previousLyricIndex")
-        lyricIndex = LyricUtils.calcLyricIndexAtPosition(position + 2, list(lyrics.keys()))
-        self._logger.debug("Lyric index: %d => %d", previousLyricIndex, lyricIndex)
-        if forceRefresh:
-            self._logger.info("Force refresh")
-        elif lyricIndex == previousLyricIndex:
+        lyricIndex = LyricUtils.calcLyricIndexAtPosition(self._player.getPosition() + 2, list(self._lyrics.keys()))
+        self._logger.debug("Lyric index: %d => %d", self._prevLyricIndex, lyricIndex)
+        if lyricIndex == self._prevLyricIndex:
             self._logger.debug("Lyric index no changed, skip refresh")
             return
-        else:
-            self._logger.debug("Lyric index changed: %d => %d, refreshing...", previousLyricIndex, lyricIndex)
-        self.setProperty("previousLyricIndex", lyricIndex)
-        for index in range(len(lyrics)):
+        self._setLyricIndex(lyricIndex)
+        self._prevLyricIndex = lyricIndex
+
+    def _setLyricIndex(self, lyricIndex):
+        self._logger.debug("Set lyric index to %d", lyricIndex)
+        for index in range(len(self._lyrics)):
             lyricLabel: QtWidgets.QLabel = gg(self._layout.itemAt(index + 1).widget())
             color = QtGui.QColor("#e1413c" if index == lyricIndex else "#23557d")
             palette = lyricLabel.palette()

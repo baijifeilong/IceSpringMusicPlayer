@@ -1,4 +1,6 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/2/22 15:14
+import logging
+
 import taglib
 from IceSpringPathLib import Path
 from PySide2 import QtMultimedia, QtCore
@@ -10,6 +12,7 @@ class PatchedMediaPlayer(QtMultimedia.QMediaPlayer):
 
     def __init__(self):
         super().__init__()
+        self._logger = logging.getLogger("patchedMediaPlayer")
         self._realDuration = 0
         self._lastFakePosition = 0
         self._bugRate = 0.0
@@ -21,6 +24,8 @@ class PatchedMediaPlayer(QtMultimedia.QMediaPlayer):
         self.durationChanged.emit(self._realDuration)
 
     def _onSuperPositionChanged(self):
+        self._logger.debug("Super position changed %d/%d => (%d/%d)",
+            super().position(), super().duration(), self.position(), self.duration())
         self.positionChanged.emit(self.position())
 
     def setMedia(self, media: QtMultimedia.QMediaContent, stream: QtCore.QIODevice = None, realDuration=None) -> None:

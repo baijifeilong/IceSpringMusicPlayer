@@ -103,7 +103,6 @@ class Player(QtCore.QObject):
         self.durationChanged.emit(duration)
 
     def _onProxyPositionChanged(self, position):
-        self._logger.debug("Proxy position changed: %d / %d", position, self._proxy.duration())
         self.positionChanged.emit(position)
 
     def getDuration(self) -> int:
