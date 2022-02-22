@@ -17,6 +17,7 @@ from PySide2 import QtMultimedia, QtCore
 from assertpy import assert_that
 
 from IceSpringMusicPlayer.app import App
+from IceSpringMusicPlayer.common.patchedMediaPlayer import PatchedMediaPlayer
 from IceSpringMusicPlayer.domains.config import Config
 from IceSpringMusicPlayer.domains.music import Music
 from IceSpringMusicPlayer.domains.playlist import Playlist
@@ -55,7 +56,7 @@ class Player(QtCore.QObject):
     _currentMusicIndex: int
     _histories: Dict[int, int]
     _historyPosition: int
-    _proxy: QtMultimedia.QMediaPlayer
+    _proxy: PatchedMediaPlayer
     _playedCount: int
     _samples: np.ndarray
 
@@ -73,7 +74,7 @@ class Player(QtCore.QObject):
         self._playedCount = 0
         self._isStoppedByTime = False
         self._samples = np.array([])
-        self._proxy = QtMultimedia.QMediaPlayer(self)
+        self._proxy = PatchedMediaPlayer()
         self._proxy.setVolume(50)
         self._proxy.stateChanged.connect(self._onProxyStateChanged)
         self._proxy.durationChanged.connect(self._onProxyDurationChanged)
@@ -99,20 +100,20 @@ class Player(QtCore.QObject):
 
     def _onProxyDurationChanged(self, duration):
         self._logger.info("Proxy duration changed: %d", duration)
-        self.durationChanged.emit(int(duration / self._getBugRateOrOne()))
+        self.durationChanged.emit(duration)
 
     def _onProxyPositionChanged(self, position):
         self._logger.debug("Proxy position changed: %d / %d", position, self._proxy.duration())
-        self.positionChanged.emit(int(position / self._getBugRateOrOne()))
+        self.positionChanged.emit(position)
 
     def getDuration(self) -> int:
-        return int(self._proxy.duration() // self._getBugRateOrOne())
+        return self._proxy.duration()
 
     def getPosition(self) -> int:
-        return int(self._proxy.position() // self._getBugRateOrOne())
+        return self._proxy.position()
 
     def getRelativePosition(self) -> float:
-        return 0 if self._proxy.duration() == -1 else self._proxy.position() / self._proxy.duration()
+        return 0 if self._proxy.duration() == 0 else self._proxy.position() / self._proxy.duration()
 
     def setRelativePosition(self, position: float):
         qtPosition = int(position * self._proxy.duration())
@@ -124,9 +125,7 @@ class Player(QtCore.QObject):
         return Just.of(self._proxy.state()).map(PlayerState.fromQt).value()
 
     def setPosition(self, position: int) -> None:
-        qtPosition = int(position * self._getBugRateOrOne())
-        self._logger.info("Setting position: %d (qt=%d)", position, qtPosition)
-        self._proxy.setPosition(qtPosition)
+        self._proxy.setPosition(position)
 
     def setVolume(self, volume: int) -> None:
         self._proxy.setVolume(volume)
@@ -332,7 +331,8 @@ class Player(QtCore.QObject):
         self._logger.info("Current playing stopped")
         self._logger.info("Set music content: %s", music.filename)
         self._proxy.blockSignals(True)
-        self._proxy.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(music.filename)))
+        self._proxy.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(music.filename)),
+            realDuration=music.duration)
         threading.Thread(target=self._setupSamples, args=(music.filename,)).start()
         self._proxy.blockSignals(False)
         self._logger.info("Music content set to player.")
@@ -440,12 +440,6 @@ class Player(QtCore.QObject):
         nonLoopPreviousMusicIndex = historyPreviousMusicIndex if historyPreviousMusicIndex != -1 \
             else randomPreviousMusicIndex
         return loopPreviousMusicIndex if self._playbackMode.isLoop() else nonLoopPreviousMusicIndex
-
-    def _getBugRateOrOne(self):
-        if not self.getCurrentMusic().isPresent():
-            return 1
-        currentMusic = self.getCurrentMusic().orElseThrow(AssertionError)
-        return self._proxy.duration() / currentMusic.duration
 
     def insertMusics(self, musics: typing.List[Music]) -> None:
         self._logger.info("Inserting musics with count %d", len(musics))
