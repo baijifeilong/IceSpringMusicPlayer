@@ -33,7 +33,7 @@ if Path(f"dist/{name}-backup").exists():
     Path(f"dist/{name}-backup").copytree(Path(f"dist/{name}"))
 else:
     logging.info("Backup directory not exists, regenerating it...")
-    imports = collect_submodules('IceSpringMusicPlayer') + ["statistics", "scipy.signal"]
+    imports = collect_submodules('IceSpringMusicPlayer') + ["statistics"]
     hiddenImports = [("--hidden-import", x) for x in imports]
     hiddenImports = [y for x in hiddenImports for y in x]
     PyInstaller.__main__.run(["main.py", "--noupx", "-d", "noarchive", *hiddenImports, "--name", name])
@@ -74,7 +74,11 @@ if removingPyc:
         if "__pycache__" in path.parts:
             continue
         module = ".".join(x for x in path.relative_to("Lib").with_suffix("").parts if x != "__init__")
-        origin = importlib.util.find_spec(module).origin
+        try:
+            origin = importlib.util.find_spec(module).origin
+        except ModuleNotFoundError as e:
+            logging.warning("Module not found: %s %s", module, e)
+            origin = None
         if origin is not None and Path(origin).exists() and Path(origin).suffix == ".py":
             count += 1
             path.unlink()

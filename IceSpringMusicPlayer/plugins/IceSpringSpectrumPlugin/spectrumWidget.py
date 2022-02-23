@@ -9,7 +9,6 @@ import numpy as np
 from IceSpringRealOptional.just import Just
 from PySide2 import QtWidgets, QtGui, QtCore
 from assertpy import assert_that
-from scipy import signal
 
 import IceSpringSpectrumPlugin.spectrumTranslation as tt
 from IceSpringMusicPlayer.app import App
@@ -131,7 +130,14 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         sampleCount = int(self._sampleMillis / 1000 * sampleRate)
         sampleIndex = int(self._player.getPosition() / 1000 * sampleRate)
         segments = samples[sampleIndex:sampleIndex + sampleCount]
-        frequencies, powers = signal.welch(segments, fs=sampleRate, nperseg=sampleCount, scaling="spectrum")
+        sampleWidth = self._player.getSampleWidth()
+
+        window = np.hanning(len(segments))
+        fftValues = np.fft.rfft(segments * window)
+        magnitudes = np.abs(fftValues) * 2 / np.sum(window)
+        powers = 20 * np.log10(magnitudes / (2 ** (sampleWidth * 8)))
+        powers = np.where(powers < -1000, -1000, powers)
+        frequencies = np.fft.rfftfreq(len(segments), 1 / sampleRate)
         self._values = self.calcPowerValues(frequencies, powers, self._thresholds, self._minFrequency)
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
@@ -180,8 +186,6 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
 
     def calcPowerValues(self, frequencies, powers, thresholds, minFrequency):
         self._random.seed(sum(powers))
-        powers[powers == 0] = 10 ** -20
-        powers = np.log10(powers * 2) * 10
         prevThresholds = [minFrequency] + thresholds[:-1]
         powerArrays = [[] for _ in range(len(thresholds))]
         for frequency, power in zip(frequencies, powers):
@@ -193,14 +197,14 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
             if len(powerArray) > 0:
                 value = statistics.mean(powerArray)
             else:
-                value = -120
+                value = -160
             values.append(value)
-        validIndexes = [i for i, v in enumerate(values) if v != -120]
+        validIndexes = [i for i, v in enumerate(values) if v != -160]
         if len(validIndexes) > 0:
             for index in range(0, validIndexes[-1], 1):
-                if values[index] == -120:
-                    samples = [x for x in values[max(index - 2, 0):index + 3] if x != -120] or [
-                        x for x in values if x != -120]
+                if values[index] == -160:
+                    samples = [x for x in values[max(index - 2, 0):index + 3] if x != -160] or [
+                        x for x in values if x != -160]
                     values[index] = statistics.mean(samples) * ((self._random.random() - 0.5) * 2 * 0.2 + 1)
         return values
 

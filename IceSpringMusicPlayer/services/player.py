@@ -59,6 +59,7 @@ class Player(QtCore.QObject):
     _historyPosition: int
     _proxy: PatchedMediaPlayer
     _playedCount: int
+    _sampleWidth: int
     _samples: np.ndarray
 
     def __init__(self, parent: QtCore.QObject):
@@ -74,6 +75,7 @@ class Player(QtCore.QObject):
         self._historyPosition = -1
         self._playedCount = 0
         self._isStoppedByTime = False
+        self._sampleWidth = 0
         self._samples = np.array([])
         self._proxy = PatchedMediaPlayer()
         self._proxy.setVolume(50)
@@ -333,6 +335,7 @@ class Player(QtCore.QObject):
         self._proxy.blockSignals(True)
         self._proxy.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(music.filename)),
             realDuration=music.duration)
+        self._sampleWidth = 0
         self._samples = np.array([])
         threading.Thread(target=self._setupSamples, args=(music.filename,)).start()
         self._proxy.blockSignals(False)
@@ -363,7 +366,8 @@ class Player(QtCore.QObject):
         try:
             segment = pydub.AudioSegment.from_file(filename)
             samples = np.array(segment.set_channels(1).get_array_of_samples())
-            samples = samples / (2 ** (segment.sample_width * 8 - 1))
+            # samples = samples / (2 ** (segment.sample_width * 8 - 1))
+            self._sampleWidth = segment.sample_width
             self._samples = samples
             self._logger.info("Samples set up.")
         except Exception as e:
@@ -371,6 +375,9 @@ class Player(QtCore.QObject):
 
     def getSamples(self) -> np.ndarray:
         return self._samples
+
+    def getSampleWidth(self) -> int:
+        return self._sampleWidth
 
     def playMusicAtIndex(self, index: int) -> None:
         self._logger.info("Play music at index: %d", index)
