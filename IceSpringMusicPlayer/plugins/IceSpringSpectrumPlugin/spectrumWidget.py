@@ -59,9 +59,10 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._thresholds = []
         self._values = []
         self._smooths = []
+        self._random = random.Random()
         self._loadConfig()
         self._updateTimer = QtCore.QTimer(self)
-        self._updateTimer.timeout.connect(self._doUpdateSpectrum)
+        self._updateTimer.timeout.connect(self._onTick)
         self._updateTimer.start(1000 // self._updateRate)
         self._repaintTimer = QtCore.QTimer(self)
         self._repaintTimer.timeout.connect(self._doSmooth)
@@ -112,14 +113,18 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
             self._thresholds = [round((x + 1) * step + self._minFrequency) for x in range(self._barCount)]
         self._thresholds = [x for x in self._thresholds if x >= self._minFrequency]
 
-    def _doUpdateSpectrum(self):
-        self._logger.debug("Do update spectrum")
-        if not self._player.getCurrentMusic().isPresent():
-            self._logger.debug("Music not present, skip")
+    def _onTick(self):
+        self._logger.debug("On tick")
+        if not self._player.getState().isPlaying():
+            self._logger.debug("Player not playing, skip")
             return
         if len(self._player.getSamples()) == 0:
             self._logger.debug("No samples, skip")
             return
+        self._doUpdateSpectrum()
+
+    def _doUpdateSpectrum(self):
+        self._logger.debug("Do update spectrum")
         music = self._player.getCurrentMusic().get()
         samples = self._player.getSamples()
         sampleRate = music.sampleRate
@@ -173,8 +178,8 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
                 painter.drawText(rect.left() + lx, rect.top() + ly, hz)
                 prevLabelX = lx
 
-    @staticmethod
-    def calcPowerValues(frequencies, powers, thresholds, minFrequency):
+    def calcPowerValues(self, frequencies, powers, thresholds, minFrequency):
+        self._random.seed(sum(powers))
         powers[powers == 0] = 10 ** -20
         powers = np.log10(powers * 2) * 10
         prevThresholds = [minFrequency] + thresholds[:-1]
@@ -196,7 +201,7 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
                 if values[index] == -120:
                     samples = [x for x in values[max(index - 2, 0):index + 3] if x != -120] or [
                         x for x in values if x != -120]
-                    values[index] = statistics.mean(samples) * ((random.random() - 0.5) * 2 * 0.2 + 1)
+                    values[index] = statistics.mean(samples) * ((self._random.random() - 0.5) * 2 * 0.2 + 1)
         return values
 
     def _doSmooth(self):

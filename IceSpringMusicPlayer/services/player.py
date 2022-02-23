@@ -9,6 +9,7 @@ import typing
 
 import numpy as np
 import pendulum
+import psutil
 import pydub
 from IceSpringRealOptional.just import Just
 from IceSpringRealOptional.maybe import Maybe
@@ -332,6 +333,7 @@ class Player(QtCore.QObject):
         self._proxy.blockSignals(True)
         self._proxy.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(music.filename)),
             realDuration=music.duration)
+        self._samples = np.array([])
         threading.Thread(target=self._setupSamples, args=(music.filename,)).start()
         self._proxy.blockSignals(False)
         self._logger.info("Music content set to player.")
@@ -343,13 +345,29 @@ class Player(QtCore.QObject):
         self._playedCount += 1
         self._logger.info("Played count now: %d", self._playedCount)
 
+    @staticmethod
+    def _killFfmpeg() -> int:
+        processes: typing.List[psutil.Process] = psutil.Process().children(recursive=True)
+        ffmpegs = [x for x in processes if x.name().startswith("ffmpeg")]
+        list(x.kill() for x in ffmpegs)
+        return len(ffmpegs)
+
     def _setupSamples(self, filename):
         self._logger.info("Setting up samples...")
-        segment = pydub.AudioSegment.from_file(filename)
-        samples = np.array(segment.set_channels(1).get_array_of_samples())
-        samples = samples / (2 ** (segment.sample_width * 8 - 1))
-        self._samples = samples
-        self._logger.info("Samples set up.")
+        try:
+            self._logger.info("Killing ffmpeg processes...")
+            count = self._killFfmpeg()
+            self._logger.info("killed count: %d", count)
+        except Exception as e:
+            self._logger.error("Ffmpeg kill failed: %s", e)
+        try:
+            segment = pydub.AudioSegment.from_file(filename)
+            samples = np.array(segment.set_channels(1).get_array_of_samples())
+            samples = samples / (2 ** (segment.sample_width * 8 - 1))
+            self._samples = samples
+            self._logger.info("Samples set up.")
+        except Exception as e:
+            self._logger.error("Samples set up failed: %s", e)
 
     def getSamples(self) -> np.ndarray:
         return self._samples
