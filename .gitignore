@@ -13,3 +13,4 @@ dist/
 *.pyc
 *.pyo
 /ffmpeg*/
+libfftw3f-3.dll

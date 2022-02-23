@@ -16,11 +16,13 @@ name = "IceSpringMusicPlayer"
 vsHome = Path(r"C:\Program Files (x86)\Microsoft Visual Studio\2019").absolute()
 vcvarsall = vsHome / r"BuildTools\VC\Auxiliary\Build\vcvarsall.bat"
 ffmpegHome = Path("./ffmpeg").absolute()
+fftwDll = Path("libfftw3f-3.dll").absolute()
 assert vsHome.exists()
 assert vcvarsall.exists()
 assert ffmpegHome.exists()
 assert ffmpegHome.__truediv__("ffmpeg.exe").exists()
 assert ffmpegHome.__truediv__("ffprobe.exe").exists()
+assert fftwDll.exists()
 
 LogUtils.initLogging()
 logging.getLogger().setLevel(logging.INFO)
@@ -102,10 +104,13 @@ for path in Path("../../resources").glob("**/*"):
         logging.info("Copying resource %s => %s", path, target)
         shutil.copyfile(path, target)
 
-logging.info("Copying ffmpeg....")
+logging.info("Copying ffmpeg...")
 for file in ffmpegHome.glob("*"):
     if re.match(r"^(ffmpeg\.exe|ffprobe\.exe|.+\.dll)$", file.name):
         shutil.copyfile(file, file.name)
+
+logging.info("Copying fftw...")
+shutil.copyfile(fftwDll, fftwDll.name)
 
 logging.info("Compiling exe...")
 flag = "/SUBSYSTEM:windows /ENTRY:mainCRTStartup"

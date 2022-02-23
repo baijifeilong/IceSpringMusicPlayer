@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import array
 import hashlib
 import logging
 import threading
 import typing
 
-import numpy as np
 import pendulum
 import psutil
 import pydub
@@ -60,7 +60,7 @@ class Player(QtCore.QObject):
     _proxy: PatchedMediaPlayer
     _playedCount: int
     _sampleWidth: int
-    _samples: np.ndarray
+    _samples: array.array
 
     def __init__(self, parent: QtCore.QObject):
         super().__init__(parent)
@@ -76,7 +76,7 @@ class Player(QtCore.QObject):
         self._playedCount = 0
         self._isStoppedByTime = False
         self._sampleWidth = 0
-        self._samples = np.array([])
+        self._samples = array.array('i')
         self._proxy = PatchedMediaPlayer()
         self._proxy.setVolume(50)
         self._proxy.stateChanged.connect(self._onProxyStateChanged)
@@ -336,7 +336,7 @@ class Player(QtCore.QObject):
         self._proxy.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(music.filename)),
             realDuration=music.duration)
         self._sampleWidth = 0
-        self._samples = np.array([])
+        self._samples = array.array("i")
         threading.Thread(target=self._setupSamples, args=(music.filename,)).start()
         self._proxy.blockSignals(False)
         self._logger.info("Music content set to player.")
@@ -365,15 +365,14 @@ class Player(QtCore.QObject):
             self._logger.error("Ffmpeg kill failed: %s", e)
         try:
             segment = pydub.AudioSegment.from_file(filename)
-            samples = np.array(segment.set_channels(1).get_array_of_samples())
-            # samples = samples / (2 ** (segment.sample_width * 8 - 1))
+            samples = segment.set_channels(1).get_array_of_samples()
             self._sampleWidth = segment.sample_width
             self._samples = samples
             self._logger.info("Samples set up.")
         except Exception as e:
             self._logger.error("Samples set up failed: %s", e)
 
-    def getSamples(self) -> np.ndarray:
+    def getSamples(self) -> array.array:
         return self._samples
 
     def getSampleWidth(self) -> int:

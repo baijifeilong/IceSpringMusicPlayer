@@ -1,11 +1,11 @@
 # Created by BaiJiFeiLong@gmail.com at 2022/2/12 19:19
+import array
 import logging
 import math
 import random
 import statistics
 import typing
 
-import numpy as np
 from IceSpringRealOptional.just import Just
 from PySide2 import QtWidgets, QtGui, QtCore
 from assertpy import assert_that
@@ -14,6 +14,7 @@ import IceSpringSpectrumPlugin.spectrumTranslation as tt
 from IceSpringMusicPlayer.app import App
 from IceSpringMusicPlayer.common.jsonSupport import JsonSupport
 from IceSpringMusicPlayer.common.pluginWidgetMixin import PluginWidgetMixin
+from IceSpringMusicPlayer.helpers.fftHelper import FftHelper
 from IceSpringMusicPlayer.utils.layoutUtils import LayoutUtils
 from IceSpringSpectrumPlugin.spectrumWidgetConfig import SpectrumWidgetConfig
 
@@ -59,6 +60,7 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         self._values = []
         self._smooths = []
         self._random = random.Random()
+        self._helper = FftHelper()
         self._loadConfig()
         self._updateTimer = QtCore.QTimer(self)
         self._updateTimer.timeout.connect(self._onTick)
@@ -127,17 +129,12 @@ class SpectrumWidget(QtWidgets.QWidget, PluginWidgetMixin):
         music = self._player.getCurrentMusic().get()
         samples = self._player.getSamples()
         sampleRate = music.sampleRate
+        sampleWidth = self._player.getSampleWidth()
         sampleCount = int(self._sampleMillis / 1000 * sampleRate)
         sampleIndex = int(self._player.getPosition() / 1000 * sampleRate)
-        segments = samples[sampleIndex:sampleIndex + sampleCount]
-        sampleWidth = self._player.getSampleWidth()
-
-        window = np.hanning(len(segments))
-        fftValues = np.fft.rfft(segments * window)
-        magnitudes = np.abs(fftValues) * 2 / np.sum(window)
-        powers = 20 * np.log10(magnitudes / (2 ** (sampleWidth * 8)))
-        powers = np.where(powers < -1000, -1000, powers)
-        frequencies = np.fft.rfftfreq(len(segments), 1 / sampleRate)
+        segments = array.array('f', samples[sampleIndex:sampleIndex + sampleCount])
+        powers = self._helper.rfftDbfs(segments, sampleWidth)
+        frequencies = self._helper.rfftFreq(len(segments), sampleRate)
         self._values = self.calcPowerValues(frequencies, powers, self._thresholds, self._minFrequency)
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
