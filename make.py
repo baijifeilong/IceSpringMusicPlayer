@@ -14,9 +14,13 @@ from IceSpringMusicPlayer.utils.logUtils import LogUtils
 
 name = "IceSpringMusicPlayer"
 vsHome = Path(r"C:\Program Files (x86)\Microsoft Visual Studio\2019").absolute()
+vcvarsall = vsHome / r"BuildTools\VC\Auxiliary\Build\vcvarsall.bat"
 ffmpegHome = Path("./ffmpeg").absolute()
 assert vsHome.exists()
+assert vcvarsall.exists()
 assert ffmpegHome.exists()
+assert ffmpegHome.__truediv__("ffmpeg.exe").exists()
+assert ffmpegHome.__truediv__("ffprobe.exe").exists()
 
 LogUtils.initLogging()
 logging.getLogger().setLevel(logging.INFO)
@@ -103,7 +107,7 @@ logging.info("Compiling exe...")
 flag = "/SUBSYSTEM:windows /ENTRY:mainCRTStartup"
 commands = rf"""
 cd ../../resources
-"{vsHome}"\BuildTools\VC\Auxiliary\Build\vcvarsall.bat x86_amd64
+"{vcvarsall}" x86_amd64
 rc.exe resources.rc
 cl.exe /c main.c -I {sys.base_prefix}\include
 cl.exe /Fe{name}.exe main.obj resources.res /link /LIBPATH {sys.base_prefix}\libs\python37.lib {flag}
@@ -116,6 +120,7 @@ for command in commands:
     proc.stdin.write(f"{command}\n".encode("ansi"))
 out, err = proc.communicate()
 logging.info("Compiled result: %d", proc.returncode)
+assert proc.returncode == 0
 
 logging.info("Moving exe...")
 Path(f"{name}.exe").unlink()
