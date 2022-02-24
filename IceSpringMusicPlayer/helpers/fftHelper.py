@@ -20,8 +20,7 @@ class FftHelper(object):
         outputs = array.array('f', [0.0] * (size * 2))
         input_ptr, _ = inputs.buffer_info()
         output_ptr, _ = outputs.buffer_info()
-        fftwf_plan = self.fftwf_plan_dft_r2c_1d(size, input_ptr, output_ptr, 1)
-        self.fftwf_execute(fftwf_plan)
+        self.fftwf_execute(self.fftwf_plan_dft_r2c_1d(size, input_ptr, output_ptr, 64))
         return outputs
 
     def rfftAbs(self, inputs):
