@@ -364,10 +364,13 @@ class Player(QtCore.QObject):
         except Exception as e:
             self._logger.error("Ffmpeg kill failed: %s", e)
         try:
-            segment = pydub.AudioSegment.from_file(filename)
+            self._logger.info("Setting up head samples...")
+            segment = pydub.AudioSegment.from_file(filename, duration=3)
             samples = segment.set_channels(1).get_array_of_samples()
             self._sampleWidth = segment.sample_width
             self._samples = samples
+            self._logger.info("Setting up whole samples...")
+            self._samples = pydub.AudioSegment.from_file(filename).set_channels(1).get_array_of_samples()
             self._logger.info("Samples set up.")
         except Exception as e:
             self._logger.error("Samples set up failed: %s", e)
