@@ -1,6 +1,6 @@
 # Ice Spring Music Player
 
-A cross-platform music player, an alternative to `Foobar 2000`.
+`Ice Spring Music Player` is a cross-platform desktop music player, an alternative to `Foobar 2000`.
 
 ## Official sites
 
